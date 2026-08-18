@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.log
+server.log
+server_test.log
+tests
+README.md
+metadata.json
+.vscode
+.idea
+.DS_Store
+thumbs.db

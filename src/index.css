@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* ── Rich text image wraps (admin editor & student view) ─────────────────── */
+/* Uses data-position attribute instead of style*= selectors because          */
+/* DOMParser normalizes inline styles (e.g. "float:right" → "float: right;") */
+/* which breaks substring-based CSS matching.                                 */
+
+div[data-image-wrap] {
+  display: block;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+div[data-image-wrap][data-position="left"],
+.prose div[data-image-wrap][data-position="left"] {
+  float: left !important;
+  margin: 0 1.25em 1em 0 !important;
+  clear: none !important;
+  display: block !important;
+}
+
+div[data-image-wrap][data-position="right"],
+.prose div[data-image-wrap][data-position="right"] {
+  float: right !important;
+  margin: 0 0 1em 1.25em !important;
+  clear: none !important;
+  display: block !important;
+}
+
+div[data-image-wrap][data-position="center"],
+.prose div[data-image-wrap][data-position="center"] {
+  float: none !important;
+  clear: both !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+div[data-image-wrap] img,
+.prose div[data-image-wrap] img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  float: none !important;
+  margin: 0 !important;
+}
+
+/* Ensure the prose container itself allows floated children */
+.prose {
+  overflow: visible !important;
+}
+
+/* Preserve multiple blank-line gaps: each empty <p> gets its own height */
+.prose p:empty {
+  display: block !important;
+  height: 1.2em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Clearfix after prose containers so floats don't bleed out */
+.prose::after {
+  content: "";
+  display: table;
+  clear: both;
+}

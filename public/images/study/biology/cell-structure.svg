@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" fill="none">
+  <rect width="600" height="400" rx="16" fill="#0F172A"/>
+  <text x="300" y="36" text-anchor="middle" fill="#94A3B8" font-family="system-ui" font-size="14" font-weight="600">ANIMAL CELL STRUCTURE</text>
+  <!-- Cell membrane -->
+  <ellipse cx="300" cy="220" rx="220" ry="150" stroke="#22D3EE" stroke-width="3" fill="#22D3EE" fill-opacity="0.08"/>
+  <text x="520" y="220" fill="#22D3EE" font-family="system-ui" font-size="11">Membrane</text>
+  <!-- Nucleus -->
+  <ellipse cx="280" cy="210" rx="80" ry="60" stroke="#A78BFA" stroke-width="2" fill="#A78BFA" fill-opacity="0.12"/>
+  <text x="280" y="215" text-anchor="middle" fill="#A78BFA" font-family="system-ui" font-size="12" font-weight="600">Nucleus</text>
+  <!-- Nucleolus -->
+  <circle cx="280" cy="210" r="20" fill="#7C3AED" fill-opacity="0.3" stroke="#7C3AED" stroke-width="1.5"/>
+  <text x="280" y="214" text-anchor="middle" fill="#C4B5FD" font-family="system-ui" font-size="9">Nucleolus</text>
+  <!-- Mitochondria -->
+  <ellipse cx="150" cy="180" rx="35" ry="18" stroke="#F97316" stroke-width="2" fill="#F97316" fill-opacity="0.15" transform="rotate(-20 150 180)"/>
+  <text x="150" y="205" text-anchor="middle" fill="#FDBA74" font-family="system-ui" font-size="9">Mitochondria</text>
+  <!-- ER -->
+  <path d="M380 160 Q400 170 390 190 Q400 210 380 220 Q400 230 390 250" stroke="#34D399" stroke-width="2" fill="none"/>
+  <text x="420" y="210" fill="#6EE7B7" font-family="system-ui" font-size="9">Rough ER</text>
+  <!-- Golgi -->
+  <path d="M130 270 Q160 260 150 280 Q170 270 160 290 Q180 280 170 300" stroke="#FBBF24" stroke-width="2" fill="none"/>
+  <text x="130" y="320" fill="#FCD34D" font-family="system-ui" font-size="9">Golgi Apparatus</text>
+  <!-- Ribosomes -->
+  <circle cx="400" cy="170" r="4" fill="#FB7185"/>
+  <circle cx="410" cy="185" r="4" fill="#FB7185"/>
+  <circle cx="395" cy="195" r="4" fill="#FB7185"/>
+  <text x="440" y="185" fill="#FDA4AF" font-family="system-ui" font-size="9">Ribosomes</text>
+</svg>

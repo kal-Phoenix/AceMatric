@@ -1,0 +1,6 @@
+{
+  "name": "AceMatric",
+  "description": "Ethiopian Grade 12 national entrance exam preparation hub featuring practice question banks, timed mock exam simulators, AI concept explainer, curriculum video lessons, flashcards, and community tutoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
