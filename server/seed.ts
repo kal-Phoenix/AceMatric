@@ -1,16 +1,10 @@
 import 'dotenv/config';
 
-import { supabase, formatSupabaseError } from './db';
-import { PRACTICE_QUESTIONS, STUDY_NOTES, PAST_EXAMS } from '../src/data/mockData';
-
-const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
+import { supabaseAdmin as supabase, formatSupabaseError } from './db';
 
 export async function seedAllData() {
   await ensureRoleColumn();
-  await ensureStorageBucket();
-  await seedQuestions();
-  await seedCuratedNotes();
-  await seedPastExamQuestionsAndMocks();
+  await verifySeededData();
 }
 
 async function ensureRoleColumn() {
@@ -66,233 +60,25 @@ async function ensureRoleColumn() {
   }
 }
 
-async function ensureStorageBucket() {
-  const BUCKET_NAME = 'content-images';
+async function verifySeededData() {
   try {
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const exists = buckets?.some((b: any) => b.name === BUCKET_NAME);
-    if (exists) return;
+    const [questionsRes, contentRes, pastExamRes] = await Promise.all([
+      supabase.from('questions').select('id', { count: 'exact', head: true }),
+      supabase.from('content_entries').select('id', { count: 'exact', head: true }),
+      supabase.from('past_exam_entries').select('id', { count: 'exact', head: true }),
+    ]);
 
-    const { error } = await supabase.storage.createBucket(BUCKET_NAME, {
-      public: true,
-      fileSizeLimit: 5 * 1024 * 1024,
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    });
+    const qCount = questionsRes.count || 0;
+    const cCount = contentRes.count || 0;
+    const pCount = pastExamRes.count || 0;
 
-    if (error) {
-      if (error.message?.includes('already exists')) return;
-      console.log(`[setup] Could not create bucket "${BUCKET_NAME}":`, error.message);
-      console.log(`  Create it manually in Supabase Dashboard → Storage → New Bucket`);
-    } else {
-      console.log(`[setup] Created storage bucket: ${BUCKET_NAME}`);
-    }
+    console.log(`[seed] Data check: ${qCount} questions, ${cCount} content entries, ${pCount} past exams`);
+
+    if (qCount === 0) console.warn('[seed] WARNING: No questions found. Seed via admin panel or Supabase SQL Editor.');
+    if (cCount === 0) console.warn('[seed] WARNING: No content entries found. Use admin Content Manager to add content.');
+    if (pCount === 0) console.warn('[seed] WARNING: No past exams found. Use admin Past Exam Manager to add exams.');
   } catch (err) {
-    console.warn('[setup] ensureStorageBucket failed (non-critical):', err instanceof Error ? err.message : err);
-  }
-}
-
-async function seedQuestions() {
-  try {
-    const { count } = await supabase
-      .from('questions')
-      .select('id', { count: 'exact', head: true });
-
-    if (!process.argv.includes('--force') && count && count > 0) {
-      console.log(`[seed] questions already has ${count} rows, skipping.`);
-      return;
-    }
-
-    if (process.argv.includes('--force') && count && count > 0) {
-      console.log(`[seed] --force: deleting ${count} existing questions...`);
-      const { error: delErr } = await supabase.from('questions').delete().eq('status', 'published');
-      if (delErr) {
-        // Fallback: delete one-by-one via ID listing
-        const { data: ids } = await supabase.from('questions').select('id');
-        if (ids && ids.length > 0) {
-          for (const row of ids) {
-            await supabase.from('questions').delete().eq('id', row.id);
-          }
-        }
-      }
-      console.log('[seed] Existing questions cleared.');
-    }
-
-    console.log('[seed] Seeding practice questions...');
-    let seeded = 0;
-
-    for (const q of PRACTICE_QUESTIONS) {
-      const { error } = await supabase
-        .from('questions')
-        .upsert([{
-          id: q.id,
-          subject: q.subject,
-          stream: q.stream,
-          chapter: q.chapter,
-          year_ec: q.yearEC,
-          question_text: q.questionText,
-          question_text_amharic: q.questionTextAmharic || null,
-          passage: q.passage || null,
-          options: q.options,
-          correct_option_id: q.correctOptionId,
-          explanation: q.explanation,
-          explanation_amharic: q.explanationAmharic || null,
-          difficulty: q.difficulty,
-          status: 'published',
-          question_type: 'practice',
-        }], { onConflict: 'id' });
-
-      if (error) {
-        console.error(`[seed] Failed to insert question ${q.id}:`, error.message);
-      } else {
-        seeded++;
-      }
-    }
-
-    console.log(`[seed] Questions seeded: ${seeded}/${PRACTICE_QUESTIONS.length}`);
-  } catch (err: any) {
-    console.error('[seed] Questions seed failed:', formatSupabaseError(err));
-  }
-}
-
-async function seedCuratedNotes() {
-  try {
-    // Migration 006 drops curated_study_notes; use content_entries instead
-    const { count } = await supabase
-      .from('content_entries')
-      .select('id', { count: 'exact', head: true });
-
-    if (count && count > 0) {
-      console.log(`[seed] content_entries already has ${count} rows, skipping curated notes seed.`);
-      return;
-    }
-
-    console.log('[seed] Seeding curated study notes into content_entries...');
-    let seeded = 0;
-
-    for (const note of STUDY_NOTES) {
-      const grade = 12;
-      const chapterNum = parseInt(note.chapter, 10) || 1;
-      const contentId = `${note.subject}/g${grade}/ch${chapterNum}`;
-
-      const { error } = await supabase
-        .from('content_entries')
-        .upsert([{
-          id: contentId,
-          subject: note.subject,
-          grade,
-          chapter_number: chapterNum,
-          title: note.title,
-          overview: note.summary,
-          core_points: [],
-          exam_tips: '',
-          youtube_video_id: note.youtubeVideoId,
-          video_duration: note.videoDuration,
-          materials: note.formulaSheet || [],
-          subtopics: [],
-          content_html: '',
-          status: 'published',
-          version: 1,
-        }], { onConflict: 'id' });
-
-      if (error) {
-        console.error(`[seed] Failed to insert content ${contentId}:`, error.message);
-      } else {
-        seeded++;
-      }
-    }
-
-    console.log(`[seed] Curated notes seeded to content_entries: ${seeded}/${STUDY_NOTES.length}`);
-  } catch (err: any) {
-    console.warn('[seed] Curated notes seed skipped (non-critical):', err instanceof Error ? err.message : err);
-  }
-}
-
-async function seedPastExamQuestionsAndMocks() {
-  try {
-    const { count: peCount } = await supabase
-      .from('past_exam_entries')
-      .select('id', { count: 'exact', head: true });
-
-    const expectedPastExams = PAST_EXAMS.length;
-
-    if (!process.argv.includes('--force') && peCount && peCount >= expectedPastExams) {
-      console.log(`[seed] Past exams (${peCount}) already seeded, skipping.`);
-      return;
-    }
-
-    console.log('[seed] Seeding past exam questions...');
-    let questionsSeeded = 0;
-
-    for (const exam of PAST_EXAMS) {
-      const questionIds: string[] = [];
-
-      for (const q of exam.questions) {
-        const correctLetter = OPTION_LETTERS[q.correctIndex] || 'A';
-        const options = q.options.map((text: string, i: number) => ({
-          id: OPTION_LETTERS[i],
-          text,
-        }));
-
-        const { error } = await supabase
-          .from('questions')
-          .upsert([{
-            id: q.id,
-            subject: exam.subject,
-            stream: 'Natural Science',
-            chapter: exam.title,
-            year_ec: exam.yearEC ? `${exam.yearEC} E.C.` : '2023 E.C.',
-            question_text: q.question,
-            question_text_amharic: null,
-            options,
-            correct_option_id: correctLetter,
-            explanation: q.explanation,
-            explanation_amharic: null,
-            difficulty: 'Medium',
-            status: 'published',
-            question_type: 'past_exam',
-          }], { onConflict: 'id' });
-
-        if (!error) {
-          questionIds.push(q.id);
-          questionsSeeded++;
-        } else {
-          console.error(`[seed] question upsert failed for ${q.id}:`, JSON.stringify(error));
-        }
-      }
-    }
-
-    console.log(`[seed] Past exam questions: ${questionsSeeded}`);
-
-    // Seed past_exam_entries so the admin panel can display them
-    console.log('[seed] Seeding past_exam_entries...');
-    let pastEntriesSeeded = 0;
-    for (const exam of PAST_EXAMS) {
-      const questions = exam.questions.map(q => ({
-        id: q.id,
-        question: q.question,
-        options: q.options,
-        correctIndex: q.correctIndex,
-        explanation: q.explanation,
-      }));
-      const { error } = await supabase
-        .from('past_exam_entries')
-        .upsert([{
-          id: exam.id,
-          title: exam.title,
-          grade: exam.grade,
-          subject: exam.subject,
-          year_ec: exam.yearEC || '',
-          duration_minutes: exam.durationMinutes,
-          total_questions: exam.totalQuestions,
-          questions,
-          status: 'published',
-        }], { onConflict: 'id' });
-      if (!error) pastEntriesSeeded++;
-      else console.error(`[seed] past_exam_entries upsert failed for ${exam.id}:`, JSON.stringify(error));
-    }
-    console.log(`[seed] Past exam entries seeded: ${pastEntriesSeeded}`);
-  } catch (err: any) {
-    console.error('[seed] Past exams seed failed:', formatSupabaseError(err));
+    console.warn('[seed] verifySeededData failed (non-critical):', err instanceof Error ? err.message : err);
   }
 }
 

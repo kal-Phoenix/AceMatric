@@ -57,7 +57,7 @@ export default function PasswordStrength({ password }: PasswordStrengthProps) {
             key={i}
             className="h-1 flex-1 rounded-full transition-all duration-300"
             style={{
-              backgroundColor: i < result.score ? result.color : '#1e293b',
+              backgroundColor: i < result.score ? result.color : '#141920',
             }}
           />
         ))}

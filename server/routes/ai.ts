@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { GoogleGenAI } from '@google/genai';
-import { supabase, formatSupabaseError } from '../db';
+import sanitizeHtml from 'sanitize-html';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth, aiLimiter } from '../middleware';
 import { validateBody, conceptExplainerSchema, studyPlanSchema, askTutorSchema, proAuditSchema } from '../validation';
 
@@ -22,12 +23,19 @@ function sanitizeInput(input: unknown): string {
 
 function sanitizeAIOutput(text: string): string {
   if (!text) return '';
-  return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/javascript:/gi, '')
-    .trim();
+  return sanitizeHtml(text, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+      'figure', 'figcaption', 'div', 'span', 'br',
+    ]),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      div: ['data-position', 'data-width', 'style', 'class'],
+      figure: ['style', 'class'],
+      span: ['class'],
+      '*': ['class'],
+    },
+    allowedSchemes: ['https', 'http'],
+  });
 }
 
 function escapeMarkdownContent(input: string): string {
@@ -73,9 +81,7 @@ router.post('/concept-explainer', requireAuth, aiLimiter, validateBody(conceptEx
 
     const ai = getAIClient();
     if (!ai) {
-      return res.json({
-        explanation: `[Simulated AI Tutor Response]\n\n**Subject: ${escapeMarkdownContent(subject || 'General')}**\n\nTo solve this question efficiently:\n1. **Core Concept**: Identify the fundamental governing formula.\n2. **Step-by-Step**: Substitute variables into the equation.\n3. **Exam Shortcut**: Eliminate obvious wrong distractors first.\n\n*(Configure API key for live AI responses.)*`,
-      });
+      return res.status(503).json({ error: 'AI service not configured. Set GEMINI_API_KEY.' });
     }
 
     const systemInstruction = `You are an expert Ethiopian Grade 12 National Entrance Exam (Matric) tutor. Explain concepts clearly, highlighting key formulas, step-by-step solutions, common exam pitfalls, and time-saving shortcuts.`;
@@ -86,18 +92,18 @@ router.post('/concept-explainer', requireAuth, aiLimiter, validateBody(conceptEx
     let explanationText = '';
     try {
       const response = await safeGenerateContent(ai, {
-        model: 'gemini-3.5-flash',
+        model: 'gemini-2.0-flash',
         contents: `Subject: ${safeSubject || 'General Grade 12'}\nStudent Question: "${safePrompt}"`,
         config: { systemInstruction, temperature: 0.7, maxOutputTokens: 2000 },
       });
       explanationText = response.text || '';
     } catch {
-      explanationText = `### Concept Explainer (Fallback)\n**Subject: ${escapeMarkdownContent(subject || 'General')}**\n\n1. **Core Concept**: Break down "${escapeMarkdownContent(prompt || '')}" into primary elements.\n2. **Step-by-Step**: Write down values, match against formulas, solve.\n3. **Exam Tip**: Eliminate extreme values to double your chances.\n\n*Your Query: "${escapeMarkdownContent(prompt || '')}"*`;
+      return res.status(502).json({ error: 'AI generation failed. Please try again.' });
     }
 
     res.json({ explanation: sanitizeAIOutput(explanationText) });
   } catch (error: any) {
-    console.error('AI Explainer Error:', error);
+    console.error('[ai] Explainer error:', error);
     res.status(500).json({ error: 'Failed to generate explanation' });
   }
 });
@@ -126,6 +132,10 @@ router.post('/study-plan', requireAuth, aiLimiter, validateBody(studyPlanSchema)
     const w4End = new Date(w4Start); w4End.setDate(w4End.getDate() + 6);
 
     const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: 'AI service not configured. Set GEMINI_API_KEY.' });
+    }
+
     const systemInstruction = `You are an elite academic coach for Ethiopian university entrance exams. Generate a structured study plan as a Markdown Table with headers: "Date Range", "Subjects / Topics", "Daily Action Items", and "Target Goal / Deliverable". Output ONLY the table.`;
 
     const promptText = `Generate a structured 4-week study plan starting tomorrow for an Ethiopian Grade 12 student in the ${sanitizeInput(stream)} stream.
@@ -145,28 +155,19 @@ router.post('/study-plan', requireAuth, aiLimiter, validateBody(studyPlanSchema)
 - Week 4: ${formatDate(w4Start)} – ${formatDate(w4End)}`;
 
     let planText = '';
-    if (ai) {
-      try {
-        const response = await safeGenerateContent(ai, {
-          model: 'gemini-3.5-flash',
-          contents: promptText,
-          config: { systemInstruction, temperature: 0.3, maxOutputTokens: 4000 },
-        });
-        planText = response.text || '';
-      } catch {
-        console.warn('Gemini API failed for Study Plan, using fallback');
-      }
+    try {
+      const response = await safeGenerateContent(ai, {
+        model: 'gemini-2.0-flash',
+        contents: promptText,
+        config: { systemInstruction, temperature: 0.3, maxOutputTokens: 4000 },
+      });
+      planText = response.text || '';
+    } catch {
+      return res.status(502).json({ error: 'AI generation failed. Please try again.' });
     }
 
     if (!planText) {
-      planText = `### Custom 4-Week Study Roadmap
-
-| Date Range | Subjects / Topics | Daily Action Items | Target Goal |
-| :--- | :--- | :--- | :--- |
-| **${formatDate(w1Start)} – ${formatDate(w1End)}** | Focus on: ${weakList} + Core | Leverage ${studyStyle} style, focus 25-min intervals | Complete foundational revision |
-| **${formatDate(w2Start)} – ${formatDate(w2End)}** | Core ${stream} + SAT drills | 30 timed topic questions daily | Score 70%+ benchmarks |
-| **${formatDate(w3Start)} – ${formatDate(w3End)}** | All subjects + past papers | Mock exams per ${mockFrequency} schedule | Reach ${targetScore}/600 threshold |
-| **${formatDate(w4Start)} – ${formatDate(w4End)}** | High-yield revisions | Light speed drills, no cramming | Peak confidence & focus |`;
+      return res.status(502).json({ error: 'AI returned empty response. Please try again.' });
     }
 
     // Persist the roadmap to the user's profile
@@ -181,7 +182,7 @@ router.post('/study-plan', requireAuth, aiLimiter, validateBody(studyPlanSchema)
 
     res.json({ plan: sanitizeAIOutput(planText) });
   } catch (error: any) {
-    console.error('Study Plan Error:', error);
+    console.error('[ai] Study plan error:', error);
     res.status(500).json({ error: 'Failed to generate study plan' });
   }
 });
@@ -192,21 +193,19 @@ router.post('/ask-tutor', requireAuth, aiLimiter, validateBody(askTutorSchema), 
     const { question, subject } = req.body;
     const ai = getAIClient();
     if (!ai) {
-      return res.json({
-        reply: `Verified Tutor here. Great question on ${escapeMarkdownContent(subject || 'General')}. For the Matric exam, remember examiners test edge cases. Check equation symmetry and convert units to SI!`,
-      });
+      return res.status(503).json({ error: 'AI service not configured. Set GEMINI_API_KEY.' });
     }
 
     let replyText = '';
     try {
       const response = await safeGenerateContent(ai, {
-        model: 'gemini-3.5-flash',
+        model: 'gemini-2.0-flash',
         contents: `A student asked in the AceMatric forum:\nSubject: ${sanitizeInput(subject)}\nQuestion: "${sanitizeInput(question)}"\nWrite a friendly, encouraging, verified tutor reply explaining the answer concisely.`,
         config: { maxOutputTokens: 1500 },
       });
       replyText = response.text || '';
     } catch {
-      replyText = `Verified Tutor here. I see you asked: "${escapeMarkdownContent(question || '')}".\n\nFor **${escapeMarkdownContent(subject || 'General')}**:\n- Double-check core definitions and conditions.\n- Review past exam patterns.\n- Practice similar questions in our Practice Bank.\n\nStay focused, you will ace this!`;
+      return res.status(502).json({ error: 'AI generation failed. Please try again.' });
     }
 
     res.json({ reply: sanitizeAIOutput(replyText) });
@@ -220,6 +219,10 @@ router.post('/pro-audit', requireAuth, aiLimiter, validateBody(proAuditSchema), 
   try {
     const { name, school, region, preparationLevel, studyStyle, weakSubjects, targetScore, dailyGoalHours, totalMinutesStudied, studiedChaptersCount } = req.body;
     const ai = getAIClient();
+    if (!ai) {
+      return res.status(503).json({ error: 'AI service not configured. Set GEMINI_API_KEY.' });
+    }
+
     const systemInstruction = `You are the chief academic strategist at AceMatric. Produce elite study audit reports in professional Markdown. Use clear bullet points and actionable strategies.`;
 
     const promptText = `Generate a Pro Study Audit for:
@@ -236,43 +239,20 @@ router.post('/pro-audit', requireAuth, aiLimiter, validateBody(proAuditSchema), 
 Include: Executive Summary, Strengths, Weak Subject Attack Plan, Final Recommendations. Output ONLY clean markdown.`;
 
     let auditText = '';
-    if (ai) {
-      try {
-        const response = await safeGenerateContent(ai, {
-          model: 'gemini-3.5-flash',
-          contents: promptText,
-          config: { systemInstruction, temperature: 0.7, maxOutputTokens: 3000 },
-        });
-        auditText = response.text || '';
-      } catch {
-        console.warn('Gemini API failed for Pro Audit');
-      }
-    }
-
-    if (!auditText) {
-      auditText = `### Pro Study Audit
-**Prepared for**: ${escapeMarkdownContent(name || 'Student')} | **Target**: ${targetScore || 520}/600
-
-#### 1. Executive Summary
-Your target of **${targetScore || 520}/600** is competitive. With **${dailyGoalHours || 4} hours/day**, you can reach it with consistency.
-
-#### 2. Study Style: ${escapeMarkdownContent(studyStyle || 'Balanced')}
-Leverage this style with mind maps, flashcards, and timed problem-solving.
-
-#### 3. Weak Subject Attack: ${escapeMarkdownContent(weakSubjects?.join(', ') || 'All')}
-- Allocate first 50% of daily time to weak areas
-- Solve 15+ MCQs daily in these subjects
-- Use the Curriculum Matrix to track progress
-
-#### 4. Final Recommendations
-1. Eliminate passive studying — every hour needs 10+ active recall questions
-2. Focus on weak areas for 14 continuous days
-3. Complete one full mock exam weekly under strict timing`;
+    try {
+      const response = await safeGenerateContent(ai, {
+        model: 'gemini-2.0-flash',
+        contents: promptText,
+        config: { systemInstruction, temperature: 0.7, maxOutputTokens: 3000 },
+      });
+      auditText = response.text || '';
+    } catch {
+      return res.status(502).json({ error: 'AI generation failed. Please try again.' });
     }
 
     res.json({ audit: sanitizeAIOutput(auditText) });
   } catch (error: any) {
-    console.error('Pro Audit Error:', error);
+    console.error('[ai] Pro audit error:', error);
     res.status(500).json({ error: 'Failed to generate audit' });
   }
 });

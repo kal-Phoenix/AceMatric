@@ -3,10 +3,10 @@ import {
   ShieldCheck, Users, CreditCard, TrendingUp, Crown, Search,
   ChevronLeft, ChevronRight, MoreVertical, Star, UserX, CheckCircle2,
   XCircle, Clock, ExternalLink, BarChart3, BookOpen, FileText,
-  Plus, Trash2, Save, Upload, Eye, ChevronDown, ChevronUp,
-  Copy, History, AlertTriangle, Check, Image, GripVertical,
+  Plus, Trash2, Save, Eye, ChevronDown, ChevronUp,
+  Copy, History, AlertTriangle, Check,
   HelpCircle, Trophy, CheckSquare, Zap, Medal, Calendar, ClipboardList,
-  Filter, Download
+  Filter, Download, Sparkles
 } from 'lucide-react';
 import { db } from '../../lib/supabase';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
@@ -18,9 +18,9 @@ import {
   StatusPillToggle, YearBadge, DifficultyBadge, SectionHeader, NATURAL_SUBJECTS, SOCIAL_SUBJECTS,
 } from '../admin/AdminConsoleShared';
 import type { ContentEntry, ContentStats, MessageState, AdminTab, ContentSubTab } from '../admin/AdminConsoleShared';
+import { sanitizeHtml } from '../../lib/sanitize';
 import RichTextEditor from '../ui/RichTextEditor';
 import { SortableList, SortableItem } from '../ui/SortableList';
-import ImageManager from '../ui/ImageManager';
 import QuestionBuilder, { type QBQuestion } from '../ui/QuestionBuilder';
 
 const STATUS_CONFIG = {
@@ -84,7 +84,7 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
   ];
 
   const ACCENT: Record<string, { active: string; glow: string; dot: string }> = {
-    teal:   { active: 'bg-teal-500/15 text-teal-300 border-teal-500/40',    glow: 'shadow-teal-500/10',   dot: 'bg-teal-400'   },
+    teal:   { active: 'bg-blue-500/15 text-blue-300 border-blue-500/40',    glow: 'shadow-blue-500/10',   dot: 'bg-blue-400'   },
     indigo: { active: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40', glow: 'shadow-indigo-500/10', dot: 'bg-indigo-400' },
     blue:   { active: 'bg-blue-500/15 text-blue-300 border-blue-500/40',    glow: 'shadow-blue-500/10',   dot: 'bg-blue-400'   },
     amber:  { active: 'bg-amber-500/15 text-amber-300 border-amber-500/40', glow: 'shadow-amber-500/10',  dot: 'bg-amber-400'  },
@@ -94,9 +94,9 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
   return (
     <div className="max-w-6xl mx-auto space-y-6 py-4">
       {/* ── Gradient Header Banner ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-[#0e1a2b] via-[#0f1d2f] to-[#0a1220] p-5 shadow-xl">
+      <div className="relative overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-br from-[#0e1a2b] via-[#0f1d2f] to-[#0a1220] p-5 shadow-xl">
         {/* Animated background orbs */}
-        <div className="absolute -top-8 -right-8 w-48 h-48 bg-teal-500/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-8 -right-8 w-48 h-48 bg-blue-500/8 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-violet-500/8 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative flex items-center gap-4">
@@ -111,28 +111,28 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
 
           {/* Icon */}
           <div className="relative shrink-0">
-            <div className="absolute inset-0 bg-teal-500/20 rounded-xl blur-md" />
-            <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/30 to-teal-500/10 border border-teal-500/40 flex items-center justify-center shadow-lg shadow-teal-500/10">
-              <ShieldCheck className="w-6 h-6 text-teal-300" />
+            <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-md" />
+            <div className="relative w-12 h-12 rounded-xl bg-white/5 border border-blue-500/40 flex items-center justify-center shadow-lg shadow-blue-500/10">
+              <ShieldCheck className="w-6 h-6 text-blue-300" />
             </div>
           </div>
 
           {/* Title */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-black text-white tracking-tight">Admin Console</h1>
+            <h1 className="text-xl font-semibold text-white tracking-tight">Admin Console</h1>
             <p className="text-xs text-slate-400 mt-0.5">Full platform control · Content, Users, Payments & Analytics</p>
           </div>
 
           {/* Live badge */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] font-black text-emerald-400">LIVE</span>
+            <span className="text-[10px] font-semibold text-emerald-400">LIVE</span>
           </div>
         </div>
       </div>
 
       {/* ── Tab Bar ── */}
-      <div className="flex gap-1.5 p-1.5 bg-[#0d1626] rounded-2xl border border-slate-800/80 shadow-inner">
+      <div className="flex gap-1.5 p-1.5 bg-[#0d1626] rounded-xl border border-slate-800/80 shadow-inner">
         {TABS.map(({ id, label, icon: Icon, accent }) => {
           const isActive = activeTab === id;
           const a = ACCENT[accent];
@@ -140,7 +140,7 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`relative flex items-center gap-2 flex-1 justify-center px-3 py-2.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer border ${
+              className={`relative flex items-center gap-2 flex-1 justify-center px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer border ${
                 isActive
                   ? `${a.active} shadow-lg ${a.glow}`
                   : 'text-slate-500 hover:text-slate-300 border-transparent hover:bg-slate-800/40'
@@ -191,23 +191,23 @@ function AnalyticsTab() {
           { label: 'Today Active', value: analytics.activeUsersToday },
           { label: 'Subjects Tracked', value: analytics.subjectPerformance?.length ?? 0 },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-[#111827] rounded-2xl border border-slate-800 p-4">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
-            <div className="text-2xl font-black text-teal-400 mt-1">{value}</div>
+          <div key={label} className="bg-[#111827] rounded-xl border border-slate-800 p-4">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+            <div className="text-2xl font-semibold text-blue-400 mt-1">{value}</div>
           </div>
         ))}
       </div>
 
       {/* Daily Active Users */}
-      <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5">
-        <h3 className="text-sm font-black text-white mb-4">Daily Active Users (7 days)</h3>
+      <div className="bg-[#111827] rounded-xl border border-slate-800 p-5">
+        <h3 className="text-sm font-semibold text-white mb-4">Daily Active Users (7 days)</h3>
         <div className="space-y-2">
           {analytics.dailyActiveUsers.map((day: any) => (
             <div key={day.date} className="flex items-center gap-3 text-xs">
               <span className="text-slate-400 w-20 shrink-0">{day.date}</span>
               <div className="flex-1 bg-slate-800 rounded-full h-4 overflow-hidden">
                 <div
-                  className="h-full bg-teal-500/60 rounded-full transition-all"
+                  className="h-full bg-blue-500/60 rounded-full transition-all"
                   style={{ width: `${analytics.activeUsersWeekly > 0 ? (day.activeUsers / analytics.activeUsersWeekly) * 100 : 0}%` }}
                 />
               </div>
@@ -219,8 +219,8 @@ function AnalyticsTab() {
       </div>
 
       {/* Subject Performance */}
-      <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5">
-        <h3 className="text-sm font-black text-white mb-4">Subject Performance (All Users)</h3>
+      <div className="bg-[#111827] rounded-xl border border-slate-800 p-5">
+        <h3 className="text-sm font-semibold text-white mb-4">Subject Performance (All Users)</h3>
         <div className="space-y-3">
           {analytics.subjectPerformance.map((subj: any) => (
             <div key={subj.name} className="flex items-center gap-3 text-xs">
@@ -232,15 +232,15 @@ function AnalyticsTab() {
                 />
               </div>
               <span className="text-slate-400 w-20 text-right">{subj.sessions} sessions</span>
-              <span className="text-teal-400 w-12 text-right font-black">{subj.avgScore}%</span>
+              <span className="text-blue-400 w-12 text-right font-semibold">{subj.avgScore}%</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Top Users */}
-      <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5">
-        <h3 className="text-sm font-black text-white mb-4">Top Users by Activity</h3>
+      <div className="bg-[#111827] rounded-xl border border-slate-800 p-5">
+        <h3 className="text-sm font-semibold text-white mb-4">Top Users by Activity</h3>
         <div className="space-y-2">
           {analytics.topUsers.length === 0 && (
             <p className="text-xs text-slate-500">No activity data yet.</p>
@@ -249,7 +249,7 @@ function AnalyticsTab() {
             <div key={u.email} className="flex items-center gap-3 text-xs">
               <span className="text-slate-500 w-6 text-right">#{i + 1}</span>
               <span className="text-slate-300 flex-1 truncate">{u.email}</span>
-              <span className="text-teal-400 font-black">{u.sessions} sessions</span>
+              <span className="text-blue-400 font-semibold">{u.sessions} sessions</span>
             </div>
           ))}
         </div>
@@ -271,7 +271,7 @@ function DashboardTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -283,7 +283,7 @@ function DashboardTab() {
     { label: 'Premium Users',     value: stats.premiumUsers,     icon: Crown,        color: 'text-amber-400',   bg: 'from-amber-500/15 to-amber-500/5',     border: 'border-amber-500/25',   bar: 'bg-amber-400'   },
     { label: 'Free Users',        value: stats.freeUsers,        icon: Star,         color: 'text-slate-300',   bg: 'from-slate-600/15 to-slate-700/5',     border: 'border-slate-600/30',   bar: 'bg-slate-400'   },
     { label: 'Pending Payments',  value: stats.pendingPayments,  icon: Clock,        color: 'text-amber-400',   bg: 'from-amber-500/15 to-amber-500/5',     border: 'border-amber-500/25',   bar: 'bg-amber-400'   },
-    { label: 'Approved Payments', value: stats.approvedPayments, icon: CheckCircle2, color: 'text-emerald-400', bg: 'from-emerald-500/15 to-emerald-500/5', border: 'border-emerald-500/25', bar: 'bg-emerald-400' },
+    { label: 'Approved Payments', value: stats.approvedPayments, icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-white/5', border: 'border-emerald-500/25', bar: 'bg-emerald-400' },
     { label: 'Rejected Payments', value: stats.rejectedPayments, icon: XCircle,      color: 'text-rose-400',    bg: 'from-rose-500/15 to-rose-500/5',       border: 'border-rose-500/25',    bar: 'bg-rose-400'    },
   ];
 
@@ -298,16 +298,16 @@ function DashboardTab() {
           return (
             <div
               key={card.label}
-              className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 ${card.bg} ${card.border} hover:scale-[1.02] transition-transform duration-200`}
+              className={`group relative overflow-hidden rounded-xl border bg-gradient-to-br p-5 ${card.bg} ${card.border} hover:scale-[1.02] transition-transform duration-200`}
             >
               <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.04] blur-2xl pointer-events-none" />
               <div className="flex items-center justify-between mb-3">
                 <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
                   <Icon className={`w-4 h-4 ${card.color}`} />
                 </div>
-                <span className={`text-2xl font-black ${card.color}`}>{card.value}</span>
+                <span className={`text-2xl font-semibold ${card.color}`}>{card.value}</span>
               </div>
-              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">{card.label}</div>
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{card.label}</div>
               <div className="h-1 bg-slate-800/60 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full ${card.bar} opacity-60 transition-all duration-700`} style={{ width: `${pct}%` }} />
               </div>
@@ -326,7 +326,7 @@ function DashboardTab() {
         ].map(({ label, icon: Icon, color, bg }) => (
           <div key={label} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${bg}`}>
             <Icon className={`w-3.5 h-3.5 ${color} shrink-0`} />
-            <span className={`text-[10px] font-black ${color}`}>{label}</span>
+            <span className={`text-[10px] font-semibold ${color}`}>{label}</span>
           </div>
         ))}
       </div>
@@ -424,12 +424,12 @@ function UsersTab({ currentAdminEmail }: { currentAdminEmail?: string }) {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by name, email, or school..."
-            className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all"
+            className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all"
           />
         </div>
         <button
           type="submit"
-          className="px-4 py-2.5 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer"
+          className="px-4 py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer"
         >
           Search
         </button>
@@ -440,13 +440,13 @@ function UsersTab({ currentAdminEmail }: { currentAdminEmail?: string }) {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : users.length === 0 ? (
         <div className="text-center py-12 text-slate-500 text-sm">No users found.</div>
       ) : (
-        <div className="bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-[1fr_120px_80px_80px_40px] gap-2 px-4 py-2.5 border-b border-slate-800 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+        <div className="bg-[#111827] border border-slate-800 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[1fr_120px_80px_80px_40px] gap-2 px-4 py-2.5 border-b border-slate-800 text-[10px] font-semibold uppercase text-slate-500 tracking-wider">
             <span>User</span>
             <span>Stream</span>
             <span>XP</span>
@@ -467,7 +467,7 @@ function UsersTab({ currentAdminEmail }: { currentAdminEmail?: string }) {
                 <div className="text-[10px] text-slate-500 truncate">{u.email}</div>
               </div>
               <span className="text-[10px] text-slate-400 truncate">{u.stream || '—'}</span>
-              <span className="text-xs font-bold text-teal-400">{u.xp || 0}</span>
+              <span className="text-xs font-bold text-blue-400">{u.xp || 0}</span>
               <span className="text-xs font-bold text-amber-400">{u.streakDays || 0}d</span>
               <div className="relative">
                 <button
@@ -477,7 +477,7 @@ function UsersTab({ currentAdminEmail }: { currentAdminEmail?: string }) {
                   <MoreVertical className="w-4 h-4 text-slate-500" />
                 </button>
                 {actionMenu === u.email && (
-                  <div className="absolute right-0 top-full mt-1 bg-[#1E293B] border border-slate-700 rounded-xl shadow-2xl z-20 w-44 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 bg-[#141920] border border-slate-700 rounded-xl shadow-2xl z-20 w-44 overflow-hidden">
                     <button
                       onClick={() => handleTogglePremium(u.email, u.isPremium)}
                       className="w-full px-3 py-2 text-left text-[11px] font-bold text-slate-300 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
@@ -585,9 +585,9 @@ function PaymentsTab() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                 filter === f
-                  ? 'bg-teal-500/15 text-teal-300'
+                  ? 'bg-blue-500/15 text-blue-300'
                   : 'text-slate-500 hover:text-slate-300'
               }`}
             >
@@ -599,7 +599,7 @@ function PaymentsTab() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : payments.length === 0 ? (
         <div className="text-center py-12 text-slate-500 text-sm">No payment requests found.</div>
@@ -611,13 +611,13 @@ function PaymentsTab() {
             const isReviewing = reviewingId === p.id;
 
             return (
-              <div key={p.id} className={`rounded-2xl border overflow-hidden ${
+              <div key={p.id} className={`rounded-xl border overflow-hidden ${
                 p.status === 'pending' ? 'bg-[#111827]/80 border-slate-700/60' : 'bg-[#111827]/40 border-slate-800/60'
               }`}>
                 <div className="p-4 flex items-start gap-4">
                   {p.screenshotUrl && (
                     <a href={p.screenshotUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 group">
-                      <div className="w-16 h-16 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center group-hover:border-teal-500/40 transition-colors">
+                      <div className="w-16 h-16 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center group-hover:border-blue-500/40 transition-colors">
                         <img src={p.screenshotUrl} alt="Payment proof" className="w-full h-full object-cover" />
                       </div>
                     </a>
@@ -626,13 +626,13 @@ function PaymentsTab() {
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <StatusIcon className={`w-4 h-4 ${cfg.color}`} />
-                      <span className={`text-xs font-black ${cfg.color}`}>{cfg.label}</span>
+                      <span className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
                       <span className="text-[10px] text-slate-600">•</span>
                       <span className="text-xs text-slate-400 font-bold">{METHOD_LABELS[p.paymentMethod] || p.paymentMethod}</span>
                       <span className="text-[10px] text-slate-600">•</span>
-                      <span className="text-xs text-slate-300 font-black">{p.amount} ETB</span>
+                      <span className="text-xs text-slate-300 font-semibold">{p.amount} ETB</span>
                     </div>
-                    <div className="text-sm font-black text-white">{p.userName}</div>
+                    <div className="text-sm font-semibold text-white">{p.userName}</div>
                     <div className="text-[10px] text-slate-500">{p.userEmail}</div>
                     <div className="text-[10px] text-slate-500">
                       Ref: <span className="text-slate-300 font-mono">{p.transactionRef}</span>
@@ -647,7 +647,7 @@ function PaymentsTab() {
                   {p.status === 'pending' && !isReviewing && (
                     <button
                       onClick={() => setReviewingId(p.id)}
-                      className="px-4 py-2 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer shrink-0"
+                      className="px-4 py-2 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer shrink-0"
                     >
                       Review
                     </button>
@@ -657,20 +657,20 @@ function PaymentsTab() {
                 {isReviewing && (
                   <div className="p-4 bg-slate-900/40 border-t border-slate-800/60 space-y-3 animate-fadeIn">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Admin Notes (optional)</label>
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Admin Notes (optional)</label>
                       <input
                         type="text"
                         value={reviewNotes}
                         onChange={(e) => setReviewNotes(e.target.value)}
                         placeholder="Reason for approval or rejection..."
-                        className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all"
+                        className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all"
                       />
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleReview(p.id, 'approved')}
                         disabled={actionLoading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black rounded-xl hover:bg-emerald-500/25 transition-all cursor-pointer disabled:opacity-40"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold rounded-xl hover:bg-emerald-500/25 transition-all cursor-pointer disabled:opacity-40"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         Approve
@@ -678,7 +678,7 @@ function PaymentsTab() {
                       <button
                         onClick={() => handleReview(p.id, 'rejected')}
                         disabled={actionLoading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-black rounded-xl hover:bg-rose-500/25 transition-all cursor-pointer disabled:opacity-40"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold rounded-xl hover:bg-rose-500/25 transition-all cursor-pointer disabled:opacity-40"
                       >
                         <XCircle className="w-4 h-4" />
                         Reject
@@ -707,7 +707,7 @@ function ContentManageTab() {
   const [subTab, setSubTab] = useState<ContentSubTab>('study-notes');
 
   const CONTENT_TABS = [
-    { id: 'study-notes' as const, label: 'Study Notes', icon: BookOpen,     accent: 'bg-teal-500/15 text-teal-300 border-teal-500/30'    },
+    { id: 'study-notes' as const, label: 'Study Notes', icon: BookOpen,     accent: 'bg-blue-500/15 text-blue-300 border-blue-500/30'    },
     { id: 'past-exams'  as const, label: 'Past Exams',  icon: FileText,     accent: 'bg-blue-500/15 text-blue-300 border-blue-500/30'    },
     { id: 'practice'    as const, label: 'Practice',    icon: HelpCircle,   accent: 'bg-violet-500/15 text-violet-300 border-violet-500/30' },
     { id: 'mock-exams'  as const, label: 'Mock Exams',  icon: Trophy,       accent: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
@@ -721,7 +721,7 @@ function ContentManageTab() {
           <button
             key={id}
             onClick={() => setSubTab(id)}
-            className={`flex items-center gap-1.5 flex-1 justify-center px-2 py-2 rounded-lg text-[10px] font-black transition-all duration-200 cursor-pointer border ${
+            className={`flex items-center gap-1.5 flex-1 justify-center px-2 py-2 rounded-lg text-[10px] font-semibold transition-all duration-200 cursor-pointer border ${
               subTab === id
                 ? `${accent} shadow-sm`
                 : 'text-slate-500 hover:text-slate-300 border-transparent hover:bg-slate-800/40'
@@ -757,7 +757,6 @@ function StudyNotesSubTab() {
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showImageManager, setShowImageManager] = useState(false);
   const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
 
   const toggleCollapse = useCallback((key: string) => {
@@ -872,7 +871,7 @@ function StudyNotesSubTab() {
     if (!confirm(`Delete ${entry.subject} Grade ${entry.grade} Chapter ${entry.chapterNumber}?`)) return;
     try {
       const result = await db.deleteContentManageEntry(entry.subject, entry.grade, entry.chapterNumber);
-      setMessage({ type: 'success', text: `Content deleted${result.imagesRemoved ? ` (${result.imagesRemoved} images cleaned up)` : ''}` });
+      setMessage({ type: 'success', text: 'Content deleted' });
       await loadData();
       db.getContentManageList().then(setAllEntries).catch(() => {});
     } catch (err: any) {
@@ -892,11 +891,6 @@ function StudyNotesSubTab() {
     }
   };
 
-  const handleImageUpload = async (file: File) => {
-    const result = await db.uploadContentImage(file);
-    return result.url;
-  };
-
   const updateEntry = (patch: Partial<ContentEntry>) => {
     if (!editingEntry) return;
     setEditingEntry({ ...editingEntry, ...patch });
@@ -913,17 +907,7 @@ function StudyNotesSubTab() {
           onSave={handleSave}
           onBack={() => { setEditingEntry(null); setIsCreating(false); setMessage(null); }}
           onChange={updateEntry}
-          uploadImage={handleImageUpload}
-          onOpenImageManager={() => setShowImageManager(true)}
         />
-        {showImageManager && (
-          <ImageManager
-            onSelect={(_url) => {
-              setShowImageManager(false);
-            }}
-            onClose={() => setShowImageManager(false)}
-          />
-        )}
       </>
     );
   }
@@ -1011,26 +995,21 @@ function StudyNotesSubTab() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search content..."
-              className="bg-[#0B111E] border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all w-48"
+              className="bg-[#0B111E] border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all w-48"
             />
           </form>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 transition-all cursor-pointer">
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
             <option value="">All Status</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowImageManager(true)} className="flex items-center gap-2 px-3 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black rounded-xl hover:bg-slate-700 transition-colors cursor-pointer">
-            <Upload className="w-4 h-4" /> Images
-          </button>
-          <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer">
+          <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer">
             <Plus className="w-4 h-4" /> New Content
           </button>
         </div>
       </div>
-
-      {showImageManager && <ImageManager onClose={() => setShowImageManager(false)} />}
 
       {message && (
         <div className={`px-4 py-2 rounded-xl text-xs font-bold ${
@@ -1042,7 +1021,7 @@ function StudyNotesSubTab() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : entries.length === 0 ? (
         <div className="text-center py-12 text-slate-500 text-sm">No content entries found.</div>
@@ -1051,9 +1030,9 @@ function StudyNotesSubTab() {
           {gradeGroups.map(([grade, subjectGroups]) => {
             const totalForGrade = subjectGroups.reduce((acc, s) => acc + s.entries.length, 0);
             return (
-              <div key={grade} className="bg-[#0d1626] border border-slate-800/80 rounded-2xl overflow-hidden">
+              <div key={grade} className="bg-[#0d1626] border border-slate-800/80 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800/80 bg-slate-900/40">
-                  <span className="text-sm font-black text-teal-400">Grade {grade}</span>
+                  <span className="text-sm font-semibold text-blue-400">Grade {grade}</span>
                   <span className="text-[9px] font-bold text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-md">{totalForGrade} entries</span>
                   <span className="flex-1 h-px bg-slate-800" />
                   <span className="text-[9px] font-bold text-slate-600">{subjectGroups.length} subjects</span>
@@ -1076,8 +1055,8 @@ function StudyNotesSubTab() {
                             <div className={`w-1 self-stretch rounded-full ${c.dot} opacity-40 group-hover:opacity-80 transition-opacity`} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[11px] font-black text-white">{String(entry.title || 'Untitled')}</span>
-                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${String(entry.status) === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{String(entry.status)}</span>
+                                <span className="text-[11px] font-semibold text-white">{String(entry.title || 'Untitled')}</span>
+                                <span className={`text-[8px] font-semibold uppercase px-1.5 py-0.5 rounded-full ${String(entry.status) === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{String(entry.status)}</span>
                               </div>
                               <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
                                 <span>Ch {entry.chapterNumber}</span>
@@ -1086,7 +1065,7 @@ function StudyNotesSubTab() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={(ev) => { ev.stopPropagation(); handleEdit(entry as ContentEntry); }} className="px-2.5 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-[10px] font-black rounded-lg hover:bg-teal-500/20 transition-colors cursor-pointer">Edit</button>
+                              <button onClick={(ev) => { ev.stopPropagation(); handleEdit(entry as ContentEntry); }} className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-semibold rounded-lg hover:bg-blue-500/20 transition-colors cursor-pointer">Edit</button>
                               <button onClick={(ev) => { ev.stopPropagation(); handleDuplicate(entry as ContentEntry); }} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Duplicate"><Copy className="w-3 h-3 text-slate-400" /></button>
                               <button onClick={(ev) => { ev.stopPropagation(); handleDelete(entry as ContentEntry); }} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                             </div>
@@ -1117,8 +1096,8 @@ function StudyNotesSubTab() {
                     <div className={`w-1 self-stretch rounded-full ${getSubjectColor(subject).dot} opacity-40 group-hover:opacity-80 transition-opacity`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-black text-white">{String(entry.title || 'Untitled')}</span>
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${String(entry.status) === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{String(entry.status)}</span>
+                        <span className="text-[11px] font-semibold text-white">{String(entry.title || 'Untitled')}</span>
+                        <span className={`text-[8px] font-semibold uppercase px-1.5 py-0.5 rounded-full ${String(entry.status) === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{String(entry.status)}</span>
                         {entry.version ? <span className="text-[9px] text-slate-600">v{entry.version}</span> : null}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
@@ -1128,7 +1107,7 @@ function StudyNotesSubTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(ev) => { ev.stopPropagation(); handleEdit(entry as ContentEntry); }} className="px-2.5 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-[10px] font-black rounded-lg hover:bg-teal-500/20 transition-colors cursor-pointer">Edit</button>
+                      <button onClick={(ev) => { ev.stopPropagation(); handleEdit(entry as ContentEntry); }} className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-semibold rounded-lg hover:bg-blue-500/20 transition-colors cursor-pointer">Edit</button>
                       <button onClick={(ev) => { ev.stopPropagation(); handleDuplicate(entry as ContentEntry); }} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Duplicate"><Copy className="w-3 h-3 text-slate-400" /></button>
                       <button onClick={(ev) => { ev.stopPropagation(); handleDelete(entry as ContentEntry); }} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                     </div>
@@ -1145,7 +1124,7 @@ function StudyNotesSubTab() {
 
 /* ── Content Editor ────────────────────────────────────────────────────── */
 
-function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onChange, uploadImage, onOpenImageManager }: {
+function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onChange }: {
   entry: ContentEntry;
   isCreating: boolean;
   saving: boolean;
@@ -1153,8 +1132,6 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
   onSave: () => void;
   onBack: () => void;
   onChange: (patch: Partial<ContentEntry>) => void;
-  uploadImage: (file: File) => Promise<string | null>;
-  onOpenImageManager: () => void;
 }) {
   const [showPreview, setShowPreview] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -1252,25 +1229,49 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
           <button onClick={handleBack} className="p-2 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
             <ChevronLeft className="w-4 h-4 text-slate-400" />
           </button>
-          <h3 className="text-sm font-black text-white">
+          <h3 className="text-sm font-semibold text-white">
             {isCreating ? 'Create New Content' : `Edit: ${entry.subject} G${entry.grade} Ch${entry.chapterNumber}`}
           </h3>
           {hasUnsavedChanges && <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Unsaved</span>}
           {entry.version ? <span className="text-[10px] text-slate-500">v{entry.version}</span> : null}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onOpenImageManager} className="flex items-center gap-1 px-3 py-2 text-[10px] font-black text-slate-400 bg-slate-800 border border-slate-700 rounded-xl hover:text-white transition-colors cursor-pointer">
-            <Upload className="w-3 h-3" /> Images
+          <button
+            onClick={async () => {
+              if (!confirm(`Generate AI content for Grade ${entry.grade} ${entry.subject} Ch${entry.chapterNumber}? This will overwrite current content.`)) return;
+              try {
+                onChange({ title: 'Generating...' } as any);
+                const res = await fetch('/api/content-generate/save', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}` },
+                  body: JSON.stringify({ grade: entry.grade, subject: entry.subject, chapterNumber: entry.chapterNumber, status: 'draft' }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  // Reload the entry
+                  window.location.reload();
+                } else {
+                  alert('Generation failed: ' + (data.error || 'Unknown error'));
+                  onChange({ title: '' } as any);
+                }
+              } catch (err: any) {
+                alert('Generation failed: ' + err.message);
+                onChange({ title: '' } as any);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-semibold text-violet-300 bg-violet-500/10 border border-violet-500/30 rounded-xl hover:bg-violet-500/20 transition-colors cursor-pointer"
+          >
+            <Sparkles className="w-3 h-3" /> Generate AI
           </button>
           {!isCreating && (
-            <button onClick={loadVersions} className="flex items-center gap-1 px-3 py-2 text-[10px] font-black text-slate-400 bg-slate-800 border border-slate-700 rounded-xl hover:text-white transition-colors cursor-pointer">
+            <button onClick={loadVersions} className="flex items-center gap-1 px-3 py-2 text-[10px] font-semibold text-slate-400 bg-slate-800 border border-slate-700 rounded-xl hover:text-white transition-colors cursor-pointer">
               <History className="w-3 h-3" /> History
             </button>
           )}
-          <button onClick={() => setShowPreview(!showPreview)} className={`flex items-center gap-2 px-3 py-2 text-xs font-black rounded-xl transition-colors cursor-pointer ${showPreview ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'}`}>
+          <button onClick={() => setShowPreview(!showPreview)} className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl transition-colors cursor-pointer ${showPreview ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'}`}>
             <Eye className="w-3.5 h-3.5" /> Preview
           </button>
-          <button onClick={handleSave} disabled={saving || !entry.title} className="flex items-center gap-2 px-4 py-2 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer disabled:opacity-40">
+          <button onClick={handleSave} disabled={saving || !entry.title} className="flex items-center gap-2 px-4 py-2 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer disabled:opacity-40">
             <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
@@ -1286,61 +1287,61 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
         <ContentPreview entry={entry} />
       ) : (
         <>
-          <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-4">
+          <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Stream</label>
-                <select value={entry.stream || ''} onChange={(e) => onChange({ stream: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 transition-all cursor-pointer">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Stream</label>
+                <select value={entry.stream || ''} onChange={(e) => onChange({ stream: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
                   <option value="">None</option>
                   <option value="Natural Science">Natural Science</option>
                   <option value="Social Science">Social Science</option>
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
-                <select value={entry.subject} onChange={(e) => onChange({ subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 transition-all cursor-pointer">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
+                <select value={entry.subject} onChange={(e) => onChange({ subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
                   {(entry.stream === 'Natural Science' ? NATURAL_SUBJECTS : entry.stream === 'Social Science' ? SOCIAL_SUBJECTS : SUBJECTS).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Grade</label>
-                <select value={entry.grade} onChange={(e) => onChange({ grade: parseInt(e.target.value) })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 transition-all cursor-pointer">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Grade</label>
+                <select value={entry.grade} onChange={(e) => onChange({ grade: parseInt(e.target.value) })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
                   {GRADES.map(g => <option key={g} value={g}>Grade {g}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Chapter</label>
-                <input type="number" value={entry.chapterNumber} onChange={(e) => onChange({ chapterNumber: parseInt(e.target.value) || 1 })} min="1" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 transition-all" />
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Chapter</label>
+                <input type="number" value={entry.chapterNumber} onChange={(e) => onChange({ chapterNumber: parseInt(e.target.value) || 1 })} min="1" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 transition-all" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Status</label>
-                <select value={entry.status} onChange={(e) => onChange({ status: e.target.value as 'draft' | 'published' })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 transition-all cursor-pointer">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Status</label>
+                <select value={entry.status} onChange={(e) => onChange({ status: e.target.value as 'draft' | 'published' })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Title</label>
-              <input type="text" value={entry.title} onChange={(e) => onChange({ title: e.target.value })} placeholder="Chapter title..." className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all font-bold" />
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Title</label>
+              <input type="text" value={entry.title} onChange={(e) => onChange({ title: e.target.value })} placeholder="Chapter title..." className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all font-bold" />
             </div>
           </div>
 
-          <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
-            <h4 className="text-xs font-black text-white uppercase tracking-wider">Overview</h4>
-            <RichTextEditor content={entry.overview} onChange={(html) => onChange({ overview: html })} placeholder="Brief overview of this chapter..." uploadImage={uploadImage} minHeight="80px" />
+          <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
+            <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Overview</h4>
+            <RichTextEditor content={entry.overview} onChange={(html) => onChange({ overview: html })} placeholder="Brief overview of this chapter..." minHeight="80px" />
           </div>
 
-          <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+          <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Core Points ({entry.corePoints.length})</h4>
-              <button onClick={addCorePoint} className="flex items-center gap-1 text-[10px] font-black text-teal-400 hover:text-teal-300 cursor-pointer"><Plus className="w-3 h-3" /> Add</button>
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Core Points ({entry.corePoints.length})</h4>
+              <button onClick={addCorePoint} className="flex items-center gap-1 text-[10px] font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"><Plus className="w-3 h-3" /> Add</button>
             </div>
             <SortableList items={entry.corePoints} onReorder={moveCorePoint} keyExtractor={(item, i) => `cp-${i}`} renderItem={(point, i) => (
               <SortableItem id={`cp-${i}`}>
                 <div className="flex gap-2 items-center">
                   <span className="text-[10px] text-slate-600 w-4 text-center shrink-0">{i + 1}</span>
-                  <input type="text" value={point} onChange={(e) => updateCorePoint(i, e.target.value)} placeholder={`Core point ${i + 1}...`} className="flex-1 bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all" />
+                  <input type="text" value={point} onChange={(e) => updateCorePoint(i, e.target.value)} placeholder={`Core point ${i + 1}...`} className="flex-1 bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all" />
                   <button onClick={() => removeCorePoint(i)} className="p-1 hover:bg-slate-800 rounded cursor-pointer"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                 </div>
               </SortableItem>
@@ -1348,34 +1349,34 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
             {entry.corePoints.length === 0 && <p className="text-[10px] text-slate-500">No core points yet.</p>}
           </div>
 
-          <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+          <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Subtopics ({entry.subtopics.length})</h4>
-              <button onClick={addSubtopic} className="flex items-center gap-1 text-[10px] font-black text-teal-400 hover:text-teal-300 cursor-pointer"><Plus className="w-3 h-3" /> Add Subtopic</button>
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Subtopics ({entry.subtopics.length})</h4>
+              <button onClick={addSubtopic} className="flex items-center gap-1 text-[10px] font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"><Plus className="w-3 h-3" /> Add Subtopic</button>
             </div>
             <SortableList items={entry.subtopics} onReorder={moveSubtopic} keyExtractor={(item, i) => `sub-${i}`} renderItem={(sub, i) => (
               <SortableItem id={`sub-${i}`}>
-                <SubtopicEditor subtopic={sub} index={i} onChange={updateSubtopic} onRemove={removeSubtopic} uploadImage={uploadImage} />
+                <SubtopicEditor subtopic={sub} index={i} onChange={updateSubtopic} onRemove={removeSubtopic} />
               </SortableItem>
             )} />
             {entry.subtopics.length === 0 && <p className="text-[10px] text-slate-500">No subtopics yet.</p>}
           </div>
 
-          <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
-            <h4 className="text-xs font-black text-white uppercase tracking-wider">Exam Tips</h4>
-            <RichTextEditor content={entry.examTips} onChange={(html) => onChange({ examTips: html })} placeholder="Tips for exam preparation..." uploadImage={uploadImage} minHeight="100px" />
+          <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
+            <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Exam Tips</h4>
+            <RichTextEditor content={entry.examTips} onChange={(html) => onChange({ examTips: html })} placeholder="Tips for exam preparation..." minHeight="100px" />
           </div>
 
-          <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
-            <h4 className="text-xs font-black text-white uppercase tracking-wider">Video</h4>
+          <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
+            <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Video</h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">YouTube Video ID</label>
-                <input type="text" value={entry.youtubeVideoId} onChange={(e) => onChange({ youtubeVideoId: e.target.value })} placeholder="e.g. dQw4w9WgXcQ" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all" />
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">YouTube Video ID</label>
+                <input type="text" value={entry.youtubeVideoId} onChange={(e) => onChange({ youtubeVideoId: e.target.value })} placeholder="e.g. dQw4w9WgXcQ" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Duration</label>
-                <input type="text" value={entry.videoDuration} onChange={(e) => onChange({ videoDuration: e.target.value })} placeholder="e.g. 12:34" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all" />
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Duration</label>
+                <input type="text" value={entry.videoDuration} onChange={(e) => onChange({ videoDuration: e.target.value })} placeholder="e.g. 12:34" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all" />
               </div>
             </div>
             {entry.youtubeVideoId && (
@@ -1392,34 +1393,18 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
 
 /* ── Subtopic Editor ───────────────────────────────────────────────────── */
 
-function SubtopicEditor({ subtopic, index, onChange, onRemove, uploadImage }: {
-  subtopic: { title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string; imageAlign?: string; imageSize?: string };
+function SubtopicEditor({ subtopic, index, onChange, onRemove }: {
+  subtopic: { title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string };
   index: number;
   onChange: (index: number, field: string, value: string) => void;
   onRemove: (index: number) => void;
-  uploadImage: (file: File) => Promise<string | null>;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const [uploadingImg, setUploadingImg] = useState(false);
-  const imgInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubtopicImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingImg(true);
-    try {
-      const url = await uploadImage(file);
-      if (url) onChange(index, 'imageUrl', url);
-    } finally {
-      setUploadingImg(false);
-      e.target.value = '';
-    }
-  };
 
   return (
     <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 border-b border-slate-800/50">
-        <span className="text-[10px] font-black text-teal-400 w-6">#{index + 1}</span>
+        <span className="text-[10px] font-semibold text-blue-400 w-6">#{index + 1}</span>
         <input type="text" value={subtopic.title} onChange={(e) => onChange(index, 'title', e.target.value)} placeholder="Subtopic title..." className="flex-1 bg-transparent text-xs text-white placeholder:text-slate-600 focus:outline-none font-bold" />
         <button onClick={() => setExpanded(!expanded)} className="p-1 hover:bg-slate-800 rounded cursor-pointer">
           {expanded ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
@@ -1431,47 +1416,12 @@ function SubtopicEditor({ subtopic, index, onChange, onRemove, uploadImage }: {
       {expanded && (
         <div className="p-3 space-y-3">
           <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1 block">Content</label>
-            <RichTextEditor content={subtopic.content} onChange={(html) => onChange(index, 'content', html)} placeholder="Write the content for this subtopic..." uploadImage={uploadImage} minHeight="120px" />
+            <label className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Content</label>
+            <RichTextEditor content={subtopic.content} onChange={(html) => onChange(index, 'content', html)} placeholder="Write the content for this subtopic..." minHeight="120px" />
           </div>
           <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1 block">Exam Insight</label>
-            <input type="text" value={subtopic.examInsight} onChange={(e) => onChange(index, 'examInsight', e.target.value)} placeholder="Exam tip for this subtopic..." className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all" />
-          </div>
-          <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1 block">Image (optional)</label>
-            {subtopic.imageUrl ? (
-              <div className="space-y-2">
-                <div className="rounded-xl border border-slate-700/50 bg-slate-950/80 p-3 space-y-3">
-                  <div className="relative group rounded-2xl border border-slate-800 bg-slate-950/80 flex flex-col items-center p-3">
-                    <button className="absolute top-2 left-2 p-1 cursor-grab active:cursor-grabbing text-slate-600 hover:text-slate-400 z-10 opacity-0 group-hover:opacity-100 transition-opacity" title="Drag to reposition">
-                      <GripVertical className="w-4 h-4" />
-                    </button>
-                    <img src={subtopic.imageUrl} alt={subtopic.imageCaption || ''} referrerPolicy="no-referrer" className="max-h-60 w-auto object-contain rounded-xl" />
-                    {subtopic.imageCaption && <p className="text-xs text-slate-400 mt-2 italic font-medium text-center">{subtopic.imageCaption}</p>}
-                  </div>
-                </div>
-
-                {/* Controls */}
-                <div className="flex gap-2">
-                  <input type="text" value={subtopic.imageUrl} onChange={(e) => onChange(index, 'imageUrl', e.target.value)} placeholder="Image URL" className="flex-1 bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all font-mono" />
-                  <button onClick={() => imgInputRef.current?.click()} disabled={uploadingImg} className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 text-slate-300 text-[10px] font-black rounded-xl hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-40">
-                    {uploadingImg ? '...' : 'Replace'}
-                  </button>
-                </div>
-
-                <input type="text" value={subtopic.imageCaption || ''} onChange={(e) => onChange(index, 'imageCaption', e.target.value)} placeholder="Image caption (optional)" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all" />
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input type="text" value="" onChange={(e) => onChange(index, 'imageUrl', e.target.value)} placeholder="Paste image URL or upload" className="flex-1 bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-all" />
-                <button onClick={() => imgInputRef.current?.click()} disabled={uploadingImg} className="flex items-center gap-1.5 px-3 py-2 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-[10px] font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer disabled:opacity-40">
-                  <Image className="w-3 h-3" />
-                  {uploadingImg ? '...' : 'Upload'}
-                </button>
-              </div>
-            )}
-            <input ref={imgInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleSubtopicImageUpload} className="hidden" />
+            <label className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Exam Insight</label>
+            <input type="text" value={subtopic.examInsight} onChange={(e) => onChange(index, 'examInsight', e.target.value)} placeholder="Exam tip for this subtopic..." className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all" />
           </div>
         </div>
       )}
@@ -1483,9 +1433,9 @@ function SubtopicEditor({ subtopic, index, onChange, onRemove, uploadImage }: {
 
 function VersionPanel({ versions, onClose }: { versions: any[]; onClose: () => void }) {
   return (
-    <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+    <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2"><History className="w-4 h-4 text-teal-400" /> Version History</h4>
+        <h4 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-2"><History className="w-4 h-4 text-blue-400" /> Version History</h4>
         <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded cursor-pointer"><XCircle className="w-4 h-4 text-slate-400" /></button>
       </div>
       {versions.length === 0 ? (
@@ -1494,7 +1444,7 @@ function VersionPanel({ versions, onClose }: { versions: any[]; onClose: () => v
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {versions.map((v, i) => (
             <div key={i} className="flex items-center gap-3 px-3 py-2 bg-slate-900/50 rounded-lg text-[10px]">
-              <span className="text-teal-400 font-black">v{v.version}</span>
+              <span className="text-blue-400 font-semibold">v{v.version}</span>
               <span className="text-slate-400 flex-1">{v.title}</span>
               <span className="text-slate-600">{new Date(v.updatedAt).toLocaleString()}</span>
             </div>
@@ -1509,19 +1459,19 @@ function VersionPanel({ versions, onClose }: { versions: any[]; onClose: () => v
 
 function ContentPreview({ entry }: { entry: ContentEntry }) {
   return (
-    <div className="bg-[#111827] rounded-2xl border border-slate-800 p-6 space-y-6">
+    <div className="bg-[#111827] rounded-xl border border-slate-800 p-6 space-y-6">
       <div className="border-b border-slate-800 pb-4">
         <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-2">
           <span>{entry.subject}</span><span>•</span><span>Grade {entry.grade}</span><span>•</span><span>Chapter {entry.chapterNumber}</span>
         </div>
-        <h1 className="text-xl font-black text-white">{entry.title || 'Untitled'}</h1>
-        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full inline-block mt-2 ${entry.status === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{entry.status}</span>
+        <h1 className="text-xl font-semibold text-white">{entry.title || 'Untitled'}</h1>
+        <span className={`text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full inline-block mt-2 ${entry.status === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{entry.status}</span>
       </div>
-      {entry.overview && <div><h3 className="text-xs font-black text-teal-400 uppercase tracking-wider mb-2">Overview</h3><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: entry.overview }} /></div>}
-      {entry.corePoints.length > 0 && <div><h3 className="text-xs font-black text-teal-400 uppercase tracking-wider mb-2">Core Points</h3><ol className="space-y-1.5">{entry.corePoints.map((point, i) => <li key={i} className="flex items-start gap-2 text-xs text-slate-300"><span className="text-teal-400 font-black shrink-0">{i + 1}.</span>{point}</li>)}</ol></div>}
-      {entry.subtopics.length > 0 && <div><h3 className="text-xs font-black text-teal-400 uppercase tracking-wider mb-3">Subtopics</h3><div className="space-y-4">{entry.subtopics.map((sub, i) => { const a = (sub.imageAlign || 'center') as 'left' | 'center' | 'right'; const s = (sub.imageSize || 'full') as 'small' | 'medium' | 'large' | 'full'; const sz: Record<string, string> = { small: 'max-w-[30%]', medium: 'max-w-[50%]', large: 'max-w-[75%]', full: 'w-full' }; const fl: Record<string, string> = { left: 'float-left mr-4 mb-3', center: 'mx-auto', right: 'float-right ml-4 mb-3' }; return <div key={i} className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-4 space-y-2 overflow-hidden"><h4 className="text-sm font-black text-white">{sub.title || `Subtopic ${i + 1}`}</h4><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none space-y-4">{sub.imageUrl && <div className={`${sz[s]} ${fl[a]} ${a === 'center' ? 'mx-auto' : ''} overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 flex flex-col items-center p-2`}><img src={sub.imageUrl} alt={sub.imageCaption || sub.title} referrerPolicy="no-referrer" className="max-h-60 w-auto object-contain rounded-xl" />{sub.imageCaption && <p className="text-[10px] text-slate-400 mt-1 italic text-center">{sub.imageCaption}</p>}</div>}{(a === 'left' || a === 'right') && <div className="clear-both" />}<div dangerouslySetInnerHTML={{ __html: sub.content }} /></div>{sub.examInsight && <div className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">{sub.examInsight}</div>}</div>; })}</div></div>}
-      {entry.examTips && <div><h3 className="text-xs font-black text-teal-400 uppercase tracking-wider mb-2">Exam Tips</h3><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: entry.examTips }} /></div>}
-      {entry.youtubeVideoId && <div><h3 className="text-xs font-black text-teal-400 uppercase tracking-wider mb-2">Video</h3><div className="rounded-xl overflow-hidden border border-slate-800"><iframe src={`https://www.youtube.com/embed/${entry.youtubeVideoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></div>}
+      {entry.overview && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Overview</h3><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.overview) }} /></div>}
+      {entry.corePoints.length > 0 && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Core Points</h3><ol className="space-y-1.5">{entry.corePoints.map((point, i) => <li key={i} className="flex items-start gap-2 text-xs text-slate-300"><span className="text-blue-400 font-semibold shrink-0">{i + 1}.</span>{point}</li>)}</ol></div>}
+      {entry.subtopics.length > 0 && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-3">Subtopics</h3><div className="space-y-4">{entry.subtopics.map((sub, i) => { return <div key={i} className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-4 space-y-2 overflow-hidden"><h4 className="text-sm font-semibold text-white">{sub.title || `Subtopic ${i + 1}`}</h4><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none space-y-4">{sub.imageUrl ? <div className="my-2 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/80 flex flex-col items-center p-2"><img src={sub.imageUrl} alt={sub.imageCaption || sub.title} referrerPolicy="no-referrer" className="max-h-48 w-auto object-contain rounded-lg" />{sub.imageCaption && <p className="text-[10px] text-slate-400 mt-1 italic text-center">{sub.imageCaption}</p>}</div> : <div className="my-2 overflow-hidden rounded-xl border border-dashed border-slate-700 bg-slate-800/30 flex items-center justify-center p-4"><p className="text-[10px] text-slate-500 italic">Image placeholder</p></div>}<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(sub.content) }} /></div>{sub.examInsight && <div className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">{sub.examInsight}</div>}</div>; })}</div></div>}
+      {entry.examTips && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Exam Tips</h3><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.examTips) }} /></div>}
+      {entry.youtubeVideoId && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Video</h3><div className="rounded-xl overflow-hidden border border-slate-800"><iframe src={`https://www.youtube.com/embed/${entry.youtubeVideoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></div>}
     </div>
   );
 }
@@ -1672,47 +1622,47 @@ function PastExamsSubTab() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Metadata panel */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-4">
+            <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-4">
               <SectionHeader title="Exam Details" icon={FileText} iconColor="text-blue-400" />
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
-                <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
+                <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                   {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Grade</label>
-                <select value={editing.grade} onChange={(e) => setEditing({ ...editing, grade: parseInt(e.target.value) })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Grade</label>
+                <select value={editing.grade} onChange={(e) => setEditing({ ...editing, grade: parseInt(e.target.value) })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                   {GRADES.map(g => <option key={g} value={g}>Grade {g}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Duration (min)</label>
-                  <input type="number" value={editing.durationMinutes} onChange={(e) => setEditing({ ...editing, durationMinutes: parseInt(e.target.value) || 90 })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Duration (min)</label>
+                  <input type="number" value={editing.durationMinutes} onChange={(e) => setEditing({ ...editing, durationMinutes: parseInt(e.target.value) || 90 })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Year (E.C.)</label>
-                  <input type="text" value={editing.yearEC || ''} onChange={(e) => setEditing({ ...editing, yearEC: e.target.value })} placeholder="e.g. 2016" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Year (E.C.)</label>
+                  <input type="text" value={editing.yearEC || ''} onChange={(e) => setEditing({ ...editing, yearEC: e.target.value })} placeholder="e.g. 2016" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400" />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 block">Status</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Status</label>
                 <StatusPillToggle value={editing.status || 'draft'} onChange={(v) => setEditing({ ...editing, status: v })} />
               </div>
             </div>
-            <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+            <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
               <SectionHeader title="Title" icon={FileText} iconColor="text-slate-400" />
               <RichTextEditor content={editing.title} onChange={(html) => setEditing({ ...editing, title: html })} placeholder="e.g. Grade 12 Mathematics — 2016 E.C. National Exam" minHeight="40px" />
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Instructions (optional)</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Instructions (optional)</label>
                 <RichTextEditor content={editing.instructions || ''} onChange={(html) => setEditing({ ...editing, instructions: html })} placeholder="General instructions for students..." minHeight="80px" />
               </div>
             </div>
           </div>
 
           {/* Questions panel */}
-          <div className="lg:col-span-3 bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+          <div className="lg:col-span-3 bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
             <SectionHeader title={`Questions (${editing.questions?.length || 0})`} icon={HelpCircle} iconColor="text-violet-400" />
             <QuestionBuilder
               questions={(editing.questions || []).map((q: any) => ({ id: q.id, question: q.question, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation }))}
@@ -1733,9 +1683,9 @@ function PastExamsSubTab() {
           { label: 'Draft', value: stats.draft, color: 'text-amber-400' },
           { label: 'Subjects', value: stats.subjects.length, color: 'text-blue-400' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[#111827] rounded-2xl border border-slate-800 p-4">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
-            <div className={`text-2xl font-black ${color} mt-1`}>{value}</div>
+          <div key={label} className="bg-[#111827] rounded-xl border border-slate-800 p-4">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+            <div className={`text-2xl font-semibold ${color} mt-1`}>{value}</div>
           </div>
         ))}
       </div>
@@ -1745,17 +1695,17 @@ function PastExamsSubTab() {
           onClick={() => { setSelectedYear(''); }}
           className={`relative overflow-hidden rounded-xl p-3 border text-left transition-all cursor-pointer group ${
             selectedYear === ''
-              ? 'bg-gradient-to-br from-teal-500/15 to-teal-500/5 border-teal-500/40 shadow-lg shadow-teal-500/5'
+              ? 'bg-white/5 border-white/10 shadow-lg shadow-black/5'
               : 'bg-[#111827] border-slate-800 hover:border-slate-700'
           }`}
         >
-          {selectedYear === '' && <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
+          {selectedYear === '' && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
           <div className="flex items-center justify-between mb-1">
-            <span className={`text-[10px] font-black uppercase tracking-wider ${selectedYear === '' ? 'text-teal-400' : 'text-slate-600'}`}>All</span>
-            <span className={`text-sm font-black ${selectedYear === '' ? 'text-teal-300' : 'text-slate-400'}`}>{stats.total}</span>
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${selectedYear === '' ? 'text-blue-400' : 'text-slate-600'}`}>All</span>
+            <span className={`text-sm font-semibold ${selectedYear === '' ? 'text-blue-300' : 'text-slate-400'}`}>{stats.total}</span>
           </div>
-          <div className={`h-1 rounded-full mt-2 ${selectedYear === '' ? 'bg-teal-500/40' : 'bg-slate-800'}`}>
-            <div className={`h-full rounded-full ${selectedYear === '' ? 'bg-teal-400' : 'bg-slate-700'}`} style={{ width: '100%' }} />
+          <div className={`h-1 rounded-full mt-2 ${selectedYear === '' ? 'bg-blue-500/40' : 'bg-slate-800'}`}>
+            <div className={`h-full rounded-full ${selectedYear === '' ? 'bg-blue-400' : 'bg-slate-700'}`} style={{ width: '100%' }} />
           </div>
         </button>
         {PAST_EXAM_YEARS.map(y => {
@@ -1768,17 +1718,17 @@ function PastExamsSubTab() {
               onClick={() => { setSelectedYear(isSelected ? '' : y); setSelectedSubject(''); }}
               className={`relative overflow-hidden rounded-xl p-3 border text-left transition-all cursor-pointer group ${
                 isSelected
-                  ? 'bg-gradient-to-br from-teal-500/15 to-teal-500/5 border-teal-500/40 shadow-lg shadow-teal-500/5'
+                  ? 'bg-white/5 border-white/10 shadow-lg shadow-black/5'
                   : 'bg-[#111827] border-slate-800 hover:border-slate-700'
               }`}
             >
-              {isSelected && <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
+              {isSelected && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-[10px] font-black uppercase tracking-wider ${isSelected ? 'text-teal-400' : 'text-slate-600'}`}>{y} E.C.</span>
-                <span className={`text-sm font-black ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>{count}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${isSelected ? 'text-blue-400' : 'text-slate-600'}`}>{y} E.C.</span>
+                <span className={`text-sm font-semibold ${isSelected ? 'text-blue-300' : 'text-slate-400'}`}>{count}</span>
               </div>
-              <div className={`h-1 rounded-full mt-2 ${isSelected ? 'bg-teal-500/40' : 'bg-slate-800'}`}>
-                <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? 'bg-teal-400' : 'bg-slate-700'}`} style={{ width: `${pct}%` }} />
+              <div className={`h-1 rounded-full mt-2 ${isSelected ? 'bg-blue-500/40' : 'bg-slate-800'}`}>
+                <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? 'bg-blue-400' : 'bg-slate-700'}`} style={{ width: `${pct}%` }} />
               </div>
             </button>
           );
@@ -1800,7 +1750,7 @@ function PastExamsSubTab() {
             <button
               key={i}
               onClick={item.onClick}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border ${
                 item.active
                   ? 'bg-white/10 text-white border-white/20 shadow-sm'
                   : 'text-slate-500 hover:text-slate-300 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/30'
@@ -1817,7 +1767,7 @@ function PastExamsSubTab() {
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer">
+        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer">
           <Plus className="w-4 h-4" /> New Past Exam
         </button>
       </div>
@@ -1825,7 +1775,7 @@ function PastExamsSubTab() {
       {message && <div className={`px-4 py-2 rounded-xl text-xs font-bold ${message.type === 'success' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}`}>{message.text}</div>}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /></div>
       ) : exams.length === 0 ? (
         <div className="text-center py-12 text-slate-500 text-sm">No past exams found.</div>
       ) : (
@@ -1840,7 +1790,7 @@ function PastExamsSubTab() {
                   className="flex items-center gap-2.5 w-full mb-2 group cursor-pointer"
                 >
                   <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-                  <span className={`text-xs font-black ${c.text}`}>{subject}</span>
+                  <span className={`text-xs font-semibold ${c.text}`}>{subject}</span>
                   <span className="text-[9px] text-slate-600 font-bold">{groupExams.length} {groupExams.length === 1 ? 'exam' : 'exams'}</span>
                   <span className="flex-1 h-px bg-slate-800 group-hover:bg-slate-700 transition-colors" />
                   {isCollapsed ? <ChevronDown className="w-3 h-3 text-slate-600" /> : <ChevronUp className="w-3 h-3 text-slate-600" />}
@@ -1853,8 +1803,8 @@ function PastExamsSubTab() {
                           <div className={`w-1 self-stretch rounded-full ${c.dot} opacity-40 group-hover:opacity-80 transition-opacity`} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[11px] font-black text-white">{exam.title}</span>
-                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${exam.status === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{exam.status}</span>
+                              <span className="text-[11px] font-semibold text-white">{exam.title}</span>
+                              <span className={`text-[8px] font-semibold uppercase px-1.5 py-0.5 rounded-full ${exam.status === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{exam.status}</span>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
                               <span className="text-slate-400">G{exam.grade}</span>
@@ -1865,7 +1815,7 @@ function PastExamsSubTab() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEdit(exam)} className="px-2.5 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-[10px] font-black rounded-lg hover:bg-teal-500/20 transition-colors cursor-pointer">Edit</button>
+                            <button onClick={() => handleEdit(exam)} className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-semibold rounded-lg hover:bg-blue-500/20 transition-colors cursor-pointer">Edit</button>
                             <button onClick={() => handleDuplicate(exam)} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Duplicate"><Copy className="w-3 h-3 text-slate-400" /></button>
                             <button onClick={() => handleDelete(exam)} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                           </div>
@@ -2012,30 +1962,30 @@ function QuizzesSubTab() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Metadata panel */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-4">
+            <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-4">
               <SectionHeader title="Quiz Details" icon={CheckSquare} iconColor="text-indigo-400" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
-                  <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
+                  <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                     {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Grade</label>
-                  <select value={editing.grade} onChange={(e) => setEditing({ ...editing, grade: parseInt(e.target.value) })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Grade</label>
+                  <select value={editing.grade} onChange={(e) => setEditing({ ...editing, grade: parseInt(e.target.value) })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                     {GRADES.map(g => <option key={g} value={g}>Grade {g}</option>)}
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Chapter #</label>
-                  <input type="number" value={editing.chapterNumber} onChange={(e) => setEditing({ ...editing, chapterNumber: parseInt(e.target.value) || 1 })} min="1" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Chapter #</label>
+                  <input type="number" value={editing.chapterNumber} onChange={(e) => setEditing({ ...editing, chapterNumber: parseInt(e.target.value) || 1 })} min="1" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Difficulty</label>
-                  <select value={editing.difficulty || 'Medium'} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Difficulty</label>
+                  <select value={editing.difficulty || 'Medium'} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
                     <option value="Hard">Hard</option>
@@ -2043,24 +1993,24 @@ function QuizzesSubTab() {
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 block">Status</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Status</label>
                 <StatusPillToggle value={editing.status || 'draft'} onChange={(v) => setEditing({ ...editing, status: v })} />
               </div>
             </div>
-            <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+            <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Chapter Name</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Chapter Name</label>
                 <RichTextEditor content={editing.chapterName} onChange={(html) => setEditing({ ...editing, chapterName: html })} placeholder="e.g. Introduction to Algebra" minHeight="40px" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Description / Instructions (optional)</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Description / Instructions (optional)</label>
                 <RichTextEditor content={editing.description || ''} onChange={(html) => setEditing({ ...editing, description: html })} placeholder="Brief description or special instructions for this quiz..." minHeight="80px" />
               </div>
             </div>
           </div>
 
           {/* Questions panel */}
-          <div className="lg:col-span-3 bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+          <div className="lg:col-span-3 bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
             <SectionHeader title={`Questions (${editing.questions?.length || 0})`} icon={HelpCircle} iconColor="text-violet-400" />
             <QuestionBuilder
               questions={(editing.questions || []).map((q: any) => ({ id: q.id, question: q.question, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation }))}
@@ -2081,9 +2031,9 @@ function QuizzesSubTab() {
           { label: 'Draft', value: stats.draft, color: 'text-amber-400' },
           { label: 'Subjects', value: stats.subjects.length, color: 'text-blue-400' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[#111827] rounded-2xl border border-slate-800 p-4">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
-            <div className={`text-2xl font-black ${color} mt-1`}>{value}</div>
+          <div key={label} className="bg-[#111827] rounded-xl border border-slate-800 p-4">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+            <div className={`text-2xl font-semibold ${color} mt-1`}>{value}</div>
           </div>
         ))}
       </div>
@@ -2093,17 +2043,17 @@ function QuizzesSubTab() {
           onClick={() => { setSelectedGrade(''); }}
           className={`relative overflow-hidden rounded-xl p-3 border text-left transition-all cursor-pointer group ${
             selectedGrade === ''
-              ? 'bg-gradient-to-br from-teal-500/15 to-teal-500/5 border-teal-500/40 shadow-lg shadow-teal-500/5'
+              ? 'bg-white/5 border-white/10 shadow-lg shadow-black/5'
               : 'bg-[#111827] border-slate-800 hover:border-slate-700'
           }`}
         >
-          {selectedGrade === '' && <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
+          {selectedGrade === '' && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
           <div className="flex items-center justify-between mb-1">
-            <span className={`text-[10px] font-black uppercase tracking-wider ${selectedGrade === '' ? 'text-teal-400' : 'text-slate-600'}`}>All</span>
-            <span className={`text-sm font-black ${selectedGrade === '' ? 'text-teal-300' : 'text-slate-400'}`}>{stats.total}</span>
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${selectedGrade === '' ? 'text-blue-400' : 'text-slate-600'}`}>All</span>
+            <span className={`text-sm font-semibold ${selectedGrade === '' ? 'text-blue-300' : 'text-slate-400'}`}>{stats.total}</span>
           </div>
-          <div className={`h-1 rounded-full mt-2 ${selectedGrade === '' ? 'bg-teal-500/40' : 'bg-slate-800'}`}>
-            <div className={`h-full rounded-full ${selectedGrade === '' ? 'bg-teal-400' : 'bg-slate-700'}`} style={{ width: '100%' }} />
+          <div className={`h-1 rounded-full mt-2 ${selectedGrade === '' ? 'bg-blue-500/40' : 'bg-slate-800'}`}>
+            <div className={`h-full rounded-full ${selectedGrade === '' ? 'bg-blue-400' : 'bg-slate-700'}`} style={{ width: '100%' }} />
           </div>
         </button>
         {GRADES.map(g => {
@@ -2116,17 +2066,17 @@ function QuizzesSubTab() {
               onClick={() => { setSelectedGrade(isSelected ? '' : g); setSelectedSubject(''); }}
               className={`relative overflow-hidden rounded-xl p-3 border text-left transition-all cursor-pointer group ${
                 isSelected
-                  ? 'bg-gradient-to-br from-teal-500/15 to-teal-500/5 border-teal-500/40 shadow-lg shadow-teal-500/5'
+                  ? 'bg-white/5 border-white/10 shadow-lg shadow-black/5'
                   : 'bg-[#111827] border-slate-800 hover:border-slate-700'
               }`}
             >
-              {isSelected && <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
+              {isSelected && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-[10px] font-black uppercase tracking-wider ${isSelected ? 'text-teal-400' : 'text-slate-600'}`}>G-{g}</span>
-                <span className={`text-sm font-black ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>{count}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${isSelected ? 'text-blue-400' : 'text-slate-600'}`}>G-{g}</span>
+                <span className={`text-sm font-semibold ${isSelected ? 'text-blue-300' : 'text-slate-400'}`}>{count}</span>
               </div>
-              <div className={`h-1 rounded-full mt-2 ${isSelected ? 'bg-teal-500/40' : 'bg-slate-800'}`}>
-                <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? 'bg-teal-400' : 'bg-slate-700'}`} style={{ width: `${pct}%` }} />
+              <div className={`h-1 rounded-full mt-2 ${isSelected ? 'bg-blue-500/40' : 'bg-slate-800'}`}>
+                <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? 'bg-blue-400' : 'bg-slate-700'}`} style={{ width: `${pct}%` }} />
               </div>
             </button>
           );
@@ -2148,7 +2098,7 @@ function QuizzesSubTab() {
             <button
               key={i}
               onClick={item.onClick}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border ${
                 item.active
                   ? 'bg-white/10 text-white border-white/20 shadow-sm'
                   : 'text-slate-500 hover:text-slate-300 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/30'
@@ -2165,7 +2115,7 @@ function QuizzesSubTab() {
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer">
+        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer">
           <Plus className="w-4 h-4" /> New Quiz
         </button>
       </div>
@@ -2173,7 +2123,7 @@ function QuizzesSubTab() {
       {message && <div className={`px-4 py-2 rounded-xl text-xs font-bold ${message.type === 'success' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}`}>{message.text}</div>}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /></div>
       ) : quizzes.length === 0 ? (
         <div className="text-center py-12 text-slate-500 text-sm">No quizzes found.</div>
       ) : (
@@ -2188,7 +2138,7 @@ function QuizzesSubTab() {
                   className="flex items-center gap-2.5 w-full mb-2 group cursor-pointer"
                 >
                   <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-                  <span className={`text-xs font-black ${c.text}`}>{subject}</span>
+                  <span className={`text-xs font-semibold ${c.text}`}>{subject}</span>
                   <span className="text-[9px] text-slate-600 font-bold">{groupQuizzes.length} {groupQuizzes.length === 1 ? 'quiz' : 'quizzes'}</span>
                   <span className="flex-1 h-px bg-slate-800 group-hover:bg-slate-700 transition-colors" />
                   {isCollapsed ? <ChevronDown className="w-3 h-3 text-slate-600" /> : <ChevronUp className="w-3 h-3 text-slate-600" />}
@@ -2201,8 +2151,8 @@ function QuizzesSubTab() {
                           <div className={`w-1 self-stretch rounded-full ${c.dot} opacity-40 group-hover:opacity-80 transition-opacity`} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[11px] font-black text-white">{quiz.chapterName || `${quiz.subject} G${quiz.grade} Ch${quiz.chapterNumber}`}</span>
-                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${quiz.status === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{quiz.status}</span>
+                              <span className="text-[11px] font-semibold text-white">{quiz.chapterName || `${quiz.subject} G${quiz.grade} Ch${quiz.chapterNumber}`}</span>
+                              <span className={`text-[8px] font-semibold uppercase px-1.5 py-0.5 rounded-full ${quiz.status === 'published' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'}`}>{quiz.status}</span>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
                               <span className="text-slate-400">G{quiz.grade}</span>
@@ -2213,7 +2163,7 @@ function QuizzesSubTab() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEdit(quiz)} className="px-2.5 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-[10px] font-black rounded-lg hover:bg-teal-500/20 transition-colors cursor-pointer">Edit</button>
+                            <button onClick={() => handleEdit(quiz)} className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-semibold rounded-lg hover:bg-blue-500/20 transition-colors cursor-pointer">Edit</button>
                             <button onClick={() => handleDelete(quiz)} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                           </div>
                         </div>
@@ -2395,51 +2345,51 @@ function PracticeQuestionsSubTab() {
           saveDisabled={!editing.questionText}
         />
         <ToastMessage message={message} />
-        <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-4">
+        <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
-              <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
+              <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                 {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Stream</label>
-              <select value={editing.stream} onChange={(e) => setEditing({ ...editing, stream: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Stream</label>
+              <select value={editing.stream} onChange={(e) => setEditing({ ...editing, stream: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                 <option value="Natural Science">Natural Science</option>
                 <option value="Social Science">Social Science</option>
                 <option value="Common">Common</option>
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Difficulty</label>
-              <select value={editing.difficulty} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Difficulty</label>
+              <select value={editing.difficulty} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                 <option value="Easy">Easy</option>
                 <option value="Medium">Medium</option>
                 <option value="Hard">Hard</option>
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Year EC</label>
-              <input type="text" value={editing.yearEC} onChange={(e) => setEditing({ ...editing, yearEC: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400" />
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Year EC</label>
+              <input type="text" value={editing.yearEC} onChange={(e) => setEditing({ ...editing, yearEC: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400" />
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Chapter</label>
-            <input type="text" value={editing.chapter} onChange={(e) => setEditing({ ...editing, chapter: e.target.value })} placeholder="Grade 12 - Chapter 1: Mechanics" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400" />
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Chapter</label>
+            <input type="text" value={editing.chapter} onChange={(e) => setEditing({ ...editing, chapter: e.target.value })} placeholder="Grade 12 - Chapter 1: Mechanics" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400" />
           </div>
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Question Text</label>
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Question Text</label>
             <RichTextEditor content={editing.questionText} onChange={(html) => setEditing({ ...editing, questionText: html })} placeholder="Enter the question..." minHeight="60px" />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Options (click to mark correct)</label>
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Options (click to mark correct)</label>
             {(editing.options || []).map((opt: any, i: number) => (
               <div key={opt.id} className="flex items-start gap-2">
-                <button onClick={() => setEditing({ ...editing, correctOptionId: opt.id })} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 cursor-pointer mt-1 ${editing.correctOptionId === opt.id ? 'bg-teal-500 border-teal-500' : 'border-slate-600 hover:border-slate-400'}`}>
+                <button onClick={() => setEditing({ ...editing, correctOptionId: opt.id })} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 cursor-pointer mt-1 ${editing.correctOptionId === opt.id ? 'bg-blue-500 border-blue-500' : 'border-slate-600 hover:border-slate-400'}`}>
                   {editing.correctOptionId === opt.id && <Check className="w-3 h-3 text-white" />}
                 </button>
-                <span className="text-[10px] font-black text-slate-500 w-4 shrink-0 mt-1">{opt.id.toUpperCase()}.</span>
+                <span className="text-[10px] font-semibold text-slate-500 w-4 shrink-0 mt-1">{opt.id.toUpperCase()}.</span>
                 <div className="flex-1">
                   <RichTextEditor content={opt.text} onChange={(html) => { const newOpts = [...editing.options]; newOpts[i] = { ...newOpts[i], text: html }; setEditing({ ...editing, options: newOpts }); }} placeholder={`Option ${opt.id.toUpperCase()}...`} minHeight="36px" />
                 </div>
@@ -2447,7 +2397,7 @@ function PracticeQuestionsSubTab() {
             ))}
           </div>
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Explanation</label>
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Explanation</label>
             <RichTextEditor content={editing.explanation} onChange={(html) => setEditing({ ...editing, explanation: html })} placeholder="Explain the correct answer..." minHeight="60px" />
           </div>
         </div>
@@ -2466,9 +2416,9 @@ function PracticeQuestionsSubTab() {
             <span key={i} className="flex items-center gap-1.5">
               {i > 0 && <span className="text-slate-600">/</span>}
               {bc.onClick ? (
-                <button onClick={bc.onClick} className="text-teal-400 hover:text-teal-300 font-bold cursor-pointer transition-colors">{bc.label}</button>
+                <button onClick={bc.onClick} className="text-blue-400 hover:text-blue-300 font-bold cursor-pointer transition-colors">{bc.label}</button>
               ) : (
-                <span className="text-slate-300 font-black">{bc.label}</span>
+                <span className="text-slate-300 font-semibold">{bc.label}</span>
               )}
             </span>
           ))}
@@ -2484,12 +2434,12 @@ function PracticeQuestionsSubTab() {
               <button
                 key={grade}
                 onClick={() => { setSelectedGrade(grade); setSelectedSubject(''); setSelectedChapter(''); }}
-                className="bg-[#0d1626] border border-slate-800/80 rounded-2xl p-4 text-center hover:border-teal-500/40 transition-all cursor-pointer group"
+                className="bg-[#0d1626] border border-slate-800/80 rounded-xl p-4 text-center hover:border-blue-500/40 transition-all cursor-pointer group"
               >
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Grade {grade}</div>
-                <div className="text-2xl font-black text-white group-hover:text-teal-400 transition-colors">{count}</div>
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Grade {grade}</div>
+                <div className="text-2xl font-semibold text-white group-hover:text-blue-400 transition-colors">{count}</div>
                 <div className="mt-2 h-1 bg-slate-800/60 rounded-full overflow-hidden">
-                  <div className="h-full bg-teal-500 rounded-full" style={{ width: stats.total > 0 ? `${(count / stats.total) * 100}%` : '0%' }} />
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: stats.total > 0 ? `${(count / stats.total) * 100}%` : '0%' }} />
                 </div>
               </button>
             );
@@ -2500,15 +2450,15 @@ function PracticeQuestionsSubTab() {
       {/* Level 2: Subject Selector (when grade selected, no subject yet) */}
       {selectedGrade && !selectedSubject && (
         <div className="space-y-3">
-          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Subjects in Grade {selectedGrade}</div>
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subjects in Grade {selectedGrade}</div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {subjectsInGrade.map(subject => (
               <button
                 key={subject}
                 onClick={() => { setSelectedSubject(subject); setSelectedChapter(''); }}
-                className="bg-[#0d1626] border border-slate-800/80 rounded-2xl p-4 text-left hover:border-teal-500/40 transition-all cursor-pointer group flex items-center justify-between"
+                className="bg-[#0d1626] border border-slate-800/80 rounded-xl p-4 text-left hover:border-blue-500/40 transition-all cursor-pointer group flex items-center justify-between"
               >
-                <span className="text-xs font-black text-slate-300 group-hover:text-teal-400 transition-colors">{subject}</span>
+                <span className="text-xs font-semibold text-slate-300 group-hover:text-blue-400 transition-colors">{subject}</span>
                 <span className="text-[10px] font-bold text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-md">{subjectCounts[subject]} questions</span>
               </button>
             ))}
@@ -2519,7 +2469,7 @@ function PracticeQuestionsSubTab() {
       {/* Level 3: Chapter Selector (when grade + subject selected, no chapter yet) */}
       {selectedGrade && selectedSubject && !selectedChapter && (
         <div className="space-y-3">
-          <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Chapters in {selectedSubject}</div>
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Chapters in {selectedSubject}</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {chaptersInSubject.map(ch => {
               const displayName = ch.replace(/Grade \d+ - /g, '');
@@ -2528,9 +2478,9 @@ function PracticeQuestionsSubTab() {
                 <button
                   key={ch}
                   onClick={() => setSelectedChapter(ch)}
-                  className="bg-[#0d1626] border border-slate-800/80 rounded-2xl p-4 text-left hover:border-teal-500/40 transition-all cursor-pointer group flex items-center justify-between"
+                  className="bg-[#0d1626] border border-slate-800/80 rounded-xl p-4 text-left hover:border-blue-500/40 transition-all cursor-pointer group flex items-center justify-between"
                 >
-                  <span className="text-xs font-black text-slate-300 group-hover:text-teal-400 transition-colors">{displayName}</span>
+                  <span className="text-xs font-semibold text-slate-300 group-hover:text-blue-400 transition-colors">{displayName}</span>
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-md">{count} {count === 1 ? 'question' : 'questions'}</span>
                 </button>
               );
@@ -2555,7 +2505,7 @@ function PracticeQuestionsSubTab() {
                 <button
                   key={d || 'all'}
                   onClick={() => setFilterDifficulty(d)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer border ${filterDifficulty === d && !d ? 'bg-white/10 text-white border-white/20' : DIFF_STYLE[d]}`}
+                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border ${filterDifficulty === d && !d ? 'bg-white/10 text-white border-white/20' : DIFF_STYLE[d]}`}
                 >
                   {d || 'All Difficulty'}
                 </button>
@@ -2566,7 +2516,7 @@ function PracticeQuestionsSubTab() {
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-bold text-slate-500">{filteredQuestions.length} {filteredQuestions.length === 1 ? 'question' : 'questions'}</div>
             <div className="flex items-center gap-2">
-              <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer">
+              <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer">
                 <Plus className="w-4 h-4" /> New Question
               </button>
             </div>
@@ -2579,7 +2529,7 @@ function PracticeQuestionsSubTab() {
           ) : filteredQuestions.length === 0 ? (
             <EmptyState message="No questions in this chapter." />
           ) : (
-            <div className="bg-[#0d1626] border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/50">
+            <div className="bg-[#0d1626] border border-slate-800/80 rounded-xl overflow-hidden divide-y divide-slate-800/50">
               {filteredQuestions.map((q: any) => (
                 <div key={q.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-900/40 transition-colors group">
                   <div className="flex-1 min-w-0">
@@ -2587,7 +2537,7 @@ function PracticeQuestionsSubTab() {
                   </div>
                   <DifficultyBadge difficulty={q.difficulty} />
                   <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEdit(q)} className="px-2 py-0.5 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-[9px] font-black rounded-lg hover:bg-teal-500/20 transition-colors cursor-pointer">Edit</button>
+                    <button onClick={() => handleEdit(q)} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[9px] font-semibold rounded-lg hover:bg-blue-500/20 transition-colors cursor-pointer">Edit</button>
                     <button onClick={() => handleDelete(q)} className="p-0.5 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                   </div>
                 </div>
@@ -2683,19 +2633,19 @@ function MockExamsSubTab() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Metadata panel */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-4">
+            <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-4">
               <SectionHeader title="Exam Details" icon={Trophy} iconColor="text-amber-400" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
-                  <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Subject</label>
+                  <select value={editing.subject} onChange={(e) => setEditing({ ...editing, subject: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                     {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                     <option value="Full National Exam">Full National Exam</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Stream</label>
-                  <select value={editing.stream} onChange={(e) => setEditing({ ...editing, stream: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 cursor-pointer">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Stream</label>
+                  <select value={editing.stream} onChange={(e) => setEditing({ ...editing, stream: e.target.value })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer">
                     <option value="Natural Science">Natural Science</option>
                     <option value="Social Science">Social Science</option>
                   </select>
@@ -2703,43 +2653,43 @@ function MockExamsSubTab() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Duration (min)</label>
-                  <input type="number" value={editing.durationMinutes} onChange={(e) => setEditing({ ...editing, durationMinutes: parseInt(e.target.value) || 60 })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Duration (min)</label>
+                  <input type="number" value={editing.durationMinutes} onChange={(e) => setEditing({ ...editing, durationMinutes: parseInt(e.target.value) || 60 })} className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Year (E.C.)</label>
-                  <input type="text" value={editing.yearEC || ''} onChange={(e) => setEditing({ ...editing, yearEC: e.target.value })} placeholder="e.g. 2016" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Year (E.C.)</label>
+                  <input type="text" value={editing.yearEC || ''} onChange={(e) => setEditing({ ...editing, yearEC: e.target.value })} placeholder="e.g. 2016" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400" />
                 </div>
               </div>
             </div>
-            <div className="bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-3">
+            <div className="bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Title</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Title</label>
                 <RichTextEditor content={editing.title} onChange={(html) => setEditing({ ...editing, title: html })} placeholder="e.g. Grade 12 Full Mock Exam — Natural" minHeight="40px" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Title (Amharic)</label>
-                <input type="text" value={editing.titleAmharic || ''} onChange={(e) => setEditing({ ...editing, titleAmharic: e.target.value })} placeholder="Optional Amharic title" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400" />
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Title (Amharic)</label>
+                <input type="text" value={editing.titleAmharic || ''} onChange={(e) => setEditing({ ...editing, titleAmharic: e.target.value })} placeholder="Optional Amharic title" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Description (optional)</label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Description (optional)</label>
                 <RichTextEditor content={editing.description || ''} onChange={(html) => setEditing({ ...editing, description: html })} placeholder="Brief description of this mock exam..." minHeight="70px" />
               </div>
             </div>
           </div>
 
           {/* Questions info panel */}
-          <div className="lg:col-span-3 bg-[#111827] rounded-2xl border border-slate-800 p-5 space-y-4">
+          <div className="lg:col-span-3 bg-[#111827] rounded-xl border border-slate-800 p-5 space-y-4">
             <SectionHeader title="Linked Questions" icon={HelpCircle} iconColor="text-violet-400" />
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">Total Questions (count)</label>
-              <input type="number" value={editing.totalQuestions} onChange={(e) => setEditing({ ...editing, totalQuestions: parseInt(e.target.value) || 0 })} className="w-48 bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400" />
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Total Questions (count)</label>
+              <input type="number" value={editing.totalQuestions} onChange={(e) => setEditing({ ...editing, totalQuestions: parseInt(e.target.value) || 0 })} className="w-48 bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400" />
             </div>
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-slate-300">{editing.questionIds?.length || 0} question IDs linked</span>
+                <span className="text-xs font-semibold text-slate-300">{editing.questionIds?.length || 0} question IDs linked</span>
                 <div className="relative group">
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-black cursor-not-allowed opacity-60">
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-semibold cursor-not-allowed opacity-60">
                     <ClipboardList className="w-3 h-3" /> Link Questions
                   </button>
                   <div className="absolute -top-8 right-0 px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-[9px] text-slate-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Coming soon</div>
@@ -2795,7 +2745,7 @@ function MockExamsSubTab() {
       </div>
 
       <div className="flex items-center justify-end">
-        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer">
+        <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer">
           <Plus className="w-4 h-4" /> New Mock Exam
         </button>
       </div>
@@ -2821,7 +2771,7 @@ function MockExamsSubTab() {
                   <div className="flex items-center gap-3">
                     <div className={`w-1 self-stretch rounded-full ${c.dot} opacity-40 group-hover:opacity-80 transition-opacity`} />
                     <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-black text-white">{exam.title}</span>
+                      <span className="text-[11px] font-semibold text-white">{exam.title}</span>
                       <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
                         <span>{exam.stream}</span>
                         <span>•</span>
@@ -2831,7 +2781,7 @@ function MockExamsSubTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(exam)} className="px-2.5 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-[10px] font-black rounded-lg hover:bg-teal-500/20 transition-colors cursor-pointer">Edit</button>
+                      <button onClick={() => handleEdit(exam)} className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-semibold rounded-lg hover:bg-blue-500/20 transition-colors cursor-pointer">Edit</button>
                       <button onClick={() => handleDelete(exam)} className="p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete"><Trash2 className="w-3 h-3 text-rose-400" /></button>
                     </div>
                   </div>

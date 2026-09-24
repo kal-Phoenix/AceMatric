@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { requireAuth } from '../middleware';
+import { requireAuth, collaborationLimiter } from '../middleware';
 import { validateBody, createRoomSchema, approveRejectSchema } from '../validation';
-import { supabase, formatSupabaseError, camelToSnake, snakeToCamel } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError, camelToSnake, snakeToCamel } from '../db';
 import { redis, redisAvailable, KEYS } from '../redis';
 
 const router = Router();
@@ -64,6 +64,17 @@ export interface TimerState {
 
 // Active member tracking is now backed by Redis (see server/redis.ts)
 
+const MAX_JOIN_REQUESTS = 200;
+
+// Strip HTML from user-supplied text so room metadata and chat can never
+// execute markup in other students' clients.
+function stripHtml(text: string): string {
+  return String(text || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const DEFAULT_TIMER: TimerState = { isPlaying: false, timeLeft: 1500, duration: 1500, lastUpdated: Date.now() };
 
 // GET /api/collaboration/rooms
@@ -81,7 +92,10 @@ router.get('/rooms', requireAuth, async (req, res) => {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[collaboration] Fetch rooms error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     const roomsList = await Promise.all((rooms || []).map(async (room: any) => {
       const r = snakeToCamel(room) as any;
@@ -110,22 +124,31 @@ router.get('/rooms', requireAuth, async (req, res) => {
 
     res.json({ rooms: roomsList, total: count || 0, page, limit });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[collaboration] List rooms error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
 // POST /api/collaboration/rooms/create
-router.post('/rooms/create', requireAuth, validateBody(createRoomSchema), async (req, res) => {
+router.post('/rooms/create', requireAuth, collaborationLimiter, validateBody(createRoomSchema), async (req, res) => {
   try {
     const { name, subject, description } = req.body;
     const creatorEmail = req.user!.email;
+
+    const safeName = stripHtml(name).slice(0, 100);
+    const safeDescription = stripHtml(description || `Cooperative study area for ${subject}.`).slice(0, 500);
+    const safeSubject = stripHtml(subject || 'General').slice(0, 60);
+    const creatorName = stripHtml(req.user!.name || creatorEmail.split('@')[0]).slice(0, 100);
 
     // Check room limit
     const { count, error: countError } = await supabase
       .from('study_rooms')
       .select('id', { count: 'exact', head: true });
 
-    if (countError) return res.status(500).json({ error: formatSupabaseError(countError) });
+    if (countError) {
+      console.error('[collaboration] Room count error:', countError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     if ((count || 0) >= 50) {
       return res.status(429).json({ error: 'Maximum room limit reached. Please try again later.' });
     }
@@ -136,23 +159,23 @@ router.post('/rooms/create', requireAuth, validateBody(createRoomSchema), async 
       name: 'System',
       email: 'system',
       avatar: '🤖',
-      text: `Welcome to ${name}! Created by ${req.user!.name}. Feel free to write notes, set goals, draw on whiteboard or trigger quiz challenges!`,
+      text: `Welcome to ${safeName}! Created by ${creatorName}. Feel free to write notes, set goals, draw on whiteboard or trigger quiz challenges!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     const initialGoal: GoalItem = {
       id: `goal-init-${crypto.randomUUID()}`,
-      text: `Review first exam question for ${subject}`,
+      text: `Review first exam question for ${safeSubject}`,
       completed: false,
-      setter: req.user!.name,
+      setter: creatorName,
     };
 
     const roomData = {
       id,
-      name,
+      name: safeName,
       creator_email: creatorEmail,
-      subject,
-      description: description || `Cooperative study area for ${subject}.`,
+      subject: safeSubject,
+      description: safeDescription,
       messages: [systemMessage],
       canvas_state: [],
       active_quiz: null,
@@ -167,16 +190,20 @@ router.post('/rooms/create', requireAuth, validateBody(createRoomSchema), async 
       .from('study_rooms')
       .insert([roomData]);
 
-    if (insertError) return res.status(500).json({ error: formatSupabaseError(insertError) });
+    if (insertError) {
+      console.error('[collaboration] Room create error:', insertError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     res.json({ success: true, id, name, room: { ...roomData, id } });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[collaboration] Create room error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
 // POST /api/collaboration/rooms/:id/request-join
-router.post('/rooms/:id/request-join', requireAuth, async (req, res) => {
+router.post('/rooms/:id/request-join', requireAuth, collaborationLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const userEmail = req.user!.email;
@@ -196,11 +223,15 @@ router.post('/rooms/:id/request-join', requireAuth, async (req, res) => {
       return res.json({ success: true, message: 'You are already approved.' });
     }
 
+    if (joinRequests.length >= MAX_JOIN_REQUESTS) {
+      return res.status(429).json({ error: 'This study group has too many pending requests. Please try again later.' });
+    }
+
     const alreadyRequested = joinRequests.some((r: any) => r.email === userEmail);
     if (!alreadyRequested) {
       joinRequests.push({
         email: userEmail,
-        name: req.user!.name,
+        name: stripHtml(req.user!.name || userEmail.split('@')[0]).slice(0, 100),
         avatar: '🎓',
         stream: 'Natural Science',
         requestedAt: new Date().toISOString(),
@@ -211,12 +242,16 @@ router.post('/rooms/:id/request-join', requireAuth, async (req, res) => {
         .update({ join_requests: joinRequests })
         .eq('id', id);
 
-      if (updateError) return res.status(500).json({ error: formatSupabaseError(updateError) });
+      if (updateError) {
+        console.error('[collaboration] Join request update error:', updateError);
+        return res.status(500).json({ error: 'An error occurred. Please try again.' });
+      }
     }
 
     res.json({ success: true, message: 'Join request sent.' });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[collaboration] Request join error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -251,11 +286,15 @@ router.post('/rooms/:id/approve-request', requireAuth, validateBody(approveRejec
       .update({ allowed_emails: allowedEmails, join_requests: updatedRequests })
       .eq('id', id);
 
-    if (updateError) return res.status(500).json({ error: formatSupabaseError(updateError) });
+    if (updateError) {
+      console.error('[collaboration] Approve request error:', updateError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     res.json({ success: true, message: 'Request approved.' });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[collaboration] Approve request error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -285,11 +324,15 @@ router.post('/rooms/:id/reject-request', requireAuth, validateBody(approveReject
       .update({ join_requests: updatedRequests })
       .eq('id', id);
 
-    if (updateError) return res.status(500).json({ error: formatSupabaseError(updateError) });
+    if (updateError) {
+      console.error('[collaboration] Reject request error:', updateError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     res.json({ success: true, message: 'Request declined.' });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[collaboration] Reject request error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 

@@ -5,9 +5,42 @@ import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { redis } from './redis';
 
-// Cache for admin role lookups: email -> { role, expiry }
+// SECURITY: Admin role cache — stale entries can grant/deny access incorrectly.
+// MUST be invalidated when a user's role changes (call clearAdminCache).
 const adminRoleCache = new Map<string, { role: string; expiry: number }>();
 const ADMIN_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function clearAdminCache(email?: string) {
+  if (email) {
+    adminRoleCache.delete(email);
+  } else {
+    adminRoleCache.clear();
+  }
+}
+
+// DB-backed admin check (cached 5 min). Never trusts the JWT `role` claim,
+// which can be stale or minted with an outdated value.
+export async function isAdminUser(email: string): Promise<boolean> {
+  const cached = adminRoleCache.get(email);
+  if (cached && cached.expiry > Date.now()) {
+    return cached.role === 'admin';
+  }
+  try {
+    const { supabaseAdmin } = await import('./db');
+    const { data: profile } = await supabaseAdmin
+      .from('student_profiles')
+      .select('role')
+      .eq('email', email)
+      .maybeSingle();
+
+    const dbRole = (profile as any)?.role || 'student';
+    adminRoleCache.set(email, { role: dbRole, expiry: Date.now() + ADMIN_CACHE_TTL_MS });
+    return dbRole === 'admin';
+  } catch (err) {
+    console.error('[middleware] isAdminUser: DB lookup failed, denying admin privileges');
+    return false;
+  }
+}
 
 function getRedisStore() {
   if (!redis) return undefined;
@@ -18,8 +51,8 @@ function getRedisStore() {
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
-  if (!secret || secret === 'acematric-jwt-secret-change-in-production') {
-    console.error('[FATAL] Set a strong JWT_SECRET in environment variables');
+  if (!secret) {
+    console.error('[middleware] Set a strong JWT_SECRET in environment variables');
     process.exit(1);
   }
   return secret;
@@ -113,8 +146,8 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     }
 
     try {
-      const { supabase } = await import('./db');
-      const { data: profile } = await supabase
+      const { supabaseAdmin } = await import('./db');
+      const { data: profile } = await supabaseAdmin
         .from('student_profiles')
         .select('role')
         .eq('email', email)
@@ -127,12 +160,9 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
         return res.status(403).json({ error: 'Admin access required.' });
       }
       next();
-    } catch {
-      // On DB error, fall back to JWT claim
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required.' });
-      }
-      next();
+    } catch (err) {
+      console.error('[middleware] requireAdmin: DB lookup failed, denying access');
+      return res.status(503).json({ error: 'Unable to verify admin status. Please try again later.' });
     }
   });
 }
@@ -149,7 +179,7 @@ function rateLimitOpts(opts: { windowMs: number; max: number; message: any }) {
 
 export const authLimiter = rateLimit(rateLimitOpts({
   windowMs: 60 * 1000,
-  max: 5,
+  max: process.env.NODE_ENV === 'production' ? 5 : 50,
   message: { error: 'Too many requests. Please try again later.' },
 }));
 

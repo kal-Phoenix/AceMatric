@@ -13,11 +13,11 @@ export default function SharedNotes({
   return (
     <div className="flex-1 bg-slate-900 border border-slate-800/80 rounded-xl p-4 flex flex-col min-h-[180px]">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2 shrink-0">
-        <span className="text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+        <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
           <FileText className="w-3.5 h-3.5 text-indigo-400" />
           Live Shared Study Board
         </span>
-        <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Auto-Syncs</span>
+        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Auto-Syncs</span>
       </div>
 
       <textarea

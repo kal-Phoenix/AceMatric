@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Target, BookOpen, Sparkles, ArrowRight, School, ArrowLeft, Award, Flame, RefreshCw } from 'lucide-react';
 import { Stream, Language, Subject, UserProfile } from '../../types';
 import { db } from '../../lib/supabase';
+import { getAccessToken } from '../../lib/authToken';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 interface OnboardingRoadmapViewProps {
   stream: Stream;
@@ -67,9 +69,13 @@ export default function OnboardingRoadmapView({
     setIsGenerating(true);
 
     try {
+      const token = getAccessToken();
       const res = await fetch('/api/ai/study-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           targetScore,
           currentHours: dailyHours,
@@ -143,9 +149,13 @@ export default function OnboardingRoadmapView({
     setIsGenerating(true);
     setGeneratedRoadmap('');
     try {
+      const token = getAccessToken();
       const res = await fetch('/api/ai/study-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           targetScore,
           currentHours: dailyHours,
@@ -170,18 +180,16 @@ export default function OnboardingRoadmapView({
 
   return (
     <div className="min-h-screen bg-[#0A0E17] text-slate-100 flex items-center justify-center p-4 sm:p-6 select-none font-sans relative overflow-hidden">
-      <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-2xl bg-[#111827]/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl overflow-hidden relative z-10 flex flex-col">
+      <div className="w-full max-w-2xl bg-[#111827]/90 backdrop-blur-xl border border-slate-800 rounded-xl shadow-2xl overflow-hidden relative z-10 flex flex-col">
         
         {/* Progress Header */}
         <div className="bg-[#1F2937]/50 border-b border-slate-800 px-6 py-5 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <Sparkles className="w-5 h-5 text-teal-400" />
+            <Sparkles className="w-5 h-5 text-blue-400" />
             <div>
-              <span className="font-black text-xs text-teal-400 uppercase tracking-widest block">SETUP</span>
-              <span className="font-extrabold text-sm text-white">
+              <span className="font-semibold text-xs text-blue-400 uppercase tracking-widest block">SETUP</span>
+              <span className="font-semibold text-sm text-white">
                 {step <= 3 ? `Step ${step} of 3` : 'Your Study Roadmap'}
               </span>
             </div>
@@ -191,7 +199,7 @@ export default function OnboardingRoadmapView({
               <div
                 key={i}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === step ? 'w-8 bg-teal-400' : (i < step ? 'w-3 bg-emerald-500' : 'w-3 bg-slate-800')
+                  i === step ? 'w-8 bg-blue-400' : (i < step ? 'w-3 bg-emerald-500' : 'w-3 bg-slate-800')
                 }`}
               />
             ))}
@@ -203,12 +211,12 @@ export default function OnboardingRoadmapView({
           
           {/* STEP 1: Academic Profile */}
           {step === 1 && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-6">
               <div className="space-y-2 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 mx-auto flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
                   <School className="w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-black text-white">Academic Profile</h3>
+                <h3 className="text-2xl font-semibold text-white">Your profile</h3>
                 <p className="text-sm text-slate-400">Help us personalize your study plan</p>
               </div>
 
@@ -220,7 +228,7 @@ export default function OnboardingRoadmapView({
                     value={school}
                     onChange={(e) => setSchool(e.target.value)}
                     placeholder="e.g. Lideta Catholic Cathedral"
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-hidden focus:border-teal-400 transition-colors"
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-hidden focus:border-blue-400 transition-colors"
                   />
                 </div>
 
@@ -229,7 +237,7 @@ export default function OnboardingRoadmapView({
                   <select
                     value={region}
                     onChange={(e) => setRegion(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-white focus:outline-hidden focus:border-teal-400 transition-colors cursor-pointer"
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-white focus:outline-hidden focus:border-blue-400 transition-colors cursor-pointer"
                   >
                     {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
@@ -238,7 +246,7 @@ export default function OnboardingRoadmapView({
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-xs font-bold text-slate-300">
                     <span>Daily Study Hours</span>
-                    <span className="text-teal-400 font-black">{dailyHours} hrs/day</span>
+                    <span className="text-blue-400 font-semibold">{dailyHours} hrs/day</span>
                   </div>
                   <input
                     type="range"
@@ -247,14 +255,14 @@ export default function OnboardingRoadmapView({
                     step="0.5"
                     value={dailyHours}
                     onChange={(e) => setDailyHours(Number(e.target.value))}
-                    className="w-full accent-teal-400 bg-slate-900 cursor-pointer"
+                    className="w-full accent-blue-400 bg-slate-900 cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-xs font-bold text-slate-300">
                     <span>Target Score</span>
-                    <span className="text-teal-400 font-black">{targetScore} / 600</span>
+                    <span className="text-blue-400 font-semibold">{targetScore} / 600</span>
                   </div>
                   <input
                     type="range"
@@ -263,7 +271,7 @@ export default function OnboardingRoadmapView({
                     step="10"
                     value={targetScore}
                     onChange={(e) => setTargetScore(Number(e.target.value))}
-                    className="w-full accent-teal-400 bg-slate-900 cursor-pointer"
+                    className="w-full accent-blue-400 bg-slate-900 cursor-pointer"
                   />
                 </div>
               </div>
@@ -272,12 +280,12 @@ export default function OnboardingRoadmapView({
 
           {/* STEP 2: Weak Subjects */}
           {step === 2 && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-6">
               <div className="space-y-2 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mx-auto flex items-center justify-center">
                   <Target className="w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-black text-white">Focus Subjects</h3>
+                <h3 className="text-2xl font-semibold text-white">Focus Subjects</h3>
                 <p className="text-sm text-slate-400">Select the subjects you need the most help with</p>
               </div>
 
@@ -289,9 +297,9 @@ export default function OnboardingRoadmapView({
                       key={s}
                       type="button"
                       onClick={() => handleToggleSubject(s)}
-                      className={`p-4 rounded-2xl border text-sm font-black transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl border text-sm font-semibold transition-all cursor-pointer ${
                         selected
-                          ? 'bg-teal-500/15 border-teal-400 text-teal-300 shadow-md'
+                          ? 'bg-blue-500/15 border-blue-400 text-blue-300 shadow-md'
                           : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
                       }`}
                     >
@@ -305,12 +313,12 @@ export default function OnboardingRoadmapView({
 
           {/* STEP 3: Confirm & Generate */}
           {step === 3 && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-6">
               <div className="space-y-2 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center">
                   <Award className="w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-black text-white">Ready to Start</h3>
+                <h3 className="text-2xl font-semibold text-white">Ready to Start</h3>
                 <p className="text-sm text-slate-400">Review your profile and generate your roadmap</p>
               </div>
 
@@ -334,7 +342,7 @@ export default function OnboardingRoadmapView({
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400">Focus Subjects</span>
-                    <span className="text-teal-400 font-bold">{weakSubjects.join(', ')}</span>
+                    <span className="text-blue-400 font-bold">{weakSubjects.join(', ')}</span>
                   </div>
                 </div>
               </div>
@@ -343,27 +351,27 @@ export default function OnboardingRoadmapView({
 
           {/* STEP 4: Generated Roadmap */}
           {step === 4 && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="space-y-4">
               <div className="space-y-2 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-400 text-slate-950 mx-auto flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white mx-auto flex items-center justify-center">
                   <Flame className="w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-black text-white">Your Study Roadmap</h3>
+                <h3 className="text-2xl font-semibold text-white">Your Study Roadmap</h3>
                 <p className="text-sm text-slate-400">Personalized based on your profile</p>
               </div>
 
               {isGenerating ? (
                 <div className="flex flex-col items-center py-12 space-y-4">
-                  <div className="w-10 h-10 border-3 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-10 h-10 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
                   <span className="text-sm text-slate-400 font-bold">Generating your roadmap...</span>
                 </div>
               ) : (
                 <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 max-h-[300px] overflow-y-auto">
                   <div className="prose prose-invert prose-sm max-w-none">
                     {generatedRoadmap.split('\n').map((line, i) => {
-                      if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-black text-white mt-4 mb-2">{line.replace('## ', '')}</h2>;
-                      if (line.startsWith('### ')) return <h3 key={i} className="text-sm font-black text-teal-400 mt-3 mb-1">{line.replace('### ', '')}</h3>;
-                      if (line.startsWith('**')) return <p key={i} className="text-xs text-slate-300 font-bold" dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>') }} />;
+                      if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-semibold text-white mt-4 mb-2">{line.replace('## ', '')}</h2>;
+                      if (line.startsWith('### ')) return <h3 key={i} className="text-sm font-semibold text-blue-400 mt-3 mb-1">{line.replace('### ', '')}</h3>;
+                      if (line.startsWith('**')) return <p key={i} className="text-xs text-slate-300 font-bold" dangerouslySetInnerHTML={{ __html: sanitizeHtml(line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')) }} />;
                       if (line.startsWith('- ')) return <li key={i} className="text-xs text-slate-400 ml-4 list-disc">{line.replace('- ', '')}</li>;
                       if (line.trim()) return <p key={i} className="text-xs text-slate-400">{line}</p>;
                       return <br key={i} />;
@@ -400,7 +408,7 @@ export default function OnboardingRoadmapView({
           {step < 3 && (
             <button
               onClick={() => setStep(step + 1)}
-              className="ml-auto px-6 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-teal-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="ml-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
             >
               Continue
               <ArrowRight className="w-3.5 h-3.5" />
@@ -410,7 +418,7 @@ export default function OnboardingRoadmapView({
           {step === 3 && (
             <button
               onClick={generateAIRoadmap}
-              className="ml-auto px-6 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-teal-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="ml-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Generate Roadmap
@@ -429,7 +437,7 @@ export default function OnboardingRoadmapView({
                 region,
                 bio: `Aiming for ${targetScore}/600 in ${stream}`
               })}
-              className="ml-auto px-6 py-2.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="ml-auto px-6 py-2.5 bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
             >
               Start Learning
               <ArrowRight className="w-3.5 h-3.5" />

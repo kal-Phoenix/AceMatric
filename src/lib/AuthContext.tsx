@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { db } from './supabase';
 import { getAccessToken, setAccessToken, restoreTokenFromCookie } from './authToken';
+import { logger } from './logger';
 
 type AppStage = 'landing' | 'auth' | 'onboarding' | 'main';
 
@@ -81,26 +82,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUserProfile = useCallback((updated: UserProfile) => {
     setUser(updated);
-    db.saveStudentProfile(updated).catch(() => {});
+    db.saveStudentProfile(updated).catch((err) => {
+      logger.error('Failed to save profile', err, { email: updated.email });
+    });
   }, []);
 
   const logout = useCallback(() => {
-    db.logout();
+    db.logout().catch((err) => {
+      logger.error('Logout cleanup failed', err);
+    });
     setUser(null);
     setAppStageState('landing');
     setAccessToken(null);
   }, []);
 
+  const value = useMemo(() => ({
+    user,
+    appStage,
+    isPremium: user?.isPremium || false,
+    streakDays: user?.streakDays || 0,
+    updateUserProfile,
+    logout,
+    setAppStage,
+  }), [user, appStage, updateUserProfile, logout, setAppStage]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      appStage,
-      isPremium: user?.isPremium || false,
-      streakDays: user?.streakDays || 0,
-      updateUserProfile,
-      logout,
-      setAppStage,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

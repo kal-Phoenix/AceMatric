@@ -1,11 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2DD4BF"/>
-      <stop offset="50%" stop-color="#10B981"/>
-      <stop offset="100%" stop-color="#06B6D4"/>
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="22" fill="url(#g)"/>
-  <text x="50" y="68" font-family="Arial,Helvetica,sans-serif" font-size="58" font-weight="900" fill="#0F172A" text-anchor="middle">A</text>
+  <rect width="100" height="100" rx="22" fill="#0A0B0E"/>
+  <!-- Blue Cap / Crown of Spade -->
+  <path d="M 50 14 L 71 42 C 63 36 57 32 50 25 C 43 32 37 36 29 42 Z" fill="#3898FE"/>
+  <!-- White Body & Stem of Spade -->
+  <path d="M 50 25 C 57 32 63 36 71 42 C 77 47 80 54 80 61 C 80 73 69 80 58 75 C 54 73 52 70 50 67 C 48 70 46 73 42 75 C 31 80 20 73 20 61 C 20 54 23 47 29 42 C 37 36 43 32 50 25 Z" fill="#F8FAFC"/>
+  <!-- Spade Stem -->
+  <path d="M 46 68 C 47 75 44 82 32 87 L 68 85 C 56 81 53 75 54 68 Z" fill="#F8FAFC"/>
 </svg>

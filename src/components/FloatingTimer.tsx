@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  Timer, Play, Pause, RotateCcw, X, Coffee, Zap, GripVertical,
-  Volume2, VolumeX, Minimize2, Maximize2, History, Settings,
+  Timer, Play, Pause, RotateCcw, X, Zap, GripVertical,
+  Volume2, VolumeX, Minimize2, History, Settings,
   ChevronDown, ChevronUp, Target, Flame
 } from 'lucide-react';
 
@@ -9,7 +9,7 @@ type FocusMode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
 const MODES: Record<FocusMode, { label: string; duration: number; color: string; gradient: string }> = {
   pomodoro: { label: 'Focus', duration: 1500, color: 'amber', gradient: 'from-amber-500 to-orange-500' },
-  shortBreak: { label: 'Short Break', duration: 300, color: 'emerald', gradient: 'from-emerald-500 to-teal-500' },
+  shortBreak: { label: 'Short Break', duration: 300, color: 'emerald', gradient: 'bg-slate-800/50' },
   longBreak: { label: 'Long Break', duration: 900, color: 'blue', gradient: 'from-blue-500 to-indigo-500' },
 };
 
@@ -186,11 +186,11 @@ export default function FloatingTimer() {
         <button
           onClick={handleToggle}
           onDoubleClick={handleMinimize}
-          className={`flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r ${current.gradient} text-white shadow-lg cursor-grab active:cursor-grabbing transition-all hover:scale-105 ${isRunning ? 'animate-pulse shadow-xl' : ''}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r ${current.gradient} text-white shadow-lg cursor-grab active:cursor-grabbing transition-all hover:scale-105`}
           title="Double-click to restore, click to expand"
         >
           {isRunning ? (
-            <span className="text-xs font-black tabular-nums">{formatTime(timeLeft)}</span>
+            <span className="text-xs font-semibold tabular-nums">{formatTime(timeLeft)}</span>
           ) : (
             <Timer className="w-4 h-4" />
           )}
@@ -212,13 +212,13 @@ export default function FloatingTimer() {
       <div className="flex flex-col items-end gap-3">
         {/* Expanded Panel */}
         {isOpen && (
-          <div className="w-72 bg-[#131E32] border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
+          <div className="w-72 bg-[#0F1218] border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
             {/* Draggable Header */}
             <div className="flex items-center justify-between p-3 bg-slate-900/60 border-b border-slate-700/50 cursor-grab active:cursor-grabbing">
               <div className="flex items-center gap-2">
                 <GripVertical className="w-4 h-4 text-slate-500" />
                 <Timer className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-black text-white uppercase tracking-wider">Study Timer</span>
+                <span className="text-xs font-semibold text-white uppercase tracking-wider">Study Timer</span>
               </div>
               <div className="flex items-center gap-1">
                 <button data-timer-btn onClick={handleMinimize} className="p-1 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer transition-colors" title="Minimize" aria-label="Minimize timer">
@@ -235,7 +235,7 @@ export default function FloatingTimer() {
               <div className="flex justify-center">
                 <div className="relative w-40 h-40">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 44 44">
-                    <circle cx="22" cy="22" r="18" fill="none" stroke="#1e293b" strokeWidth="3" />
+                    <circle cx="22" cy="22" r="18" fill="none" className="stroke-slate-800" stroke="currentColor" strokeWidth="3" />
                     <circle
                       cx="22" cy="22" r="18" fill="none"
                       stroke="url(#tg)"
@@ -252,8 +252,8 @@ export default function FloatingTimer() {
                     </defs>
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-black text-white tabular-nums">{formatTime(timeLeft)}</span>
-                    <span className="text-[10px] font-bold text-slate-400 mt-1">{current.label}</span>
+                    <span className="text-3xl font-semibold text-white tabular-nums">{formatTime(timeLeft)}</span>
+                    <span className="text-xs font-bold text-slate-400 mt-1">{current.label}</span>
                   </div>
                 </div>
               </div>
@@ -264,7 +264,7 @@ export default function FloatingTimer() {
                   <button
                     key={m} data-timer-btn
                     onClick={() => switchMode(m)}
-                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                       mode === m
                         ? 'bg-gradient-to-r ' + MODES[m].gradient + ' text-white shadow-md'
                         : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -298,12 +298,12 @@ export default function FloatingTimer() {
               <div className="flex items-center justify-between px-3 py-2 bg-slate-900/60 rounded-xl border border-slate-800/60">
                 <div className="flex items-center gap-1.5">
                   <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-[10px] font-bold text-slate-300">{completedToday} sessions</span>
+                  <span className="text-xs font-bold text-slate-300">{completedToday} sessions</span>
                 </div>
                 <div className="w-px h-3 bg-slate-700" />
                 <div className="flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-teal-400" />
-                  <span className="text-[10px] font-bold text-slate-300">{formatTotalTime(totalFocusToday)} focused</span>
+                  <Target className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs font-bold text-slate-300">{formatTotalTime(totalFocusToday)} focused</span>
                 </div>
               </div>
 
@@ -323,16 +323,16 @@ export default function FloatingTimer() {
                 </button>
 
                 {showSettings && (
-                  <div className="px-3 py-3 bg-slate-900/30 rounded-xl border border-slate-800/40 space-y-3 animate-fadeIn">
+                  <div className="px-3 py-3 bg-slate-900/30 rounded-xl border border-slate-800/40 space-y-3">
                     {/* Quick Duration Picks */}
                     <div>
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Quick Duration</span>
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quick Duration</span>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         {DURATIONS[mode].map((min) => (
                           <button
                             key={min} data-timer-btn
                             onClick={() => setCustomTime(min)}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
                               customDuration === min
                                 ? 'bg-gradient-to-r ' + current.gradient + ' text-white shadow-md'
                                 : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -347,8 +347,8 @@ export default function FloatingTimer() {
                     {/* Custom Slider */}
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Custom</span>
-                        <span className="text-[11px] font-black text-white tabular-nums">{customDuration} min</span>
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom</span>
+                        <span className="text-[11px] font-semibold text-white tabular-nums">{customDuration} min</span>
                       </div>
                       <input
                         type="range"
@@ -381,26 +381,26 @@ export default function FloatingTimer() {
                     <History className="w-3.5 h-3.5 text-slate-400" />
                     <span className="text-[11px] font-bold text-slate-300">Session History</span>
                     {sessions.length > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-black">{sessions.length}</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold">{sessions.length}</span>
                     )}
                   </div>
                   {showHistory ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
                 </button>
 
                 {showHistory && (
-                  <div className="px-3 py-3 bg-slate-900/30 rounded-xl border border-slate-800/40 space-y-2 animate-fadeIn max-h-40 overflow-y-auto custom-scrollbar">
+                  <div className="px-3 py-3 bg-slate-900/30 rounded-xl border border-slate-800/40 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
                     {sessions.length === 0 ? (
-                      <p className="text-[10px] text-slate-500 italic text-center py-2">No sessions yet. Start focusing!</p>
+                      <p className="text-xs text-slate-500 italic text-center py-2">No sessions yet. Start focusing!</p>
                     ) : (
                       sessions.map((s) => (
                         <div key={s.id} className="flex items-center justify-between py-1.5 border-b border-slate-800/40 last:border-0">
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full bg-${s.mode === 'pomodoro' ? 'amber' : s.mode === 'shortBreak' ? 'emerald' : 'blue'}-400`} />
-                            <span className="text-[10px] font-bold text-slate-300">{MODES[s.mode].label}</span>
+                            <span className="text-xs font-bold text-slate-300">{MODES[s.mode].label}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-[10px] font-bold text-slate-400">{formatTime(s.duration)}</span>
-                            <span className="text-[9px] text-slate-600 ml-1.5">
+                            <span className="text-xs font-bold text-slate-400">{formatTime(s.duration)}</span>
+                            <span className="text-xs text-slate-600 ml-1.5">
                               {s.completedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
@@ -418,12 +418,12 @@ export default function FloatingTimer() {
         <button
           onClick={handleToggle}
           onDoubleClick={handleMinimize}
-          className={`w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:shadow-xl hover:shadow-amber-500/40 ${isRunning ? 'animate-pulse' : ''}`}
+          className={`w-14 h-14 rounded-full bg-amber-500 text-white shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:shadow-xl`}
           title="Study Timer — drag to move, double-click to minimize"
         >
           {isRunning ? (
             <div className="flex flex-col items-center leading-none">
-              <span className="text-sm font-black tabular-nums">{formatTime(timeLeft)}</span>
+              <span className="text-sm font-semibold tabular-nums">{formatTime(timeLeft)}</span>
             </div>
           ) : (
             <Timer className="w-6 h-6" />

@@ -40,8 +40,18 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // API requests — network only
-  if (url.pathname.startsWith('/api/')) return;
+  // API requests — network only (with offline fallback)
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return new Response(JSON.stringify({ error: 'Offline', offline: true }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
 
   // Static assets — cache first
   if (url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$/)) {
@@ -84,6 +94,23 @@ self.addEventListener('fetch', (event) => {
           return cached || fetched;
         })
       )
+    );
+    return;
+  }
+
+  // Images — cache first with network fallback
+  if (request.destination === 'image' || url.pathname.match(/\.(png|jpg|jpeg|gif|webp)$/)) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(response => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CONTENT_CACHE).then(cache => cache.put(request, clone));
+          }
+          return response;
+        }).catch(() => new Response('', { status: 503 }));
+      })
     );
     return;
   }

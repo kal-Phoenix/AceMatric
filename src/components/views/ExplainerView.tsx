@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Sparkles, Send, Bot, User, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import { Language, Subject } from '../../types';
+import { getAccessToken } from '../../lib/authToken';
 
 interface ExplainerViewProps {
   language: Language;
@@ -62,9 +63,13 @@ export default function ExplainerView({
     setIsLoading(true);
 
     try {
+      const token = getAccessToken();
       const res = await fetch('/api/ai/concept-explainer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           prompt: queryText,
           subject: subj,
@@ -85,7 +90,7 @@ export default function ExplainerView({
         {
           id: Date.now().toString(),
           sender: 'ai',
-          text: `⚠️ Error: ${err.message || 'Network error while connecting to AI tutor.'}`,
+          text: ` Error: ${err.message || 'Network error while connecting to AI tutor.'}`,
           timestamp: 'Just now',
         },
       ]);
@@ -101,38 +106,38 @@ export default function ExplainerView({
   ];
 
   return (
-    <div className="flex flex-col gap-6 animate-fadeIn text-slate-100">
-      {/* AI Concept Explainer Interactive Chat Arena */}
+    <div className="flex flex-col gap-6 text-slate-100">
+      {/* Interactive Concept Explainer */}
       <div 
         onClick={() => {
           if (!isFocused) setIsFocused(true);
         }}
-        className={`flex flex-col bg-[#1E293B] border transition-all duration-500 ease-out overflow-hidden ${
+        className={`flex flex-col bg-[#141920] border transition-all duration-500 ease-out overflow-hidden ${
           isFocused 
-            ? 'fixed inset-0 z-50 h-screen w-screen rounded-none border-none cursor-default bg-[#0F172A]' 
-            : 'h-[550px] border-slate-800 hover:border-slate-700/80 cursor-pointer rounded-3xl shadow-2xl'
+            ? 'fixed inset-0 z-50 h-screen w-screen rounded-none border-none cursor-default bg-[#0A0E14]' 
+            : 'h-[550px] border-slate-800 hover:border-slate-700/80 cursor-pointer rounded-xl shadow-sm'
         }`}
       >
         {/* Chat Header Bar */}
         <div className="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
-              <Bot className="w-6 h-6 animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+              <Bot className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-black text-base text-white">
-                  AI Concept Explainer
+                <h2 className="font-semibold text-base text-white">
+Ask about a concept
                 </h2>
-                <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] uppercase font-extrabold">Gemini Pro</span>
+                <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-xs uppercase font-semibold">Study Assistant</span>
                 {isFocused && (
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 text-[10px] font-bold border border-teal-500/20 animate-pulse">
-                    ✨ Full-Screen Focus Mode
+                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20">
+                    Full-Screen Focus Mode
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400">
-                Custom AI tutor trained on Ethiopian Grade 12 national curriculum.
+              <p className="text-xs text-slate-400">
+                Curriculum-aligned assistant for Grade 12 students.
               </p>
             </div>
           </div>
@@ -141,16 +146,16 @@ export default function ExplainerView({
             <select
               value={selectedSubj}
               onChange={(e) => setSelectedSubj(e.target.value as any)}
-              className="bg-slate-800 border border-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg text-teal-300 focus:outline-none"
+              className="bg-slate-800 border border-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg text-blue-300 focus:outline-none"
               onClick={(e) => e.stopPropagation()}
             >
-              <option value="General">🌐 General</option>
-              <option value="Physics">🧬 Physics</option>
-              <option value="Chemistry">⚗️ Chemistry</option>
-              <option value="Biology">🌿 Biology</option>
-              <option value="Mathematics">📐 Mathematics</option>
-              <option value="English">🇬🇧 English / SAT</option>
-              <option value="Economics">📊 Economics</option>
+              <option value="General">General</option>
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Biology">Biology</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="English">English / SAT</option>
+              <option value="Economics">Economics</option>
             </select>
 
             <button
@@ -165,12 +170,12 @@ export default function ExplainerView({
               {isFocused ? (
                 <div className="flex items-center space-x-1.5">
                   <Minimize2 className="w-4 h-4 text-rose-400" />
-                  <span className="text-[10px] font-black uppercase text-rose-400 hidden sm:inline">Minimize</span>
+                  <span className="text-xs font-semibold uppercase text-rose-400 hidden sm:inline">Minimize</span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-1.5">
-                  <Maximize2 className="w-4 h-4 text-teal-400" />
-                  <span className="text-[10px] font-black uppercase text-teal-400 hidden sm:inline">Expand</span>
+                  <Maximize2 className="w-4 h-4 text-blue-400" />
+                  <span className="text-xs font-semibold uppercase text-blue-400 hidden sm:inline">Expand</span>
                 </div>
               )}
             </button>
@@ -178,7 +183,7 @@ export default function ExplainerView({
         </div>
 
         {/* Message Thread Scroll Area */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#0F172A]/50">
+        <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#0A0E14]/50">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -187,7 +192,7 @@ export default function ExplainerView({
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white font-bold text-xs ${
                   msg.sender === 'user'
-                    ? 'bg-teal-500 text-slate-950 shadow-md'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-indigo-600 shadow-md'
                 }`}
               >
@@ -197,13 +202,13 @@ export default function ExplainerView({
               <div
                 className={`max-w-[80%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-teal-500 text-slate-950 font-bold rounded-tr-none'
+                    ? 'bg-blue-600 text-white font-bold rounded-tr-none'
                     : 'bg-slate-800/90 border border-slate-700/80 text-slate-100 rounded-tl-none whitespace-pre-line font-normal shadow-md'
                 }`}
               >
                 {msg.text}
                 <div
-                  className={`text-[9px] mt-1.5 text-right font-medium ${
+                  className={`text-xs mt-1.5 text-right font-medium ${
                     msg.sender === 'user' ? 'text-slate-800' : 'text-slate-500'
                   }`}
                 >
@@ -216,14 +221,14 @@ export default function ExplainerView({
           {isLoading && (
             <div className="flex items-center gap-3 text-slate-400 text-xs bg-slate-800/60 p-4 rounded-2xl max-w-xs animate-pulse border border-slate-700">
               <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
-              <span>AI tutor is crafting step-by-step breakdown...</span>
+              <span>Preparing step-by-step explanation...</span>
             </div>
           )}
         </div>
 
         {/* Suggested Prompt Chips */}
         <div className="px-6 py-2 bg-slate-900/80 border-t border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full">
-          <span className="text-[10px] font-extrabold uppercase text-slate-500 shrink-0">💡 Try Asking:</span>
+          <span className="text-xs font-semibold uppercase text-slate-500 shrink-0">Try Asking:</span>
           {suggestedPrompts.map((sp, idx) => (
             <button
               key={idx}
@@ -233,7 +238,7 @@ export default function ExplainerView({
                 setIsFocused(true);
               }}
               disabled={isLoading}
-              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] text-slate-300 font-bold whitespace-nowrap transition-colors shrink-0 cursor-pointer"
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 font-bold whitespace-nowrap transition-colors shrink-0 cursor-pointer"
             >
               {sp}
             </button>
@@ -258,7 +263,7 @@ export default function ExplainerView({
           <button
             type="submit"
             disabled={!prompt.trim() || isLoading}
-            className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-transform active:scale-95 disabled:opacity-40 flex items-center space-x-1.5 shrink-0 cursor-pointer"
+            className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-sm transition-transform active:scale-95 disabled:opacity-40 flex items-center space-x-1.5 shrink-0 cursor-pointer"
           >
             <Send className="w-4 h-4" />
             <span>Send</span>

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { supabase, formatSupabaseError } from '../db';
-import { requireAdmin } from '../middleware';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
+import { requireAdmin, clearAdminCache } from '../middleware';
 import { logAudit } from '../audit';
 
 const router = Router();
@@ -16,7 +16,26 @@ router.get('/stats', requireAdmin, async (_req, res) => {
       supabase.from('student_profiles').select('email').eq('is_premium', true),
     ]);
 
-    if (usersResult.error) return res.status(500).json({ error: formatSupabaseError(usersResult.error) });
+    if (usersResult.error) {
+      console.error('[admin] Stats error:', usersResult.error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
+    if (pendingResult.error) {
+      console.error('[admin] Stats error (pending):', pendingResult.error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
+    if (approvedResult.error) {
+      console.error('[admin] Stats error (approved):', approvedResult.error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
+    if (rejectedResult.error) {
+      console.error('[admin] Stats error (rejected):', rejectedResult.error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
+    if (premiumResult.error) {
+      console.error('[admin] Stats error (premium):', premiumResult.error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     const totalUsers = usersResult.data?.length || 0;
     const premiumUsers = premiumResult.data?.length || 0;
@@ -34,7 +53,8 @@ router.get('/stats', requireAdmin, async (_req, res) => {
       rejectedPayments: rejected,
     });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Stats error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -64,7 +84,10 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(2000);
 
-    if (eventsError) return res.status(500).json({ error: formatSupabaseError(eventsError) });
+    if (eventsError) {
+      console.error('[admin] Analytics error:', eventsError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     const allEvents = events || [];
 
@@ -143,7 +166,8 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       topUsers,
     });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Analytics error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -171,7 +195,10 @@ router.get('/users', requireAdmin, async (req, res) => {
     query = query.order('xp', { ascending: false }).range(from, to);
 
     const { data, error, count } = await query;
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[admin] Users list error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     res.json({
       users: (data || []).map((u: any) => ({
@@ -191,7 +218,8 @@ router.get('/users', requireAdmin, async (req, res) => {
       pageSize,
     });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Users list error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -207,12 +235,17 @@ router.put('/users/:email/role', requireAdmin, async (req, res) => {
       .from('student_profiles')
       .update({ role })
       .eq('email', email);
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[admin] Role update error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     await logAudit({ adminEmail: req.user!.email, action: 'role_change', targetEmail: email, details: { newRole: role } });
+    clearAdminCache(email);
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Role update error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -228,12 +261,16 @@ router.put('/users/:email/premium', requireAdmin, async (req, res) => {
       .from('student_profiles')
       .update({ is_premium: isPremium })
       .eq('email', email);
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[admin] Premium update error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     await logAudit({ adminEmail: req.user!.email, action: isPremium ? 'grant_premium' : 'revoke_premium', targetEmail: email });
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Premium update error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -257,7 +294,8 @@ router.delete('/users/:email', requireAdmin, async (req, res) => {
     await logAudit({ adminEmail: req.user!.email, action: 'delete_user', targetEmail: email });
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Delete user error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -276,7 +314,8 @@ router.get('/audit', requireAdmin, async (req, res) => {
     });
     res.json(result);
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[admin] Audit log error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 

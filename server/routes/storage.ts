@@ -1,42 +1,26 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
 import crypto from 'crypto';
 import { fileTypeFromBuffer } from 'file-type';
-import { requireAuth, uploadLimiter } from '../middleware';
+import { requireAuth, uploadLimiter, isAdminUser } from '../middleware';
+import { imageUpload, MIME_TO_EXT } from '../upload-utils';
 
 const router = Router();
 
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/gif': '.gif',
-  'image/webp': '.webp',
-};
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only JPEG, PNG, GIF, and WebP images are allowed'));
-    }
-  }
-});
-
 const BUCKET_MAP: Record<string, string> = {
   'payment-screenshots': 'payment-screenshots',
-  'note-images': 'note-images',
-  'study-images': 'study-images',
   'past-papers': 'past-papers',
+  'avatars': 'avatars',
 };
 
+// These buckets contain sensitive/review-facing content — only admins may upload.
+const ADMIN_BUCKETS = new Set(['payment-screenshots', 'past-papers']);
+
 function isPathSafe(filePath: string): boolean {
-  const normalized = path.normalize(filePath);
-  return normalized === filePath && !filePath.includes('..');
+  if (typeof filePath !== 'string' || !filePath) return false;
+  // Supabase storage always uses forward slashes. Reject backslashes (which
+  // normalize differently per-platform) and any '..' segment outright.
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized === filePath && !filePath.split('/').includes('..');
 }
 
 async function validateFileMagicBytes(buffer: Buffer, declaredMime: string): Promise<boolean> {
@@ -46,7 +30,7 @@ async function validateFileMagicBytes(buffer: Buffer, declaredMime: string): Pro
 }
 
 // POST /api/storage/upload
-router.post('/upload', requireAuth, uploadLimiter, upload.single('file'), async (req, res) => {
+router.post('/upload', requireAuth, uploadLimiter, imageUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file provided' });
@@ -55,6 +39,9 @@ router.post('/upload', requireAuth, uploadLimiter, upload.single('file'), async 
     const bucket = req.body.bucket;
     if (!bucket || !BUCKET_MAP[bucket]) {
       return res.status(400).json({ error: 'Invalid bucket name' });
+    }
+    if (ADMIN_BUCKETS.has(bucket) && !(await isAdminUser(req.user!.email))) {
+      return res.status(403).json({ error: 'You do not have permission to upload to this bucket' });
     }
 
     // Validate magic bytes

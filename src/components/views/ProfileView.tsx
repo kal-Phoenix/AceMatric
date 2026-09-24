@@ -1,8 +1,9 @@
-import { useState, useEffect, FormEvent, useMemo } from 'react';
+import { useState, useEffect, FormEvent, useMemo, useRef } from 'react';
 import {
-  User, Settings, Award, Target, Clock, BookOpen, Sparkles, Check, Edit3,
-  Shield, Sliders, Moon, Sun, Bell, BellOff, RefreshCw, Flame, BarChart2,
-  Activity, Play, HelpCircle, ChevronUp, ChevronDown, Camera
+  User, Award, Target, Clock, BookOpen, Sparkles, Check,
+  Sliders, Moon, Sun, Bell, BellOff, RefreshCw, Flame, BarChart2,
+  Activity, Camera, Share2, Copy, Gift,
+  Star, Zap, Crown, Rocket, Lightbulb, Upload, X
 } from 'lucide-react';
 import { Stream, Language, SessionHistoryEntry } from '../../types';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
@@ -31,6 +32,8 @@ interface ProfileViewProps {
     weakSubjects?: string[];
     proStudyAudit?: string;
     studiedChapters?: string[];
+    isPremium?: boolean;
+    premiumExpiresAt?: string;
   } | null;
   onProfileUpdate: (profile: any) => void;
   theme: 'dark' | 'light';
@@ -38,7 +41,7 @@ interface ProfileViewProps {
   sessionHistory?: SessionHistoryEntry[];
 }
 
-const AVATAR_OPTIONS = ['👨‍🎓', '👩‍🎓', '🚀', '💡', '⚡', '🎯', '🌟', '🦁', '🏆', '📚'];
+const AVATAR_ICONS = [User, Target, Flame, Award, BookOpen, Star, Zap, Crown, Rocket, Lightbulb] as const;
 const REGIONS = ['Addis Ababa', 'Oromia', 'Amhara', 'Tigray', 'Sidama', 'South Ethiopia', 'Central Ethiopia', 'Dire Dawa', 'Harari'];
 
 export default function ProfileView({
@@ -50,8 +53,9 @@ export default function ProfileView({
   onProfileUpdate,
   theme,
   onThemeToggle,
-  sessionHistory = []
-}: ProfileViewProps) {
+  sessionHistory = [],
+  onTabChange,
+}: ProfileViewProps & { onTabChange?: (tab: string) => void }) {
 
   const [activeViewTab, setActiveViewTab] = useState<'profile' | 'analytics'>('profile');
 
@@ -62,7 +66,7 @@ export default function ProfileView({
     const rawScore = userProfile?.targetScore || 520;
     return rawScore > 600 ? 540 : rawScore;
   });
-  const [avatar, setAvatar] = useState<string>(userProfile?.avatar || '🚀');
+  const [avatar, setAvatar] = useState<string>(userProfile?.avatar || '0');
   const [school, setSchool] = useState<string>(userProfile?.school || '');
   const [region, setRegion] = useState<string>(userProfile?.region || 'Addis Ababa');
   const [bio, setBio] = useState<string>(userProfile?.bio || '');
@@ -70,6 +74,8 @@ export default function ProfileView({
   const [notifications, setNotifications] = useState<boolean>(userProfile?.notifications ?? true);
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [auditReport, setAuditReport] = useState<string>(() => {
     return userProfile?.proStudyAudit || '';
@@ -79,9 +85,13 @@ export default function ProfileView({
   const handleRunAudit = async () => {
     setIsAuditing(true);
     try {
+      const token = getAccessToken();
       const response = await fetch('/api/ai/pro-audit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           name, school, region, targetScore, dailyGoalHours,
           preparationLevel: userProfile?.preparationLevel || 'Medium',
@@ -104,6 +114,43 @@ export default function ProfileView({
       setIsAuditing(false);
     }
   };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5MB');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bucket', 'avatars');
+
+      const token = await getAccessToken();
+      const res = await fetch('/api/storage/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        setAvatar(data.url);
+        setShowAvatarPicker(false);
+      }
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const isAvatarUrl = avatar && (avatar.startsWith('http://') || avatar.startsWith('https://'));
 
   const subjectsList = useMemo(() => {
     return stream === 'Natural Science'
@@ -178,82 +225,113 @@ export default function ProfileView({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn pb-16 text-slate-100">
+    <div className="max-w-5xl mx-auto space-y-6 pb-16 text-slate-100">
 
       {/* Toast */}
       {isSavedToast && (
-        <div className="fixed top-20 right-6 z-50 bg-emerald-500 text-slate-950 px-5 py-3 rounded-xl shadow-2xl font-black text-xs flex items-center gap-2 animate-fadeIn">
+        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl font-semibold text-xs flex items-center gap-2">
           <Check className="w-4 h-4 stroke-[3]" />
           Profile saved successfully
         </div>
       )}
 
       {/* Profile Header */}
-      <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+      <div className="bg-[#141920] border border-slate-800 rounded-2xl p-6 relative">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
           {/* Avatar - click to change */}
           <div className="relative group">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
             <button
               type="button"
               onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-500 flex items-center justify-center text-4xl shadow-lg shadow-teal-500/20 border-4 border-slate-900 hover:scale-105 transition-all cursor-pointer"
+              className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center shadow-lg shadow-black/5 border-4 border-slate-900 hover:scale-105 transition-all cursor-pointer overflow-hidden"
             >
-              {avatar}
+              {isAvatarUrl ? (
+                <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                (() => { const Icon = AVATAR_ICONS[Number(avatar)] || User; return <Icon className="w-8 h-8 text-white" />; })()
+              )}
             </button>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center border-2 border-[#1E293B] opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-2 border-[#141920] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-blue-400"
+              title="Upload photo"
+            >
               <Camera className="w-3 h-3 text-white" />
-            </div>
+            </button>
 
             {/* Avatar Picker Dropdown */}
             {showAvatarPicker && (
-              <div className="absolute top-full mt-2 left-0 bg-[#1E293B] border border-slate-700 rounded-xl p-3 shadow-2xl z-30 flex flex-wrap gap-2 w-56 animate-fadeIn">
-                <div className="w-full text-[10px] font-bold text-slate-400 mb-1">Choose avatar</div>
-                {AVATAR_OPTIONS.map((opt) => (
-                  <button
-                    type="button"
-                    key={opt}
-                    onClick={() => { setAvatar(opt); setShowAvatarPicker(false); }}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
-                      avatar === opt
-                        ? 'bg-teal-500/25 border-2 border-teal-400 scale-110'
-                        : 'bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:scale-105'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
+              <div className="absolute top-full mt-2 left-0 bg-[#141920] border border-slate-700 rounded-xl p-3 shadow-2xl z-30 w-56">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-all cursor-pointer mb-3 disabled:opacity-50"
+                >
+                  {isUploadingAvatar ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
+                  {isUploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+                </button>
+                <div className="text-xs font-bold text-slate-400 mb-1">Or pick an icon</div>
+                <div className="flex flex-wrap gap-2">
+                  {AVATAR_ICONS.map((Icon, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => { setAvatar(String(idx)); setShowAvatarPicker(false); }}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        avatar === String(idx) && !isAvatarUrl
+                          ? 'bg-blue-500/25 border-2 border-blue-400 scale-110'
+                          : 'bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:scale-105'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 text-white" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-black text-white truncate">{name}</h1>
+              <h1 className="text-xl font-semibold text-white truncate">{name}</h1>
               {userProfile?.role === 'admin' && (
-                <span className="px-2 py-0.5 bg-teal-500/15 text-teal-400 text-[9px] font-black uppercase tracking-wider rounded border border-teal-500/30">
+                <span className="px-2 py-0.5 bg-blue-500/15 text-blue-400 text-xs font-semibold uppercase tracking-wider rounded border border-blue-500/30">
                   Admin
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-400 truncate">{school || 'No school set'} {region ? `- ${region}` : ''}</p>
-            {bio && <p className="text-[11px] text-slate-500 mt-1 italic">{bio}</p>}
+            {bio && <p className="text-xs text-slate-500 mt-1 italic">{bio}</p>}
           </div>
 
           <div className="text-left sm:text-right shrink-0">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Target Score</span>
-            <span className="font-mono font-black text-2xl text-teal-400">{targetScore}<span className="text-xs text-slate-500">/600</span></span>
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Target Score</span>
+            <span className="font-mono font-semibold text-2xl text-blue-400">{targetScore}<span className="text-xs text-slate-500">/600</span></span>
           </div>
         </div>
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex bg-[#1E293B] p-1 rounded-xl border border-slate-800 max-w-sm mx-auto">
+      <div className="flex bg-[#141920] p-1 rounded-xl border border-slate-800 max-w-sm mx-auto">
         <button
           type="button"
           onClick={() => setActiveViewTab('profile')}
-          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeViewTab === 'profile'
-              ? 'bg-teal-500 text-slate-950 shadow-md'
+              ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -263,9 +341,9 @@ export default function ProfileView({
         <button
           type="button"
           onClick={() => setActiveViewTab('analytics')}
-          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeViewTab === 'analytics'
-              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md'
+              ? 'bg-amber-500 text-white shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -278,49 +356,49 @@ export default function ProfileView({
         <form onSubmit={handleSave} className="space-y-5">
 
           {/* Personal Info */}
-          <div className="bg-[#1E293B] border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div className="bg-[#141920] border border-slate-800 p-5 rounded-2xl space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-800/60">
-              <User className="w-4 h-4 text-teal-400" />
-              <h2 className="font-black text-xs uppercase tracking-wider text-slate-200">Personal Information</h2>
+              <User className="w-4 h-4 text-blue-400" />
+              <h2 className="font-semibold text-xs uppercase tracking-wider text-slate-200">Personal Information</h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Full Name</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Full Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-teal-400 transition-colors"
+                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-400 transition-colors"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Email</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-teal-400 transition-colors"
+                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-400 transition-colors"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">School</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">School</label>
                 <input
                   type="text"
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
                   placeholder="Your high school or prep academy"
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-colors"
+                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Region</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Region</label>
                 <select
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-teal-400 transition-colors cursor-pointer"
+                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-400 transition-colors cursor-pointer"
                 >
                   {REGIONS.map(r => <option key={r} value={r} className="bg-slate-900">{r}</option>)}
                 </select>
@@ -328,27 +406,27 @@ export default function ProfileView({
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Bio</label>
+              <label className="text-xs font-bold text-slate-400 block mb-1.5 uppercase tracking-wider">Bio</label>
               <input
                 type="text"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="A short tagline about your study goals"
-                className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-colors"
+                className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/60 rounded-xl text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors"
               />
             </div>
           </div>
 
           {/* Academic Settings */}
-          <div className="bg-[#1E293B] border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div className="bg-[#141920] border border-slate-800 p-5 rounded-2xl space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-800/60">
               <Target className="w-4 h-4 text-amber-400" />
-              <h2 className="font-black text-xs uppercase tracking-wider text-slate-200">Academic Settings</h2>
+              <h2 className="font-semibold text-xs uppercase tracking-wider text-slate-200">Academic Settings</h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-wider">Stream</label>
+                <label className="text-xs font-bold text-slate-400 block mb-2 uppercase tracking-wider">Stream</label>
                 {userProfile?.role === 'admin' ? (
                   <div className="grid grid-cols-2 gap-2">
                     {(['Natural Science', 'Social Science'] as const).map(s => (
@@ -356,9 +434,9 @@ export default function ProfileView({
                         type="button"
                         key={s}
                         onClick={() => setSelectedStream(s)}
-                        className={`p-3 rounded-xl border font-black text-xs transition-all cursor-pointer ${
+                        className={`p-3 rounded-xl border font-semibold text-xs transition-all cursor-pointer ${
                           selectedStream === s
-                            ? 'bg-teal-500 text-slate-950 border-teal-400 shadow-md'
+                            ? 'bg-blue-600 text-white border-blue-400 shadow-md'
                             : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
                         }`}
                       >
@@ -368,8 +446,8 @@ export default function ProfileView({
                   </div>
                 ) : (
                   <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
-                    <span className="text-teal-400 font-black text-sm">{selectedStream}</span>
-                    <span className="text-[9px] uppercase font-black text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    <span className="text-blue-400 font-semibold text-sm">{selectedStream}</span>
+                    <span className="text-xs uppercase font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                       Locked
                     </span>
                   </div>
@@ -378,8 +456,8 @@ export default function ProfileView({
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Score</label>
-                  <span className="font-mono font-black text-amber-400 text-sm">{targetScore}</span>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Target Score</label>
+                  <span className="font-mono font-semibold text-amber-400 text-sm">{targetScore}</span>
                 </div>
                 <input
                   type="range"
@@ -388,9 +466,9 @@ export default function ProfileView({
                   step={5}
                   value={targetScore}
                   onChange={(e) => setTargetScore(Number(e.target.value))}
-                  className="w-full accent-teal-400 cursor-pointer h-2 bg-slate-900 rounded-lg"
+                  className="w-full accent-blue-400 cursor-pointer h-2 bg-slate-900 rounded-lg"
                 />
-                <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-1">
+                <div className="flex justify-between text-xs font-mono text-slate-500 mt-1">
                   <span>300 (Pass)</span>
                   <span>600 (Top)</span>
                 </div>
@@ -398,14 +476,14 @@ export default function ProfileView({
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-wider">Daily Study Goal</label>
+              <label className="text-xs font-bold text-slate-400 block mb-2 uppercase tracking-wider">Daily Study Goal</label>
               <div className="grid grid-cols-4 gap-2">
                 {[2, 4, 6, 8].map((hrs) => (
                   <button
                     type="button"
                     key={hrs}
                     onClick={() => setDailyGoalHours(hrs)}
-                    className={`p-2.5 rounded-xl border font-mono font-black text-xs transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border font-mono font-semibold text-xs transition-all cursor-pointer ${
                       dailyGoalHours === hrs
                         ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
@@ -419,10 +497,10 @@ export default function ProfileView({
           </div>
 
           {/* Preferences */}
-          <div className="bg-[#1E293B] border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div className="bg-[#141920] border border-slate-800 p-5 rounded-2xl space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-800/60">
               <Sliders className="w-4 h-4 text-indigo-400" />
-              <h2 className="font-black text-xs uppercase tracking-wider text-slate-200">Preferences</h2>
+              <h2 className="font-semibold text-xs uppercase tracking-wider text-slate-200">Preferences</h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -434,11 +512,11 @@ export default function ProfileView({
                 <div className="flex items-center gap-3">
                   {notifications ? <Bell className="w-4 h-4 text-emerald-400" /> : <BellOff className="w-4 h-4 text-slate-500" />}
                   <div className="text-left">
-                    <div className="font-black text-xs text-white">Notifications</div>
-                    <div className="text-[10px] text-slate-400">{notifications ? 'Enabled' : 'Muted'}</div>
+                    <div className="font-semibold text-xs text-white">Notifications</div>
+                    <div className="text-xs text-slate-400">{notifications ? 'Enabled' : 'Muted'}</div>
                   </div>
                 </div>
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded ${notifications ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${notifications ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
                   {notifications ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -451,22 +529,98 @@ export default function ProfileView({
                 <div className="flex items-center gap-3">
                   {theme === 'dark' ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
                   <div className="text-left">
-                    <div className="font-black text-xs text-white">Theme</div>
-                    <div className="text-[10px] text-slate-400">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</div>
+                    <div className="font-semibold text-xs text-white">Theme</div>
+                    <div className="text-xs text-slate-400">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</div>
                   </div>
                 </div>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
                   {theme}
                 </span>
               </button>
             </div>
           </div>
 
-          {/* Save */}
+          {/* Subscription Status */}
+          <div className="bg-[#141920] border border-slate-800 p-5 rounded-2xl space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-800/60">
+              <Award className="w-4 h-4 text-emerald-400" />
+              <h2 className="font-semibold text-xs uppercase tracking-wider text-slate-200">Subscription Status</h2>
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 bg-slate-900 rounded-xl border border-slate-800">
+              <div className="flex items-center gap-3">
+                {userProfile?.isPremium ? (
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-emerald-400" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
+                    <User className="w-5 h-5 text-slate-400" />
+                  </div>
+                )}
+                <div>
+                  <div className="font-semibold text-xs text-white">
+                    {userProfile?.isPremium ? 'Pro Member' : 'Free Plan'}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {userProfile?.isPremium && userProfile?.premiumExpiresAt
+                      ? `Expires: ${new Date(userProfile.premiumExpiresAt).toLocaleDateString()}`
+                      : userProfile?.isPremium
+                        ? 'Lifetime access'
+                        : '10 questions/day limit'}
+                  </div>
+                </div>
+              </div>
+              {!userProfile?.isPremium && (
+                <span className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg cursor-pointer" onClick={() => onTabChange?.('upgrade')}>
+                  Upgrade
+                </span>
+              )}
+            </div>
+
+            {/* Referral / Share */}
+            <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Gift className="w-4 h-4 text-amber-400" />
+                <span className="font-semibold text-xs text-white">Refer a Friend</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-3">Share AceMatric with friends and help them ace their matric exam!</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const url = window.location.origin;
+                    const text = 'Check out AceMatric - the best Ethiopian matric exam prep platform!';
+                    if (navigator.share) {
+                      navigator.share({ title: 'AceMatric', text, url });
+                    } else {
+                      navigator.clipboard.writeText(`${text}\n${url}`);
+                      setIsSavedToast(true);
+                      setTimeout(() => setIsSavedToast(false), 3000);
+                    }
+                  }}
+                  className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Share2 className="w-3 h-3" />
+                  Share
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.origin);
+                    setIsSavedToast(true);
+                    setTimeout(() => setIsSavedToast(false), 3000);
+                  }}
+                  className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
           <div className="flex items-center justify-end gap-3">
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 font-black text-xs shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+              className="px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold text-xs shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               Save Profile
@@ -474,23 +628,23 @@ export default function ProfileView({
           </div>
         </form>
       ) : (
-        <div className="space-y-5 animate-fadeIn">
+        <div className="space-y-5">
 
           {/* Analytics Header */}
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5">
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-[9px] font-extrabold uppercase tracking-widest text-amber-400">
+                  <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-xs font-semibold uppercase tracking-widest text-amber-400">
                     Pro Analytics
                   </span>
                 </div>
-                <h2 className="text-base font-black text-white">Study Analytics & Insights</h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">Monitor coverage, focus balance, and session history</p>
+                <h2 className="text-base font-semibold text-white">Study Analytics & Insights</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Monitor coverage, focus balance, and session history</p>
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-black text-slate-400">SYNCED</span>
+                <span className="text-xs font-semibold text-slate-400">SYNCED</span>
               </div>
             </div>
           </div>
@@ -498,7 +652,7 @@ export default function ProfileView({
           {/* Metrics Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Total Study', value: `${analyticsData.totalMinsCombined}m`, icon: Clock, color: 'text-teal-400', bg: 'bg-teal-500/10 border-teal-500/20' },
+              { label: 'Total Study', value: `${analyticsData.totalMinsCombined}m`, icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
               { label: 'Coverage', value: `${Math.round((studiedChapters.length / (totalChaptersInSyllabus || 1)) * 100)}%`, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
               { label: 'Sessions', value: analyticsData.totalSessionsCount, icon: Activity, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
               { label: 'XP Earned', value: `+${(analyticsData.studySessionsCount * 50) + (analyticsData.practiceSessionsCount * 40) + (analyticsData.simulationSessionsCount * 120)}`, icon: Award, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
@@ -506,17 +660,17 @@ export default function ProfileView({
               <div key={label} className={`rounded-xl border p-4 ${bg}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <Icon className={`w-4 h-4 ${color}`} />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
                 </div>
-                <div className={`text-xl font-mono font-black ${color}`}>{value}</div>
+                <div className={`text-xl font-mono font-semibold ${color}`}>{value}</div>
               </div>
             ))}
           </div>
 
           {/* Subject Focus */}
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5">
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-800/60 mb-4">
-              <BarChart2 className="w-4 h-4 text-teal-400" />
+              <BarChart2 className="w-4 h-4 text-blue-400" />
               <h3 className="font-bold text-xs text-white">Focus per Subject</h3>
             </div>
 
@@ -533,7 +687,7 @@ export default function ProfileView({
                       </div>
                       <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
                         <div
-                          className="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full transition-all duration-700"
+                          className="bg-slate-600 h-full rounded-full transition-all duration-700"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -547,30 +701,30 @@ export default function ProfileView({
 
             <div className="mt-4 p-3 bg-slate-900/50 border border-slate-800/60 rounded-xl">
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[10px] font-black text-amber-400">AI Balance Tip</span>
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs font-semibold text-blue-400">Study Balance Recommendation</span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">{analyticsData.balanceAdvice}</p>
+              <p className="text-xs text-slate-400 leading-relaxed">{analyticsData.balanceAdvice}</p>
             </div>
           </div>
 
           {/* Pro Audit */}
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5">
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-800/60">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 bg-teal-400/10 border border-teal-400/30 rounded text-[9px] font-extrabold uppercase tracking-widest text-teal-400">
-                    Gemini AI
+                  <span className="px-2 py-0.5 bg-blue-400/10 border border-blue-400/30 rounded text-xs font-semibold uppercase tracking-widest text-blue-400">
+                    Diagnostic
                   </span>
                 </div>
-                <h3 className="font-black text-sm text-white">Study Audit & Strategy</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">AI-powered diagnostic of your study habits and target score plan</p>
+                <h3 className="font-semibold text-sm text-white">Study Audit & Strategy</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Personalized diagnostic of your study habits and target score plan</p>
               </div>
               <button
                 type="button"
                 disabled={isAuditing}
                 onClick={handleRunAudit}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 font-black text-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-teal-500/10 disabled:opacity-50 shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 shadow-sm disabled:opacity-50 shrink-0"
               >
                 {isAuditing ? (
                   <>
@@ -590,10 +744,10 @@ export default function ProfileView({
               <div className="mt-4 bg-slate-900/40 border border-slate-800/60 rounded-xl p-4 text-slate-300 leading-relaxed space-y-3 max-h-96 overflow-y-auto">
                 {auditReport.split('\n\n').map((paragraph, pIdx) => {
                   if (paragraph.startsWith('###')) {
-                    return <h3 key={pIdx} className="text-sm font-black text-white mt-3 border-b border-slate-800 pb-1">{paragraph.replace('###', '').trim()}</h3>;
+                    return <h3 key={pIdx} className="text-sm font-semibold text-white mt-3 border-b border-slate-800 pb-1">{paragraph.replace('###', '').trim()}</h3>;
                   }
                   if (paragraph.startsWith('####')) {
-                    return <h4 key={pIdx} className="text-xs font-black text-teal-300 mt-2">{paragraph.replace('####', '').trim()}</h4>;
+                    return <h4 key={pIdx} className="text-xs font-semibold text-blue-300 mt-2">{paragraph.replace('####', '').trim()}</h4>;
                   }
                   if (paragraph.startsWith('-') || paragraph.startsWith('*')) {
                     return (
@@ -610,13 +764,13 @@ export default function ProfileView({
             ) : (
               <div className="mt-4 py-8 text-center bg-slate-900/30 border border-slate-800/60 border-dashed rounded-xl">
                 <Sparkles className="w-6 h-6 text-slate-600 mx-auto mb-2" />
-                <p className="text-xs text-slate-500">Click "Generate Audit" to get AI analysis of your study plan</p>
+                <p className="text-xs text-slate-500">Click "Generate Audit" to analyze your study plan</p>
               </div>
             )}
           </div>
 
           {/* Session History */}
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5">
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-800/60">
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-indigo-400" />
@@ -627,9 +781,9 @@ export default function ProfileView({
                   <button
                     key={f}
                     onClick={() => setAnalyticsFilter(f)}
-                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                       analyticsFilter === f
-                        ? 'bg-slate-800 text-teal-300 border border-teal-500/20'
+                        ? 'bg-slate-800 text-blue-300 border border-blue-500/20'
                         : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -645,21 +799,21 @@ export default function ProfileView({
                 .map((log, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl hover:border-slate-700/60 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${
-                        log.type === 'study' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' :
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${
+                        log.type === 'study' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                         log.type === 'practice' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
                         'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                       }`}>
                         {log.type === 'study' ? 'S' : log.type === 'practice' ? 'P' : 'M'}
                       </div>
                       <div>
-                        <div className="text-xs font-black text-white">{log.subject}</div>
-                        <div className="text-[10px] text-slate-500">{log.date || 'N/A'} &middot; {log.type}</div>
+                        <div className="text-xs font-semibold text-white">{log.subject}</div>
+                        <div className="text-xs text-slate-500">{log.date || 'N/A'} &middot; {log.type}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs font-mono font-black text-white">+{log.durationMinutes}m</div>
-                      <div className="text-[9px] text-emerald-400 font-black">+{log.durationMinutes * (log.type === 'study' ? 2 : log.type === 'practice' ? 3 : 5)} XP</div>
+                      <div className="text-xs font-mono font-semibold text-white">+{log.durationMinutes}m</div>
+                      <div className="text-xs text-emerald-400 font-semibold">+{log.durationMinutes * (log.type === 'study' ? 2 : log.type === 'practice' ? 3 : 5)} XP</div>
                     </div>
                   </div>
                 ))}
@@ -674,8 +828,8 @@ export default function ProfileView({
 
       {/* Danger Zone */}
       <div className="bg-[#111827] rounded-2xl border border-rose-500/20 p-5 space-y-3">
-        <h3 className="text-xs font-black text-rose-400 uppercase tracking-wider">Danger Zone</h3>
-        <p className="text-[11px] text-slate-500">Permanently delete your account and all associated data. This action cannot be undone.</p>
+        <h3 className="text-xs font-semibold text-rose-400 uppercase tracking-wider">Danger Zone</h3>
+        <p className="text-xs text-slate-500">Permanently delete your account and all associated data. This action cannot be undone.</p>
         <button
           onClick={async () => {
             if (!confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) return;
@@ -692,7 +846,7 @@ export default function ProfileView({
               }
             } catch {}
           }}
-          className="px-4 py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-black rounded-xl hover:bg-rose-500/25 transition-colors cursor-pointer"
+          className="px-4 py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-xl hover:bg-rose-500/25 transition-colors cursor-pointer"
         >
           Delete My Account
         </button>

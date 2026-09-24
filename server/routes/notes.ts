@@ -1,11 +1,9 @@
 import { Router } from 'express';
-import { supabase, formatSupabaseError } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth } from '../middleware';
 import { validateBody, toggleChapterSchema } from '../validation';
 
 const router = Router();
-
-// ── Saved Chapters (offline bookmarking) ─────────────────────────────────────
 
 /** GET /api/notes/saved-chapters */
 router.get('/saved-chapters', requireAuth, async (req, res) => {
@@ -58,8 +56,6 @@ router.post('/saved-chapters', requireAuth, validateBody(toggleChapterSchema), a
     res.status(500).json({ error: formatSupabaseError(err) });
   }
 });
-
-// ── Studied Chapters ─────────────────────────────────────────────────────────
 
 /** GET /api/notes/studied-chapters */
 router.get('/studied-chapters', requireAuth, async (req, res) => {

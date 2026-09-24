@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { supabase, formatSupabaseError, snakeToCamel, camelToSnake } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError, snakeToCamel, camelToSnake } from '../db';
 import {
   generateToken, generateRefreshToken, hashRefreshToken, getRefreshTokenExpiry,
   REFRESH_TOKEN_EXPIRY_DAYS,
   requireAuth, authLimiter, getAdminEmails
 } from '../middleware';
 import { validateBody, signupSchema, signinSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema } from '../validation';
-import { sendEmail, renderRecoveryEmail } from '../email';
+import { sendEmail, renderRecoveryEmail, renderWelcomeEmail } from '../email';
+import { createDefaultProfile } from '../../shared/profileDefaults';
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -22,8 +23,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function isValidEmail(email: string): boolean {
   return EMAIL_REGEX.test(email);
 }
-
-// ── Refresh Token Helpers ────────────────────────────────────────────────────
 
 function setRefreshTokenCookie(res: any, token: string): void {
   res.cookie('acematric_refresh_token', token, {
@@ -89,39 +88,6 @@ async function revokeAllUserRefreshTokens(userEmail: string): Promise<void> {
     .is('revoked_at', null);
 }
 
-function createDefaultProfile(email: string, name: string, stream?: string, role?: string) {
-  return {
-    email,
-    name,
-    stream: stream || 'Natural Science',
-    isPremium: false,
-    streakDays: 0,
-    dailyQuestionsUsed: 0,
-    dailyQuestionsCap: 10,
-    examReadinessScore: 0,
-    subjectsPerformance: {},
-    savedQuestionIds: [],
-    completedMockIds: [],
-    telegramConnected: false,
-    studyStyle: 'Practice / Quiz',
-    dailyHours: 3,
-    avatar: '🎓',
-    bio: 'Consistency over intensity. Aiming for Top 1% national rank.',
-    school: 'Ethiopian School',
-    region: 'Addis Ababa',
-    customRoadmap: '',
-    weakSubjects: ['Physics', 'Mathematics'],
-    targetScore: 520,
-    role: role || 'student',
-    dailyProgressDate: '',
-    studiedChapters: [],
-    proStudyAudit: '',
-    activeGrade: 12,
-  };
-}
-
-// ── POST /api/auth/signup ────────────────────────────────────────────────────
-
 router.post('/signup', authLimiter, validateBody(signupSchema), async (req, res) => {
   try {
     const { email, password, name, stream } = req.body;
@@ -136,7 +102,7 @@ router.post('/signup', authLimiter, validateBody(signupSchema), async (req, res)
       .maybeSingle();
 
     if (existingUser) {
-      return res.status(409).json({ error: 'If an account exists, it has already been registered. Please try logging in or resetting your password.' });
+      return res.status(409).json({ error: 'An account with this email already exists. Try logging in instead.' });
     }
 
     const { error: insertError } = await supabase
@@ -144,29 +110,68 @@ router.post('/signup', authLimiter, validateBody(signupSchema), async (req, res)
       .insert([{ email: normalizedEmail, password: hashedPassword, created_at: new Date().toISOString() }]);
 
     if (insertError) {
-      return res.status(500).json({ error: formatSupabaseError(insertError) });
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
     }
 
-    const defaultProfile = createDefaultProfile(normalizedEmail, name, stream, userRole);
+    const defaultProfile = createDefaultProfile({ email: normalizedEmail, name, stream, role: userRole });
     const { error: profileError } = await supabase
       .from('student_profiles')
       .upsert([camelToSnake(defaultProfile)]);
 
     if (profileError) {
       await supabase.from('users_auth').delete().eq('email', normalizedEmail);
-      return res.status(500).json({ error: `Failed to create profile: ${formatSupabaseError(profileError)}` });
+      return res.status(500).json({ error: 'Failed to create profile. Please try again.' });
     }
 
     const token = generateToken({ email: normalizedEmail, name, role: userRole });
     const refreshToken = await issueRefreshToken(res, normalizedEmail);
     if (!refreshToken) return;
-    res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token });
+
+    // Send verification email
+    let verificationCode: string | null = null;
+    try {
+      const code = generateVerificationCode();
+      const codeHash = await bcrypt.hash(code, 10);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      await supabase
+        .from('users_auth')
+        .update({ verification_code: codeHash, verification_expires_at: expiresAt })
+        .eq('email', normalizedEmail);
+
+      const appName = process.env.APP_NAME || 'AceMatric';
+      const emailSent = await sendEmail({
+        to: normalizedEmail,
+        subject: `${appName} — Verify your email`,
+        html: renderVerificationEmail(code, appName),
+      });
+
+      // Only return code in development when email wasn't sent
+      if (!emailSent && process.env.NODE_ENV !== 'production') {
+        verificationCode = code;
+        console.log(`[auth] Dev mode — verification code for ${normalizedEmail}: ${code}`);
+      }
+    } catch (emailErr) {
+      console.error('[auth] Failed to send verification email:', emailErr);
+    }
+
+    // Send welcome email (best effort)
+    try {
+      const appName = process.env.APP_NAME || 'AceMatric';
+      await sendEmail({
+        to: normalizedEmail,
+        subject: `Welcome to ${appName}!`,
+        html: renderWelcomeEmail(name, appName),
+      });
+    } catch (emailErr) {
+      console.error('[auth] Failed to send welcome email:', emailErr);
+    }
+
+    res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token, emailVerified: false });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
-
-// ── POST /api/auth/signin ────────────────────────────────────────────────────
 
 router.post('/signin', authLimiter, validateBody(signinSchema), async (req, res) => {
   try {
@@ -175,15 +180,51 @@ router.post('/signin', authLimiter, validateBody(signinSchema), async (req, res)
 
     const { data: matchedUser, error: authError } = await supabase
       .from('users_auth')
-      .select('email,password,created_at')
+      .select('email,password,created_at,failed_attempts,locked_until,email_verified')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
-    if (authError) return res.status(500).json({ error: formatSupabaseError(authError) });
-    if (!matchedUser) return res.status(401).json({ error: 'Invalid email or password' });
+    if (authError) return res.status(500).json({ error: 'Something went wrong on our end. Try again in a bit.' });
+    if (!matchedUser) return res.status(401).json({ error: 'Wrong email or password.' });
+
+    // Check account lockout
+    if (matchedUser.locked_until && new Date(matchedUser.locked_until) > new Date()) {
+      const remainingMin = Math.ceil((new Date(matchedUser.locked_until).getTime() - Date.now()) / 60000);
+      return res.status(423).json({ error: `Account locked due to too many failed attempts. Try again in ${remainingMin} min.` });
+    }
 
     const passwordValid = await bcrypt.compare(password, matchedUser.password);
-    if (!passwordValid) return res.status(401).json({ error: 'Invalid email or password' });
+    if (!passwordValid) {
+      const attempts = (matchedUser.failed_attempts || 0) + 1;
+      const maxAttempts = 10;
+      const lockDuration = 15 * 60 * 1000; // 15 minutes
+
+      const updateData: Record<string, any> = { failed_attempts: attempts };
+      if (attempts >= maxAttempts) {
+        updateData.locked_until = new Date(Date.now() + lockDuration).toISOString();
+      }
+
+      await supabase
+        .from('users_auth')
+        .update(updateData)
+        .eq('email', normalizedEmail);
+
+      return res.status(401).json({ error: 'Wrong email or password.' });
+    }
+
+    // Reset failed attempts on successful password check
+    await supabase
+      .from('users_auth')
+      .update({ failed_attempts: 0, locked_until: null })
+      .eq('email', normalizedEmail);
+
+    // Auto-verify existing users who haven't been verified yet
+    if (!matchedUser.email_verified) {
+      await supabase
+        .from('users_auth')
+        .update({ email_verified: true, verification_code: null, verification_expires_at: null })
+        .eq('email', normalizedEmail);
+    }
 
     const { data: profile, error: profileError } = await supabase
       .from('student_profiles')
@@ -191,34 +232,32 @@ router.post('/signin', authLimiter, validateBody(signinSchema), async (req, res)
       .eq('email', normalizedEmail)
       .maybeSingle();
 
-    if (profileError) return res.status(500).json({ error: formatSupabaseError(profileError) });
+    if (profileError) return res.status(500).json({ error: 'An error occurred. Please try again.' });
 
     if (!profile) {
     const userRole = getAdminEmails().includes(normalizedEmail) ? 'admin' : 'student';
-      const defaultProfile = createDefaultProfile(normalizedEmail, normalizedEmail.split('@')[0], undefined, userRole);
+      const defaultProfile = createDefaultProfile({ email: normalizedEmail, name: normalizedEmail.split('@')[0], role: userRole });
       const { error: recreateError } = await supabase
         .from('student_profiles')
         .upsert([camelToSnake(defaultProfile)]);
       if (recreateError) {
-        return res.status(500).json({ error: `Profile recreation failed: ${formatSupabaseError(recreateError)}` });
+        return res.status(500).json({ error: 'Failed to create profile. Please try again.' });
       }
       const token = generateToken({ email: normalizedEmail, name: defaultProfile.name, role: userRole });
       const refreshToken = await issueRefreshToken(res, normalizedEmail);
       if (!refreshToken) return;
-      return res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token });
+      return res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token, emailVerified: true });
     }
 
     const userRole = (profile as any).role || 'student';
     const token = generateToken({ email: normalizedEmail, name: profile.name, role: userRole });
     const refreshToken = await issueRefreshToken(res, normalizedEmail);
     if (!refreshToken) return;
-    res.json({ success: true, profile: { ...snakeToCamel(profile), role: userRole }, token });
+    res.json({ success: true, profile: { ...snakeToCamel(profile), role: userRole }, token, emailVerified: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
-
-// ── POST /api/auth/forgot-password ───────────────────────────────────────────
 
 router.post('/forgot-password', authLimiter, validateBody(forgotPasswordSchema), async (req, res) => {
   try {
@@ -268,8 +307,6 @@ router.post('/forgot-password', authLimiter, validateBody(forgotPasswordSchema),
   }
 });
 
-// ── POST /api/auth/reset-password ────────────────────────────────────────────
-
 router.post('/reset-password', authLimiter, validateBody(resetPasswordSchema), async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
@@ -311,8 +348,6 @@ router.post('/reset-password', authLimiter, validateBody(resetPasswordSchema), a
   }
 });
 
-// ── POST /api/auth/verify-token ──────────────────────────────────────────────
-
 router.post('/verify-token', requireAuth, async (req, res) => {
   try {
     const { data: profile } = await supabase
@@ -328,14 +363,12 @@ router.post('/verify-token', requireAuth, async (req, res) => {
   }
 });
 
-// ── POST /api/auth/change-password ───────────────────────────────────────────
-
 router.post('/change-password', requireAuth, validateBody(changePasswordSchema), async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
     if (currentPassword === newPassword) {
-      return res.status(400).json({ error: 'New password must be different from current password' });
+      return res.status(400).json({ error: 'New password has to be different from your current one.' });
     }
 
     const normalizedEmail = normalizeEmail(req.user!.email);
@@ -350,7 +383,7 @@ router.post('/change-password', requireAuth, validateBody(changePasswordSchema),
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const passwordValid = await bcrypt.compare(currentPassword, user.password);
-    if (!passwordValid) return res.status(401).json({ error: 'Current password is incorrect' });
+    if (!passwordValid) return res.status(401).json({ error: 'That is not your current password.' });
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
     const { error: updateError } = await supabase
@@ -366,10 +399,7 @@ router.post('/change-password', requireAuth, validateBody(changePasswordSchema),
   }
 });
 
-// ── POST /api/auth/refresh ───────────────────────────────────────────────────
-// Rotate the refresh token: validate current cookie token, issue new access + refresh token pair
-
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
   try {
     const refreshToken = req.cookies?.acematric_refresh_token;
     if (!refreshToken) {
@@ -434,9 +464,7 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-// ── POST /api/auth/logout ────────────────────────────────────────────────────
-
-router.post('/logout', async (req, res) => {
+router.post('/logout', authLimiter, async (req, res) => {
   try {
     const refreshToken = req.cookies?.acematric_refresh_token;
     if (refreshToken) {
@@ -447,6 +475,143 @@ router.post('/logout', async (req, res) => {
   } catch {
     clearRefreshTokenCookie(res);
     res.json({ success: true, message: 'Logged out successfully' });
+  }
+});
+
+// ─── EMAIL VERIFICATION ──────────────────────────────────────────
+
+function generateVerificationCode(): string {
+  return String(crypto.randomInt(100000, 999999));
+}
+
+function renderVerificationEmail(code: string, appName = 'AceMatric'): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;">
+  <div style="max-width:480px;margin:40px auto;background:#1e293b;border-radius:16px;padding:32px;border:1px solid #334155;color:#f1f5f9;font-family:sans-serif;">
+    <h1 style="font-size:20px;margin:0 0 12px;color:#2dd4bf;">Verify Your Email</h1>
+    <p style="color:#94a3b8;font-size:14px;margin:0 0 20px;">Enter this 6-digit code to verify your email address:</p>
+    <div style="text-align:center;margin:24px 0;">
+      <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#f1f5f9;background:#334155;padding:16px 32px;border-radius:12px;display:inline-block;">${code}</span>
+    </div>
+    <p style="color:#64748b;font-size:12px;margin:0;">This code expires in 10 minutes. If you didn't create an account, ignore this email.</p>
+    <p style="color:#475569;font-size:11px;margin:20px 0 0;">© ${new Date().getFullYear()} ${appName}</p>
+  </div>
+</body>
+</html>`;
+}
+
+// POST /api/auth/send-verification — send or resend verification code
+router.post('/send-verification', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+    const normalizedEmail = normalizeEmail(email);
+
+    const { data: user, error: fetchError } = await supabase
+      .from('users_auth')
+      .select('email')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (fetchError) return res.status(500).json({ error: 'Something went wrong. Try again.' });
+    if (!user) return res.status(404).json({ error: 'No account found with this email.' });
+
+    const code = generateVerificationCode();
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+
+    await supabase
+      .from('users_auth')
+      .update({
+        verification_code: codeHash,
+        verification_expires_at: expiresAt,
+      })
+      .eq('email', normalizedEmail);
+
+    const appName = process.env.APP_NAME || 'AceMatric';
+    await sendEmail({
+      to: normalizedEmail,
+      subject: `${appName} — Verify your email`,
+      html: renderVerificationEmail(code, appName),
+    });
+
+    // Only return code in development when email wasn't sent
+    const devCode = process.env.NODE_ENV !== 'production' ? code : null;
+    if (devCode) console.log(`[auth] Dev mode — verification code for ${normalizedEmail}: ${code}`);
+
+    res.json({ success: true, message: 'Verification code sent.', devCode });
+  } catch (err: any) {
+    console.error('[auth] Send verification error:', err);
+    res.status(500).json({ error: 'Failed to send verification code.' });
+  }
+});
+
+// POST /api/auth/verify-email — verify the 6-digit code
+router.post('/verify-email', authLimiter, async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ error: 'Email and code are required.' });
+    if (code.length !== 6) return res.status(400).json({ error: 'Code must be 6 digits.' });
+
+    const normalizedEmail = normalizeEmail(email);
+
+    const { data: user, error: fetchError } = await supabase
+      .from('users_auth')
+      .select('email, verification_code, verification_expires_at')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (fetchError) return res.status(500).json({ error: 'Something went wrong. Try again.' });
+    if (!user) return res.status(404).json({ error: 'No account found.' });
+
+    if (!user.verification_code || !user.verification_expires_at) {
+      return res.status(400).json({ error: 'No verification code found. Please request a new one.' });
+    }
+
+    if (new Date(user.verification_expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Code expired. Please request a new one.' });
+    }
+
+    const codeValid = await bcrypt.compare(code, user.verification_code);
+    if (!codeValid) {
+      return res.status(400).json({ error: 'Invalid code. Please try again.' });
+    }
+
+    await supabase
+      .from('users_auth')
+      .update({
+        email_verified: true,
+        verification_code: null,
+        verification_expires_at: null,
+      })
+      .eq('email', normalizedEmail);
+
+    res.json({ success: true, message: 'Email verified successfully.' });
+  } catch (err: any) {
+    console.error('[auth] Verify email error:', err);
+    res.status(500).json({ error: 'Failed to verify email.' });
+  }
+});
+
+// GET /api/auth/verification-status — check if email is verified
+router.get('/verification-status', requireAuth, async (req, res) => {
+  try {
+    const email = (req as any).user?.email;
+    if (!email) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const { data: user } = await supabase
+      .from('users_auth')
+      .select('email_verified')
+      .eq('email', email)
+      .maybeSingle();
+
+    res.json({ success: true, verified: user?.email_verified || false });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to check verification status.' });
   }
 });
 

@@ -17,11 +17,13 @@ import {
   RoomState,
   PaymentRequest,
   PaymentMethod,
+  LeaderboardResponse,
+  AdminStats,
+  AdminAnalyticsResponse,
 } from '../types';
 
-// ── Auth Token ───────────────────────────────────────────────────────────────
-
 import { getAccessToken, setAccessToken } from './authToken';
+import { logger } from './logger';
 
 function authHeaders(): Record<string, string> {
   const token = getAccessToken();
@@ -33,9 +35,8 @@ function clearAuthState(): void {
   window.dispatchEvent(new Event('auth:unauthorized'));
 }
 
-// ── Token Refresh ────────────────────────────────────────────────────────────
-
 let refreshPromise: Promise<string | null> | null = null;
+let refreshCooldown: ReturnType<typeof setTimeout> | null = null;
 
 async function attemptTokenRefresh(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
@@ -52,15 +53,19 @@ async function attemptTokenRefresh(): Promise<string | null> {
       return null;
     } catch {
       return null;
-    } finally {
-      refreshPromise = null;
     }
   })();
 
-  return refreshPromise;
+  try {
+    return await refreshPromise;
+  } finally {
+    // Keep the promise cached briefly to prevent concurrent refresh attempts
+    refreshCooldown = setTimeout(() => {
+      refreshPromise = null;
+      refreshCooldown = null;
+    }, 1000);
+  }
 }
-
-// ── API Client ───────────────────────────────────────────────────────────────
 
 async function api<T = unknown>(path: string, options?: RequestInit, retries = 1): Promise<T> {
   let lastError: Error | null = null;
@@ -108,52 +113,16 @@ async function api<T = unknown>(path: string, options?: RequestInit, retries = 1
         throw new Error(err.error || `Request failed (${res.status})`);
       }
       return res.json();
-    } catch (err: any) {
-      lastError = err;
-      if (err.message === 'UNAUTHORIZED' || attempt === retries) throw err;
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (lastError.message === 'UNAUTHORIZED' || attempt === retries) throw lastError;
       await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
     }
   }
   throw lastError;
 }
 
-// ── Storage Upload Helpers ───────────────────────────────────────────────────
-
-async function uploadToStorage(bucket: string, _path: string, file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('bucket', bucket);
-
-  const res = await fetch('/api/storage/upload', {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-    credentials: 'include',
-  });
-  if (res.status === 401) {
-    clearAuthState();
-    throw new Error('UNAUTHORIZED');
-  }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Upload failed (${res.status})`);
-  }
-  const data = await res.json();
-  return data.url;
-}
-
-async function deleteFromStorage(bucket: string, path: string): Promise<void> {
-  await api('/api/storage/delete', {
-    method: 'POST',
-    body: JSON.stringify({ bucket, path }),
-  });
-}
-
-// ── Public API ───────────────────────────────────────────────────────────────
-
 export const db = {
-  // ── Auth ─────────────────────────────────────────────────────────────────
-
   async signup(email: string, password: string, name: string, stream?: string): Promise<AuthSignupResponse> {
     return api<AuthSignupResponse>('/api/auth/signup', {
       method: 'POST',
@@ -171,7 +140,9 @@ export const db = {
   async logout(): Promise<void> {
     try {
       await api('/api/auth/logout', { method: 'POST' });
-    } catch { /* best effort */ }
+    } catch (err) {
+      logger.error('Logout failed', err);
+    }
     clearAuthState();
   },
 
@@ -189,11 +160,16 @@ export const db = {
     });
   },
 
+  async appleSignin(idToken: string, fullName?: string): Promise<AuthSigninResponse> {
+    return api<AuthSigninResponse>('/api/auth/apple', {
+      method: 'POST',
+      body: JSON.stringify({ idToken, fullName }),
+    });
+  },
+
   async verifyToken(): Promise<AuthVerifyResponse> {
     return api<AuthVerifyResponse>('/api/auth/verify-token', { method: 'POST' });
   },
-
-  // ── Profile ──────────────────────────────────────────────────────────────
 
   async saveStudentProfile(profile: UserProfile): Promise<{ success: true }> {
     return api<{ success: true }>('/api/profile', { method: 'POST', body: JSON.stringify(profile) });
@@ -206,8 +182,6 @@ export const db = {
       return null;
     }
   },
-
-  // ── Saved / Studied Chapters ─────────────────────────────────────────────
 
   async getSavedChapters(): Promise<string[]> {
     try {
@@ -233,19 +207,15 @@ export const db = {
   },
 
   async toggleStudiedChapter(chapterKey: string): Promise<string[]> {
-    return api<string[]>('/api/notes/saved-chapters', {
+    return api<string[]>('/api/notes/studied-chapters', {
       method: 'POST',
       body: JSON.stringify({ chapterKey }),
     });
   },
 
-  // ── Contact ──────────────────────────────────────────────────────────────
-
   async saveContactMessage(msg: ContactMessage): Promise<{ success: true }> {
     return api<{ success: true }>('/api/contact', { method: 'POST', body: JSON.stringify(msg) });
   },
-
-  // ── Content ─────────────────────────────────────────────────────────────
 
   async getChapterContent(
     grade: number,
@@ -259,18 +229,6 @@ export const db = {
     });
     return api<ChapterContent>(`/api/content?${params.toString()}`);
   },
-
-  // ── Storage ─────────────────────────────────────────────────────────────
-
-  async uploadImage(bucket: string, path: string, file: File): Promise<string> {
-    return uploadToStorage(bucket, path, file);
-  },
-
-  async deleteImage(bucket: string, path: string): Promise<void> {
-    return deleteFromStorage(bucket, path);
-  },
-
-  // ── Session History ─────────────────────────────────────────────────────
 
   async getSessionHistory(): Promise<SessionHistoryEntry[]> {
     try {
@@ -290,8 +248,6 @@ export const db = {
   async clearSessionHistory(): Promise<void> {
     await api('/api/session-history', { method: 'DELETE' });
   },
-
-  // ── Daily Progress ──────────────────────────────────────────────────────
 
   async getDailyProgress(stream: string, date: string): Promise<DailyProgress | null> {
     try {
@@ -315,8 +271,6 @@ export const db = {
     return api<{ success: true }>('/api/daily-progress', { method: 'POST', body: JSON.stringify(data) });
   },
 
-  // ── Questions (Admin) ───────────────────────────────────────────────────
-
   async getQuestions(filters?: { subject?: string; stream?: string; questionType?: string }): Promise<PracticeQuestion[]> {
     try {
       const params = new URLSearchParams();
@@ -324,7 +278,8 @@ export const db = {
       if (filters?.stream) params.set('stream', filters.stream);
       if (filters?.questionType) params.set('questionType', filters.questionType);
       const qs = params.toString();
-      return await api<PracticeQuestion[]>(`/api/questions${qs ? `?${qs}` : ''}`);
+      const res = await api<{ data: PracticeQuestion[] }>(`/api/questions${qs ? `?${qs}` : ''}`);
+      return res.data || [];
     } catch {
       return [];
     }
@@ -341,8 +296,6 @@ export const db = {
   async deleteQuestion(id: string): Promise<{ success: true }> {
     return api<{ success: true }>(`/api/questions/${id}`, { method: 'DELETE' });
   },
-
-  // ── Mock Exams ──────────────────────────────────────────────────────────
 
   async getMockExams(filters?: { subject?: string; stream?: string }): Promise<MockExam[]> {
     try {
@@ -367,8 +320,6 @@ export const db = {
   async updateMockExam(id: string, exam: Partial<MockExam>): Promise<{ success: true }> {
     return api<{ success: true }>(`/api/mock-exams/${id}`, { method: 'PUT', body: JSON.stringify(exam) });
   },
-
-  // ── Past Exams (CMS) ─────────────────────────────────────────────────────
 
   async getPastExams(filters?: { subject?: string; yearEC?: string }): Promise<any[]> {
     try {
@@ -421,8 +372,6 @@ export const db = {
     return api<any[]>(`/api/past-exam-manage/${id}/versions`);
   },
 
-  // ── Quizzes (CMS) ────────────────────────────────────────────────────────
-
   async getQuizzesManage(filters?: { subject?: string; grade?: number; status?: string; search?: string }): Promise<any[]> {
     try {
       const params = new URLSearchParams();
@@ -453,8 +402,6 @@ export const db = {
     return api<{ success: true }>(`/api/quiz-manage/${encodeURIComponent(subject)}/${grade}/${chapter}`, { method: 'DELETE' });
   },
 
-  // ── Notifications ───────────────────────────────────────────────────────
-
   async getNotifications(email: string): Promise<ServerNotification[]> {
     try {
       return await api<ServerNotification[]>(`/api/notifications?email=${encodeURIComponent(email)}`);
@@ -484,8 +431,6 @@ export const db = {
     });
   },
 
-  // ── Gamification ────────────────────────────────────────────────────────
-
   async updateGamification(xp: number, completedMilestones: string[]): Promise<{ success: true }> {
     return api<{ success: true }>('/api/profile/gamification', {
       method: 'POST',
@@ -493,11 +438,10 @@ export const db = {
     });
   },
 
-  // ── Collaboration ───────────────────────────────────────────────────────
-
   async getCollaborationRooms(): Promise<RoomListItem[]> {
     try {
-      return await api<RoomListItem[]>('/api/collaboration/rooms');
+      const data = await api<{ rooms: RoomListItem[] }>('/api/collaboration/rooms');
+      return data.rooms || [];
     } catch {
       return [];
     }
@@ -509,8 +453,6 @@ export const db = {
       body: JSON.stringify(data),
     });
   },
-
-  // ── AI ──────────────────────────────────────────────────────────────────
 
   async conceptExplainer(prompt: string, subject: string): Promise<AiResponse> {
     return api<AiResponse>('/api/ai/concept-explainer', {
@@ -545,8 +487,6 @@ export const db = {
       body: JSON.stringify({ question, subject }),
     });
   },
-
-  // ── Payments ───────────────────────────────────────────────────────────
 
   async getPaymentAccounts(): Promise<Record<string, { bank: string; accountName: string; accountNumber: string; note: string }>> {
     return api('/api/payments/accounts');
@@ -599,30 +539,18 @@ export const db = {
     });
   },
 
-  // ── Leaderboard ──────────────────────────────────────────────────────────
-
-  async getLeaderboard(stream?: string): Promise<{ leaderboard: any[]; currentUserRank: number | null; totalStudents: number }> {
+  async getLeaderboard(stream?: string): Promise<LeaderboardResponse> {
     try {
       const params = stream && stream !== 'All' ? `?stream=${encodeURIComponent(stream)}` : '';
-      return await api(`/api/leaderboard${params}`);
+      return await api<LeaderboardResponse>(`/api/leaderboard${params}`);
     } catch {
       return { leaderboard: [], currentUserRank: null, totalStudents: 0 };
     }
   },
 
-  // ── Admin ────────────────────────────────────────────────────────────────
-
-  async getAdminStats(): Promise<{
-    totalUsers: number;
-    premiumUsers: number;
-    freeUsers: number;
-    totalPayments: number;
-    pendingPayments: number;
-    approvedPayments: number;
-    rejectedPayments: number;
-  } | null> {
+  async getAdminStats(): Promise<AdminStats | null> {
     try {
-      return await api('/api/admin/stats');
+      return await api<AdminStats>('/api/admin/stats');
     } catch {
       return null;
     }
@@ -661,8 +589,6 @@ export const db = {
       method: 'DELETE',
     });
   },
-
-  // ── Content Management (Admin) ────────────────────────────────────────────
 
   async getContentManageList(filters?: { subject?: string; grade?: number; stream?: string; status?: string; search?: string }): Promise<any[]> {
     try {
@@ -720,49 +646,11 @@ export const db = {
     });
   },
 
-  async deleteContentManageEntry(subject: string, grade: number, chapter: number): Promise<{ success: true; imagesRemoved: number }> {
+  async deleteContentManageEntry(subject: string, grade: number, chapter: number): Promise<{ success: true }> {
     return api(`/api/content-manage/${encodeURIComponent(subject)}/${grade}/${chapter}`, {
       method: 'DELETE',
     });
   },
-
-  async getContentManageImages(): Promise<Array<{ filename: string; size: number; createdAt: string }>> {
-    try {
-      return await api('/api/content-manage/images');
-    } catch {
-      return [];
-    }
-  },
-
-  async uploadContentImage(file: File): Promise<{ url: string; filename: string }> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await fetch('/api/content-manage/upload-image', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: formData,
-      credentials: 'include',
-    });
-    if (res.status === 401) {
-      clearAuthState();
-      throw new Error('UNAUTHORIZED');
-    }
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Image upload failed');
-    }
-    return res.json();
-  },
-
-  async deleteContentImage(filename: string): Promise<{ success: true }> {
-    return api<{ success: true }>('/api/content-manage/delete-image', {
-      method: 'POST',
-      body: JSON.stringify({ filename }),
-    });
-  },
-
-  // ── Analytics ─────────────────────────────────────────────────────────────
 
   async trackEvent(eventType: string, subject?: string, score?: number, durationSeconds?: number, metadata?: Record<string, any>): Promise<{ success: true }> {
     return api<{ success: true }>('/api/analytics/track', {
@@ -793,16 +681,9 @@ export const db = {
     }
   },
 
-  async getAdminAnalytics(): Promise<{
-    totalEvents: number;
-    activeUsersWeekly: number;
-    activeUsersToday: number;
-    subjectPerformance: { name: string; sessions: number; avgScore: number }[];
-    dailyActiveUsers: { date: string; activeUsers: number; totalSessions: number }[];
-    topUsers: { email: string; sessions: number }[];
-  }> {
+  async getAdminAnalytics(): Promise<AdminAnalyticsResponse> {
     try {
-      return await api('/api/admin/analytics');
+      return await api<AdminAnalyticsResponse>('/api/admin/analytics');
     } catch {
       return {
         totalEvents: 0, activeUsersWeekly: 0, activeUsersToday: 0,

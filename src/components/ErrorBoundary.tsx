@@ -12,7 +12,7 @@ interface State {
 
 function ErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
   return (
-    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-8">
+    <div className="min-h-screen bg-[#0A0E14] flex items-center justify-center p-8">
       <div className="max-w-md w-full text-center space-y-6">
         <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center">
           <AlertCircle className="w-8 h-8 text-rose-400" />
@@ -28,7 +28,7 @@ function ErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
         </div>
         <button
           onClick={reset}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-300 text-sm font-black hover:bg-teal-500/25 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-sm font-black hover:bg-blue-500/25 transition-colors cursor-pointer"
         >
           <RefreshCcw className="w-4 h-4" />
           Try Again

@@ -11,8 +11,17 @@
     {
       "src": "/favicon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["education", "productivity"]
+  "categories": ["education", "productivity"],
+  "screenshots": [],
+  "prefer_related_applications": false
 }

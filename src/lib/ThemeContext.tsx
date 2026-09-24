@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { db } from './supabase';
 
 type Theme = 'dark' | 'light';
 
@@ -7,22 +6,42 @@ interface ThemeContextValue {
   theme: Theme;
   toggleTheme: () => void;
   isDark: boolean;
-  syncFromProfile: (isDarkMode: boolean) => void;
+  syncFromProfile: (isDarkMode: boolean | undefined) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+function getInitialTheme(): Theme {
+  try {
+    const stored = localStorage.getItem('acematric-theme');
+    if (stored === 'light' || stored === 'dark') return stored;
+  } catch {}
+  return 'dark';
+}
 
-  const syncFromProfile = useCallback((isDarkMode: boolean) => {
-    setTheme(isDarkMode ? 'dark' : 'light');
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light-theme', theme === 'light');
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
+  const syncFromProfile = useCallback((isDarkMode: boolean | undefined) => {
+    // Only sync if the profile has an explicit preference (not undefined/null)
+    // This prevents overriding the user's localStorage choice on login
+    if (isDarkMode === undefined || isDarkMode === null) return;
+    const next = isDarkMode ? 'dark' : 'light';
+    setTheme(prev => {
+      try { localStorage.setItem('acematric-theme', next); } catch {}
+      return next;
+    });
   }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
       const next = prev === 'dark' ? 'light' : 'dark';
-      db.saveStudentProfile({ isDarkMode: next === 'dark' } as any).catch(() => {});
+      try { localStorage.setItem('acematric-theme', next); } catch {}
       return next;
     });
   }, []);

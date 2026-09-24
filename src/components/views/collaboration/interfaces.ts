@@ -1,11 +1,5 @@
-export interface ChatMessage {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  text: string;
-  timestamp: string;
-}
+export type { ChatMessage, TimerState, GoalItem as Goal, RoomListItem as RoomInfo } from '../../../types';
+export type { JoinRequest } from '../../../types';
 
 export interface Member {
   email: string;
@@ -17,27 +11,7 @@ export interface Member {
   isMuted?: boolean;
   isDeafened?: boolean;
   videoEnabled?: boolean;
-}
-
-export interface RoomInfo {
-  id: string;
-  name: string;
-  activeCount: number;
-  lastMessage: string;
-  creatorEmail: string;
-  subject: string;
-  description: string;
-  createdAt: string;
-  goalsCount: number;
-  completedGoalsCount: number;
-  allowedEmails: string[];
-  joinRequests: {
-    email: string;
-    name: string;
-    avatar: string;
-    stream: string;
-    requestedAt: string;
-  }[];
+  studyStatus?: string;
 }
 
 export interface CoStudyingPartner {
@@ -51,20 +25,6 @@ export interface CoStudyingPartner {
   subject: string;
   status: string;
   stream: string;
-}
-
-export interface Goal {
-  id: string;
-  text: string;
-  completed: boolean;
-  setter: string;
-}
-
-export interface TimerState {
-  isPlaying: boolean;
-  timeLeft: number;
-  duration: number;
-  lastUpdated: number;
 }
 
 export interface QuizOption {

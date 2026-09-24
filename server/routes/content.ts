@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin } from '../middleware';
+import { requireAuth } from '../middleware';
 import { getContent } from '../content-db';
 
 const router = Router();
 
-// ── GET /api/content?grade=X&subject=Y&chapter=Z ──────────────────────────
 // Reads from content_entries table (seeded from TS files via seed script)
 router.get('/', requireAuth, async (req: any, res: any) => {
   try {

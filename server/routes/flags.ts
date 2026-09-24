@@ -1,14 +1,20 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { supabase, formatSupabaseError } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth, requireAdmin } from '../middleware';
 import { validateBody, createFlagSchema, updateFlagSchema } from '../validation';
 
 const router = Router();
 
-// ── POST /api/flags ─────────────────────────────────────────────────────────
-// Flag a question (report incorrect, inappropriate, etc.)
+// Strip HTML so user-submitted details can never execute in the admin console
+function stripHtml(text: string): string {
+  return String(text || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
+// Flag a question (report incorrect, inappropriate, etc.)
 router.post('/', requireAuth, validateBody(createFlagSchema), async (req, res) => {
   try {
     const { questionId, reason, details } = req.body;
@@ -32,7 +38,7 @@ router.post('/', requireAuth, validateBody(createFlagSchema), async (req, res) =
         question_id: questionId,
         user_email: req.user!.email,
         reason,
-        details: details || '',
+        details: stripHtml(details || '').slice(0, 500),
         status: 'pending',
         created_at: new Date().toISOString()
       }]);
@@ -44,9 +50,7 @@ router.post('/', requireAuth, validateBody(createFlagSchema), async (req, res) =
   }
 });
 
-// ── GET /api/flags/check/:questionId ────────────────────────────────────────
 // Check if current user has flagged a question
-
 router.get('/check/:questionId', requireAuth, async (req, res) => {
   try {
     const { questionId } = req.params;
@@ -65,9 +69,7 @@ router.get('/check/:questionId', requireAuth, async (req, res) => {
   }
 });
 
-// ── GET /api/flags ──────────────────────────────────────────────────────────
 // Admin-only: list all flagged questions
-
 router.get('/', requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -82,9 +84,7 @@ router.get('/', requireAdmin, async (req, res) => {
   }
 });
 
-// ── PUT /api/flags/:id ──────────────────────────────────────────────────────
 // Admin-only: update flag status (resolve/dismiss)
-
 router.put('/:id', requireAdmin, validateBody(updateFlagSchema), async (req, res) => {
   try {
     const { id } = req.params;

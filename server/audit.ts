@@ -1,4 +1,4 @@
-import { supabase, formatSupabaseError } from './db';
+import { supabaseAdmin as supabase, formatSupabaseError } from './db';
 
 export interface AuditEntry {
   adminEmail: string;

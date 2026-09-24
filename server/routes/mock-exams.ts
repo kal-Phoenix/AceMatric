@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import sanitizeHtml from 'sanitize-html';
-import { supabase, formatSupabaseError } from '../db';
-import { requireAuth, requireAdmin } from '../middleware';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
+import { requireAuth, requireAdmin, isAdminUser } from '../middleware';
 import { validateBody, createMockExamSchema, updateMockExamSchema } from '../validation';
 
 const router = Router();
@@ -26,12 +26,16 @@ router.get('/', requireAuth, async (req, res) => {
     if (subject) query = query.eq('subject', subject);
     if (stream) query = query.eq('stream', stream);
 
-    if (req.user!.role !== 'admin') {
+    const isAdmin = await isAdminUser(req.user!.email);
+    if (!isAdmin) {
       query = query.eq('status', 'published');
     }
 
     const { data, error } = await query;
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[mock-exams] Fetch error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     const exams = (data || []).map((row: any) => ({
       id: row.id,
@@ -47,7 +51,8 @@ router.get('/', requireAuth, async (req, res) => {
 
     res.json(exams);
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[mock-exams] List error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -72,10 +77,14 @@ router.post('/', requireAdmin, validateBody(createMockExamSchema), async (req, r
       .from('mock_exams')
       .upsert([row], { onConflict: 'id' });
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[mock-exams] Upsert error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[mock-exams] Create error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -104,10 +113,14 @@ router.put('/:id', requireAdmin, validateBody(updateMockExamSchema), async (req,
       .update(row)
       .eq('id', id);
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[mock-exams] Update error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[mock-exams] Update error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -119,10 +132,14 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       .delete()
       .eq('id', req.params.id);
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[mock-exams] Delete error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[mock-exams] Delete error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 

@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { ChevronDown, ChevronUp, Save, ChevronLeft, type LucideIcon } from 'lucide-react';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
 export type AdminTab = 'dashboard' | 'analytics' | 'users' | 'payments' | 'content';
 export type ContentSubTab = 'study-notes' | 'past-exams' | 'practice' | 'mock-exams';
 
@@ -17,7 +15,7 @@ export interface ContentEntry {
   examTips: string;
   youtubeVideoId: string;
   videoDuration: string;
-  subtopics: { title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string; imageAlign?: 'left' | 'center' | 'right'; imageSize?: 'small' | 'medium' | 'large' | 'full' }[];
+  subtopics: { title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string }[];
   contentHtml: string;
   status: 'draft' | 'published';
   createdAt: string;
@@ -70,8 +68,6 @@ export interface PaymentRequest {
 
 export type MessageState = { type: 'success' | 'error'; text: string } | null;
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
 export const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Civic Education', 'Economics', 'Geography', 'History', 'Aptitude'];
 export const NATURAL_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'SAT'];
 export const SOCIAL_SUBJECTS = ['Mathematics', 'Geography', 'History', 'Economics', 'English', 'SAT'];
@@ -93,7 +89,7 @@ export const SUBJECT_COLORS: Record<string, { bg: string; border: string; text: 
   'Maths':            { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', dot: 'bg-amber-400' },
   'English':          { bg: 'bg-rose-500/10', border: 'border-rose-500/30', text: 'text-rose-400', dot: 'bg-rose-400' },
   'History':          { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400', dot: 'bg-orange-400' },
-  'Geography':        { bg: 'bg-teal-500/10', border: 'border-teal-500/30', text: 'text-teal-400', dot: 'bg-teal-400' },
+  'Geography':        { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', dot: 'bg-blue-400' },
   'Economics':        { bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', text: 'text-cyan-400', dot: 'bg-cyan-400' },
   'Civic Education':  { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-400', dot: 'bg-indigo-400' },
   'Aptitude':         { bg: 'bg-pink-500/10', border: 'border-pink-500/30', text: 'text-pink-400', dot: 'bg-pink-400' },
@@ -103,8 +99,6 @@ export const SUBJECT_COLORS: Record<string, { bg: string; border: string; text: 
 export function getSubjectColor(subject: string) {
   return SUBJECT_COLORS[subject] || { bg: 'bg-slate-500/10', border: 'border-slate-500/30', text: 'text-slate-400', dot: 'bg-slate-400' };
 }
-
-// ── Utility: count items by grade/subject ────────────────────────────────────
 
 export function useGradeCounts<T extends { grade: number }>(
   allItems: T[],
@@ -159,8 +153,6 @@ export function useGroupedBySubject<T extends { subject: string }>(
   }, [items]);
 }
 
-// ── Shared UI Components ─────────────────────────────────────────────────────
-
 interface StatsCardItem {
   label: string;
   value: number | string;
@@ -184,19 +176,17 @@ export function StatsCardRow({ stats, cards }: StatsCardRowProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {items.map(({ label, value, color, bg, icon: Icon }) => (
-        <div key={label} className={`rounded-2xl border p-4 ${bg ?? 'bg-[#111827] border-slate-800'}`}>
+        <div key={label} className={`rounded-xl border p-4 ${bg ?? 'bg-[#111827] border-slate-800'}`}>
           <div className="flex items-center gap-1.5 mb-1">
             {Icon && <Icon className={`w-3.5 h-3.5 ${color}`} />}
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
           </div>
-          <div className={`text-2xl font-black ${color}`}>{value}</div>
+          <div className={`text-2xl font-semibold ${color}`}>{value}</div>
         </div>
       ))}
     </div>
   );
 }
-
-// ── StatusPillToggle ──────────────────────────────────────────────────────────
 
 interface StatusPillToggleProps {
   value: 'draft' | 'published';
@@ -209,7 +199,7 @@ export function StatusPillToggle({ value, onChange }: StatusPillToggleProps) {
       <button
         type="button"
         onClick={() => onChange('draft')}
-        className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+        className={`px-3 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
           value === 'draft'
             ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
             : 'text-slate-500 hover:text-slate-300'
@@ -220,7 +210,7 @@ export function StatusPillToggle({ value, onChange }: StatusPillToggleProps) {
       <button
         type="button"
         onClick={() => onChange('published')}
-        className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+        className={`px-3 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
           value === 'published'
             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
             : 'text-slate-500 hover:text-slate-300'
@@ -232,18 +222,14 @@ export function StatusPillToggle({ value, onChange }: StatusPillToggleProps) {
   );
 }
 
-// ── YearBadge ─────────────────────────────────────────────────────────────────
-
 export function YearBadge({ year }: { year?: string }) {
   if (!year) return null;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
       {year}
     </span>
   );
 }
-
-// ── DifficultyBadge ───────────────────────────────────────────────────────────
 
 const DIFFICULTY_CONFIG = {
   Easy:   { bg: 'bg-emerald-500/15 border-emerald-500/30', text: 'text-emerald-400' },
@@ -256,13 +242,11 @@ export function DifficultyBadge({ difficulty }: { difficulty?: string }) {
   const cfg = DIFFICULTY_CONFIG[difficulty as keyof typeof DIFFICULTY_CONFIG]
     ?? { bg: 'bg-slate-500/15 border-slate-500/30', text: 'text-slate-400' };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black border ${cfg.bg} ${cfg.text}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-semibold border ${cfg.bg} ${cfg.text}`}>
       {difficulty}
     </span>
   );
 }
-
-// ── SectionHeader ─────────────────────────────────────────────────────────────
 
 interface SectionHeaderProps {
   title: string;
@@ -272,7 +256,7 @@ interface SectionHeaderProps {
   iconColor?: string;
 }
 
-export function SectionHeader({ title, subtitle, action, icon: Icon, iconColor = 'text-teal-400' }: SectionHeaderProps) {
+export function SectionHeader({ title, subtitle, action, icon: Icon, iconColor = 'text-blue-400' }: SectionHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2.5">
@@ -282,7 +266,7 @@ export function SectionHeader({ title, subtitle, action, icon: Icon, iconColor =
           </div>
         )}
         <div>
-          <h3 className="text-sm font-black text-white">{title}</h3>
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
           {subtitle && <p className="text-[10px] text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
       </div>
@@ -305,15 +289,15 @@ export function GradeSelector({ selectedGrade, onSelectGrade, gradeCounts, total
         onClick={() => onSelectGrade('')}
         className={`relative overflow-hidden rounded-xl p-3.5 border text-center transition-all cursor-pointer group ${
           selectedGrade === ''
-            ? 'bg-gradient-to-br from-teal-500/15 to-teal-500/5 border-teal-500/40 shadow-lg shadow-teal-500/5'
+            ? 'bg-gradient-to-br bg-white/5 border-blue-500/40 shadow-lg shadow-blue-500/5'
             : 'bg-[#111827] border-slate-800 hover:border-slate-700'
         }`}
       >
-        {selectedGrade === '' && <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
-        <div className={`text-[10px] font-black uppercase tracking-wider mb-1 ${selectedGrade === '' ? 'text-teal-400' : 'text-slate-600'}`}>All</div>
-        <div className={`text-lg font-black ${selectedGrade === '' ? 'text-teal-300' : 'text-slate-400'}`}>{totalCount}</div>
-        <div className={`h-1 rounded-full mt-2 ${selectedGrade === '' ? 'bg-teal-500/40' : 'bg-slate-800'}`}>
-          <div className={`h-full rounded-full ${selectedGrade === '' ? 'bg-teal-400' : 'bg-slate-700'}`} style={{ width: '100%' }} />
+        {selectedGrade === '' && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
+        <div className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${selectedGrade === '' ? 'text-blue-400' : 'text-slate-600'}`}>All</div>
+        <div className={`text-lg font-semibold ${selectedGrade === '' ? 'text-blue-300' : 'text-slate-400'}`}>{totalCount}</div>
+        <div className={`h-1 rounded-full mt-2 ${selectedGrade === '' ? 'bg-blue-500/40' : 'bg-slate-800'}`}>
+          <div className={`h-full rounded-full ${selectedGrade === '' ? 'bg-blue-400' : 'bg-slate-700'}`} style={{ width: '100%' }} />
         </div>
       </button>
       {GRADES.map(g => {
@@ -326,15 +310,15 @@ export function GradeSelector({ selectedGrade, onSelectGrade, gradeCounts, total
             onClick={() => onSelectGrade(isSelected ? '' : g)}
             className={`relative overflow-hidden rounded-xl p-3.5 border text-center transition-all cursor-pointer group ${
               isSelected
-                ? 'bg-gradient-to-br from-teal-500/15 to-teal-500/5 border-teal-500/40 shadow-lg shadow-teal-500/5'
+            ? 'bg-slate-800/50 border-blue-500/40 shadow-sm'
                 : 'bg-[#111827] border-slate-800 hover:border-slate-700'
             }`}
           >
-            {isSelected && <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
-            <div className={`text-[10px] font-black uppercase tracking-wider mb-1 ${isSelected ? 'text-teal-400' : 'text-slate-600'}`}>Grade {g}</div>
-            <div className={`text-lg font-black ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>{count}</div>
-            <div className={`h-1 rounded-full mt-2 ${isSelected ? 'bg-teal-500/40' : 'bg-slate-800'}`}>
-              <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? 'bg-teal-400' : 'bg-slate-700'}`} style={{ width: `${pct}%` }} />
+            {isSelected && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-2xl pointer-events-none -mr-5 -mt-5" />}
+            <div className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${isSelected ? 'text-blue-400' : 'text-slate-600'}`}>Grade {g}</div>
+            <div className={`text-lg font-semibold ${isSelected ? 'text-blue-300' : 'text-slate-400'}`}>{count}</div>
+            <div className={`h-1 rounded-full mt-2 ${isSelected ? 'bg-blue-500/40' : 'bg-slate-800'}`}>
+              <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? 'bg-blue-400' : 'bg-slate-700'}`} style={{ width: `${pct}%` }} />
             </div>
           </button>
         );
@@ -371,7 +355,7 @@ export function SubjectFilterPills({ totalItems, subjectCounts, selectedSubject,
         <button
           key={i}
           onClick={item.onClick}
-          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
             item.active
               ? 'bg-white/10 text-white border-white/20 shadow-sm'
               : 'text-slate-400 hover:text-slate-200 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/30'
@@ -400,7 +384,7 @@ export function StreamSelector({ value, onChange }: StreamSelectorProps) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-[#0B111E] border border-slate-700/80 rounded-lg px-2.5 py-1 text-[10px] text-slate-400 focus:outline-none focus:border-teal-400 cursor-pointer"
+        className="bg-[#0B111E] border border-slate-700/80 rounded-lg px-2.5 py-1 text-[10px] text-slate-400 focus:outline-none focus:border-blue-400 cursor-pointer"
       >
         <option value="">All Streams</option>
         {STREAMS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -432,7 +416,7 @@ export function CollapsibleSubjectGroup<T>({ subject, items, collapsedSubjects, 
         className="flex items-center gap-2.5 w-full mb-2 group cursor-pointer"
       >
         <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-        <span className={`text-xs font-black ${c.text}`}>{subject}</span>
+        <span className={`text-xs font-semibold ${c.text}`}>{subject}</span>
         <span className="text-[9px] text-slate-600 font-bold">{label}</span>
         <span className="flex-1 h-px bg-slate-800 group-hover:bg-slate-700 transition-colors" />
         {isCollapsed ? <ChevronDown className="w-3 h-3 text-slate-600" /> : <ChevronUp className="w-3 h-3 text-slate-600" />}
@@ -453,7 +437,7 @@ export function CollapsibleSubjectGroup<T>({ subject, items, collapsedSubjects, 
 export function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center py-12">
-      <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -486,8 +470,6 @@ export function EmptyState({ message = 'No items found.' }: EmptyStateProps) {
   );
 }
 
-// ── Editor Header (back button + title + save) ───────────────────────────────
-
 interface EditorHeaderProps {
   isCreating: boolean;
   title: string;
@@ -504,12 +486,12 @@ export function EditorHeader({ isCreating, title, saving, onSave, onBack, saveDi
         <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
           <ChevronLeft className="w-4 h-4 text-slate-400" />
         </button>
-        <h3 className="text-sm font-black text-white">{isCreating ? `New ${title}` : `Edit: ${title}`}</h3>
+        <h3 className="text-sm font-semibold text-white">{isCreating ? `New ${title}` : `Edit: ${title}`}</h3>
       </div>
       <button
         onClick={onSave}
         disabled={saving || saveDisabled}
-        className="flex items-center gap-2 px-4 py-2 bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-black rounded-xl hover:bg-teal-500/25 transition-colors cursor-pointer disabled:opacity-40"
+        className="flex items-center gap-2 px-4 py-2 bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold rounded-xl hover:bg-blue-500/25 transition-colors cursor-pointer disabled:opacity-40"
       >
         <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
       </button>

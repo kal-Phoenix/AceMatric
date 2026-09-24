@@ -56,16 +56,16 @@ export default function FAQView({ onBack, onNavigate }: FAQPageProps) {
     <div className="min-h-[70vh] max-w-3xl mx-auto py-8 space-y-8">
       <div className="space-y-4">
         {onBack && (
-          <button onClick={onBack} className="flex items-center gap-2 text-xs text-slate-400 hover:text-teal-400 font-bold transition-colors cursor-pointer">
+          <button onClick={onBack} className="flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 font-bold transition-colors cursor-pointer">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back</span>
           </button>
         )}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center border border-teal-500/20">
-            <HelpCircle className="w-5 h-5 text-teal-400" />
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center border border-blue-500/20">
+            <HelpCircle className="w-5 h-5 text-blue-400" />
           </div>
-          <h1 className="text-2xl font-black text-white">Frequently Asked Questions</h1>
+          <h1 className="text-2xl font-semibold text-white">Frequently Asked Questions</h1>
         </div>
         <p className="text-sm text-slate-400">Find answers to common questions about AceMatric.</p>
       </div>
@@ -77,9 +77,9 @@ export default function FAQView({ onBack, onNavigate }: FAQPageProps) {
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
               className="w-full flex items-center justify-between p-4 text-left cursor-pointer hover:bg-slate-900/40 transition-colors"
             >
-              <span className="text-sm font-black text-white pr-4">{item.q}</span>
+              <span className="text-sm font-semibold text-white pr-4">{item.q}</span>
               {openIndex === i ? (
-                <ChevronUp className="w-4 h-4 text-teal-400 shrink-0" />
+                <ChevronUp className="w-4 h-4 text-blue-400 shrink-0" />
               ) : (
                 <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
               )}
@@ -94,11 +94,11 @@ export default function FAQView({ onBack, onNavigate }: FAQPageProps) {
       </div>
 
       <section className="p-6 rounded-2xl bg-[#111827]/40 border border-slate-800/80 text-center space-y-3">
-        <h3 className="text-sm font-black text-white">Still have questions?</h3>
+        <h3 className="text-sm font-semibold text-white">Still have questions?</h3>
         <p className="text-xs text-slate-400">Our support team is here to help.</p>
         <button
           onClick={() => onNavigate?.('contact')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-teal-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-sm hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
         >
           <Mail className="w-4 h-4" />
           <span>Contact Support</span>

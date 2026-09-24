@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin } from '../middleware';
+import { requireAuth, requireAdmin, isAdminUser } from '../middleware';
 import { logAudit } from '../audit';
-import { getSupabase } from '../db';
+import { getSupabaseAdmin as getSupabase } from '../db';
 import {
   upsertQuiz,
   getQuiz,
@@ -59,7 +59,8 @@ router.get('/:subject/:grade/:chapter', requireAuth, async (req, res) => {
     if (!subject || Number.isNaN(grade) || Number.isNaN(chapter)) {
       return res.status(400).json({ error: 'subject, grade, and chapter are required' });
     }
-    const statusFilter = req.user!.role === 'admin' ? undefined : 'published';
+    const isAdmin = await isAdminUser(req.user!.email);
+    const statusFilter = isAdmin ? undefined : 'published';
     const item = await getQuiz(subject, grade, chapter, statusFilter);
     if (!item) return res.status(404).json({ error: 'Quiz not found' });
     res.json(item);

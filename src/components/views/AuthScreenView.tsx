@@ -1,8 +1,10 @@
-import { useState, FormEvent } from 'react';
-import { Mail, Lock, User, ArrowRight, Sparkles, ShieldCheck, CheckCircle2, Target, Zap, Eye, EyeOff, Award, Quote, Users, GraduationCap, ChevronRight } from 'lucide-react';
+import { useState, FormEvent, useEffect } from 'react';
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Award, GraduationCap, ChevronRight } from 'lucide-react';
 import { Stream, Language } from '../../types';
 import PasswordStrength from '../../components/PasswordStrength';
 import { setAccessToken } from '../../lib/authToken';
+import BrandLogo from '../ui/BrandLogo';
+import EmailVerificationView from '../../components/EmailVerificationView';
 
 interface AuthScreenViewProps {
   language?: Language;
@@ -18,16 +20,19 @@ interface AuthScreenViewProps {
 }
 
 const MATRIC_QUOTES = [
-  { text: "Over 82% of top-scoring Ethiopian students practice at least 3 simulated mock exams weekly.", author: "Matric Board Analytics 2025" },
-  { text: "Consistency always triumphs over late-night cramming. Start your 4-week roadmap early.", author: "MoE Academic Excellence Review" },
-  { text: "The Scholastic Aptitude Test (SAT) section requires speed. Time tracking is your secret weapon.", author: "AceMatric Coaching Panel" },
-  { text: "Understanding concept summaries before jumping into practice tests increases accuracy by 40%.", author: "Dr. Aster Kassahun, Learning Sciences" }
+  { text: "Over 82% of top-scoring Ethiopian students practice at least 3 mock exams weekly.", author: "Matric Board Analytics 2025" },
+  { text: "Consistency always triumphs over late-night cramming. Start your 4-week plan early.", author: "MoE Academic Excellence Review" },
+  { text: "Understanding summaries before practice tests increases accuracy by 40%.", author: "AceMatric Coaching Panel" }
 ];
 
 export default function AuthScreenView({ language = 'en', onLanguageChange, onAuthComplete }: AuthScreenViewProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgot, setIsForgot] = useState(false);
   const [isReset, setIsReset] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingProfile, setPendingProfile] = useState<any>(null);
+  const [pendingDevCode, setPendingDevCode] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,8 +55,57 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
 
   const isAm = language === 'am';
 
+  // Load Apple JS SDK
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
+    script.async = true;
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  }, []);
+
   const handleNextQuote = () => {
     setQuoteIndex((prev) => (prev + 1) % MATRIC_QUOTES.length);
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      // @ts-ignore — Apple JS SDK loaded dynamically
+      if (window.AppleID) {
+        // @ts-ignore
+        const response = await window.AppleID.auth.signIn();
+        if (response?.authorization?.id_token) {
+          setIsLoading(true);
+          const fullName = response.user?.name
+            ? `${response.user.name.firstName || ''} ${response.user.name.lastName || ''}`.trim()
+            : undefined;
+          const res = await fetch('/api/auth/apple', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: response.authorization.id_token, fullName }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Apple sign-in failed');
+          if (data.token) setAccessToken(data.token);
+          onAuthComplete({
+            name: data.profile.name,
+            email: data.profile.email,
+            stream: data.profile.stream,
+            targetScore: data.profile.targetScore || 520,
+            isNewUser: data.isNewUser,
+            role: data.profile.role,
+          });
+        }
+      } else {
+        setErrorMsg('Apple Sign-In is loading. Please try again.');
+      }
+    } catch (err: any) {
+      if (err?.error !== 'popup_closed_by_user') {
+        setErrorMsg(err.message || 'Apple Sign-In failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleForgotSubmit = async (e: FormEvent) => {
@@ -158,6 +212,15 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
         setAccessToken(data.token);
       }
 
+      // If email not verified, show verification screen
+      if (data.emailVerified === false) {
+        setPendingEmail(data.profile.email);
+        setPendingProfile(data.profile);
+        setPendingDevCode(data.devCode || null);
+        setPendingVerification(true);
+        return;
+      }
+
       onAuthComplete({
         name: data.profile.name,
         email: data.profile.email,
@@ -173,149 +236,176 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
     }
   };
 
+  const handleVerificationComplete = () => {
+    if (pendingProfile) {
+      onAuthComplete({
+        name: pendingProfile.name,
+        email: pendingProfile.email,
+        stream: pendingProfile.stream,
+        targetScore: pendingProfile.targetScore || targetScore,
+        isNewUser: isSignUp,
+        role: pendingProfile.role,
+      });
+    }
+  };
+
+  if (pendingVerification) {
+    return (
+      <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col justify-center items-center font-sans">
+        <div className="w-full max-w-md px-4">
+          <div className="flex justify-center mb-8">
+            <BrandLogo />
+          </div>
+          <EmailVerificationView
+            email={pendingEmail}
+            devCode={pendingDevCode}
+            onVerified={handleVerificationComplete}
+            onBack={() => {
+              setPendingVerification(false);
+              setPendingEmail('');
+              setPendingProfile(null);
+              setPendingDevCode(null);
+              setAccessToken(null);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans select-none">
       
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
-
       {/* Main Content Workspace Split */}
       <main className="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-8 py-8 sm:py-12 items-center relative z-10">
         
         {/* LEFT COMPONENT: Professional Branding & Interactive Coaching Ticker */}
-        <div className="lg:col-span-7 space-y-8 text-left pr-0 lg:pr-8 animate-fadeIn">
+        <div className="lg:col-span-7 space-y-8 text-left pr-0 lg:pr-8">
           <div className="space-y-4">
-            <div className="inline-flex items-center space-x-2 bg-teal-500/10 border border-teal-500/20 px-3.5 py-1.5 rounded-full text-xs font-extrabold text-teal-400 uppercase tracking-widest">
-              <Award className="w-4 h-4" />
-              <span>ETHIOPIAN UNIVERSITY ENTRANCE PREPARATION</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <BrandLogo size="lg" glow={true} />
+              <div className="inline-flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-xs font-semibold text-blue-400">
+                <Award className="w-3.5 h-3.5 text-blue-500" />
+                <span>Ethiopian University Entrance Prep</span>
+              </div>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.1]">
-              Master Your Matric <br />
-              With <span className="bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">AceMatric</span>
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">
+              Ace Matric.
+              <br />
+              <span className="text-slate-400 font-semibold">Free to start.</span>
             </h1>
-            <p className="text-sm sm:text-base text-slate-400 max-w-xl leading-relaxed">
-              AceMatric combines adaptive study roadmap scheduling, smart concept explanation via Gemini AI models, timed full-length past paper simulator tests, and immediate micro-analytics to maximize your university placement chances.
+            <p className="text-sm sm:text-base text-slate-400 max-w-lg leading-relaxed">
+              Past-paper exams, chapter notes, and an AI tutor for every Grade 9–12 subject in the Ethiopian national curriculum.
             </p>
           </div>
 
-          {/* Testimonial Quote Generator Board */}
-          <div className="bg-[#111827]/40 border border-slate-800/80 rounded-3xl p-6 relative max-w-xl shadow-lg backdrop-blur-md">
-            <Quote className="w-10 h-10 text-teal-500/10 absolute top-4 left-4" />
-            <div className="space-y-3 relative z-10">
-              <span className="text-[10px] font-black text-teal-400 tracking-widest uppercase block">PRO ACADEMIC TIP</span>
-              <p className="text-sm text-slate-200 font-medium leading-relaxed italic">
-                "{MATRIC_QUOTES[quoteIndex].text}"
+          {/* Study Tips */}
+          <div className="bg-slate-800/50 border border-slate-800/60 rounded-xl p-6 relative max-w-xl">
+            <div className="space-y-3">
+              <span className="text-xs font-medium text-slate-400 tracking-wider uppercase block">Study tip</span>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {MATRIC_QUOTES[quoteIndex].text}
               </p>
               <div className="flex justify-between items-center pt-2">
-                <span className="text-xs text-slate-500 font-bold">— {MATRIC_QUOTES[quoteIndex].author}</span>
+                <span className="text-xs text-slate-500">— {MATRIC_QUOTES[quoteIndex].author}</span>
                 <button 
                   type="button" 
                   onClick={handleNextQuote}
-                  className="text-xs text-teal-400/90 hover:text-teal-300 font-extrabold flex items-center space-x-1 cursor-pointer transition-all"
+                  className="text-xs text-slate-400 hover:text-white font-medium flex items-center space-x-1 cursor-pointer transition-all"
                 >
-                  <span>Next Tip</span>
+                  <span>Next</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Platform Stats Panel */}
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-4 max-w-xl pt-2">
             <div className="space-y-1">
-              <span className="block text-2xl font-black text-white">500+</span>
-              <span className="block text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Practice Questions</span>
+              <span className="block text-2xl font-bold text-white">5,000+</span>
+              <span className="block text-xs uppercase font-medium text-slate-500 tracking-wider">Questions</span>
             </div>
-            <div className="space-y-1 border-l border-slate-800/80 pl-4">
-              <span className="block text-2xl font-black text-white">9</span>
-              <span className="block text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Exam Subjects</span>
+            <div className="space-y-1 border-l border-slate-800/60 pl-4">
+              <span className="block text-2xl font-bold text-white">9</span>
+              <span className="block text-xs uppercase font-medium text-slate-500 tracking-wider">Subjects</span>
             </div>
-            <div className="space-y-1 border-l border-slate-800/80 pl-4">
-              <span className="block text-2xl font-black text-white">AI</span>
-              <span className="block text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Powered Tutor</span>
+            <div className="space-y-1 border-l border-slate-800/60 pl-4">
+              <span className="block text-2xl font-bold text-white">24/7</span>
+              <span className="block text-xs uppercase font-medium text-slate-500 tracking-wider">AI Tutor</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COMPONENT: Ultra-Modern Glassmorphic Authentication Card */}
-        <div className="lg:col-span-5 w-full">
+        {/* RIGHT COMPONENT: Ultra-Modern Authentication Card */}
+        <div className="lg:col-span-5 w-full max-w-md mx-auto lg:max-w-none">
           
           {/* Simulated Inbox Mini Banner Indicator */}
           {simulatedInboxEmail && (
-            <div className="mb-4 p-4 bg-teal-500/10 border border-teal-500/20 rounded-3xl flex items-start space-x-3 text-left animate-slideDown shadow-lg">
-              <span className="text-xl shrink-0">📬</span>
+            <div className="mb-4 p-4 bg-slate-800/50 border border-white/10 rounded-xl flex items-start space-x-3 text-left">
               <div className="flex-1 min-w-0">
-                <span className="block text-[11px] font-black text-teal-400 uppercase tracking-widest">Recovery Code Sent</span>
-                <p className="text-[11px] text-slate-300 mt-0.5">
-                  A 6-digit recovery code has been sent to <b>{simulatedInboxEmail.to}</b>. Check your inbox and enter the code below.
+                <span className="block text-xs font-medium text-slate-300 uppercase tracking-wider">Recovery code sent</span>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  A 6-digit code has been sent to <b className="text-slate-300">{simulatedInboxEmail.to}</b>. Check your inbox.
                 </p>
               </div>
             </div>
           )}
 
-          <div className="bg-[#111827]/70 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative">
+          <div className="bg-[#111827] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl relative">
             
-            {/* Branding Top Icon */}
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center border border-teal-500/20 text-teal-400">
-                <GraduationCap className="w-5.5 h-5.5" />
-              </div>
+              <BrandLogo size="md" showText={false} glow={true} />
               <div>
-                <h2 className="font-black text-lg text-white">
-                  {isForgot ? 'Recover Account' : isReset ? 'Reset Password' : 'Get Started'}
+                <h2 className="font-bold text-xl text-white tracking-tight">
+                  {isForgot ? 'Recover account' : isReset ? 'Reset password' : isSignUp ? 'Create your account' : 'Welcome back'}
                 </h2>
-                <p className="text-xs text-slate-400">
-                  {isForgot ? 'Request password recovery code' : isReset ? 'Verify code and set password' : 'Join elite Ethiopian students preparing for university'}
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isForgot ? 'We will send a 6-digit recovery code' : isReset ? 'Set your new password below' : isSignUp ? 'Free access to notes, AI tutor, and practice exams' : 'Enter your credentials to continue studying'}
                 </p>
               </div>
             </div>
 
-            {/* Error Message */}
             {errorMsg && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs font-extrabold text-rose-400 text-center mb-4 animate-shake">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs font-medium text-rose-400 text-center mb-4 animate-shake">
                 {errorMsg}
               </div>
             )}
 
-            {/* Success Message */}
             {successMsg && (
-              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs font-extrabold text-emerald-400 text-center mb-4">
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-medium text-emerald-400 text-center mb-4">
                 {successMsg}
               </div>
-            )}
-
-            {/* Render 1: FORGOT PASSWORD FORM */}
+            )}            {/* Render 1: FORGOT PASSWORD FORM */}
             {isForgot && (
               <div className="space-y-4">
                 <form onSubmit={handleForgotSubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-extrabold text-slate-300 flex items-center space-x-1.5">
-                      <Mail className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Email or Phone Number</span>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Email address
                     </label>
                     <input
                       type="text"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="student@acematric.edu.et"
-                      className="w-full bg-[#0B111E] border border-slate-700/80 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner"
+                      placeholder="student@example.com"
+                      className="w-full bg-slate-800/60 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-4 bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-black text-sm rounded-2xl shadow-xl hover:opacity-90 transition-all flex items-center justify-center space-x-2 cursor-pointer mt-6"
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer mt-5 shadow-sm active:scale-[0.99] disabled:opacity-50"
                   >
                     {isLoading ? (
-                      <span className="animate-pulse">Finding Account...</span>
+                      <span className="animate-pulse">Finding account...</span>
                     ) : (
                       <>
-                        <span>Send Recovery Email</span>
-                        <ArrowRight className="w-5 h-5" />
+                        <span>Send recovery email</span>
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
@@ -328,9 +418,9 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                       setErrorMsg('');
                       setSuccessMsg('');
                     }}
-                    className="w-full py-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-bold text-xs rounded-xl cursor-pointer transition-all"
+                    className="w-full py-2.5 rounded-xl border border-slate-700/60 hover:border-slate-600 bg-slate-800/40 hover:bg-slate-800/70 text-slate-300 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    ← Cancel and Go Back
+                    ← Back to login
                   </button>
                 </form>
               </div>
@@ -340,10 +430,9 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
             {isReset && (
               <div className="space-y-4">
                 <form onSubmit={handleResetSubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-extrabold text-slate-300 flex items-center space-x-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-                      <span>6-Digit Security Code</span>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-semibold text-slate-300">
+                      6-digit recovery code
                     </label>
                     <input
                       type="text"
@@ -352,14 +441,13 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                       onChange={(e) => setRecoveryCode(e.target.value)}
                       placeholder="e.g. 521908"
                       maxLength={6}
-                      className="w-full bg-[#0B111E] border border-slate-700/80 rounded-2xl px-4 py-3.5 text-center font-mono font-black text-lg tracking-widest text-emerald-400 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner"
+                      className="w-full bg-slate-800/60 border border-slate-700/80 rounded-xl px-4 py-3 text-center font-mono font-bold text-xl tracking-widest text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-extrabold text-slate-300 flex items-center space-x-1.5">
-                      <Lock className="w-3.5 h-3.5 text-teal-400" />
-                      <span>New Password</span>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-semibold text-slate-300">
+                      New password
                     </label>
                     <div className="relative">
                       <input
@@ -367,13 +455,13 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-[#0B111E] border border-slate-700/80 rounded-2xl px-4 py-3.5 pr-11 text-sm text-white focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner"
+                        placeholder="At least 8 characters"
+                        className="w-full bg-slate-800/60 border border-slate-700/80 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-white cursor-pointer"
+                        className="absolute inset-y-0 right-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -384,14 +472,14 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-4 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl transition-all flex items-center justify-center space-x-2 cursor-pointer mt-4"
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer mt-5 shadow-sm active:scale-[0.99] disabled:opacity-50"
                   >
                     {isLoading ? (
                       <span className="animate-pulse">Updating Password...</span>
                     ) : (
                       <>
                         <span>Save & Update Password</span>
-                        <ArrowRight className="w-5 h-5" />
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
@@ -404,9 +492,9 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                       setErrorMsg('');
                       setSuccessMsg('');
                     }}
-                    className="w-full py-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-bold text-xs rounded-xl cursor-pointer transition-all"
+                    className="w-full py-2.5 rounded-xl border border-slate-700/60 hover:border-slate-600 bg-slate-800/40 hover:bg-slate-800/70 text-slate-300 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    ← Resend Code Request
+                    ← Resend code
                   </button>
                 </form>
               </div>
@@ -415,39 +503,74 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
             {/* Render 3: STANDARD SIGNUP / SIGNIN FORM */}
             {!isForgot && !isReset && (
               <>
-                {/* Custom Interactive Tab Selectors */}
-                <div className="grid grid-cols-2 bg-[#0B111E] rounded-2xl p-1.5 border border-slate-800/60 mb-6">
+                <div className="grid grid-cols-2 bg-slate-800/60 rounded-xl p-1 border border-slate-700/60 mb-6">
                   <button
                     type="button"
                     onClick={() => { setIsSignUp(true); setErrorMsg(''); setSuccessMsg(''); }}
-                    className={`py-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    className={`py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       isSignUp
-                        ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-md'
+                        ? 'bg-blue-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    Create Account
+                    Create account
                   </button>
                   <button
                     type="button"
                     onClick={() => { setIsSignUp(false); setErrorMsg(''); setSuccessMsg(''); }}
-                    className={`py-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    className={`py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       !isSignUp
-                        ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-md'
+                        ? 'bg-blue-600 text-white shadow-sm font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    Sign In
+                    Sign in
                   </button>
+                </div>
+
+                {/* Social Login Buttons */}
+                <div className="space-y-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = '/api/auth/google'; }}
+                    className="w-full py-3 bg-slate-800/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-3 cursor-pointer active:scale-[0.98]"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAppleSignIn}
+                    className="w-full py-3 bg-slate-800/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-3 cursor-pointer active:scale-[0.98]"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    <span>Continue with Apple</span>
+                  </button>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-700/60"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="px-3 text-slate-500 bg-[#111827]">or use email</span>
+                    </div>
+                  </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   
                   {isSignUp && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-extrabold text-slate-300 flex items-center space-x-1.5">
-                        <User className="w-3.5 h-3.5 text-teal-400" />
-                        <span>Full Name</span>
+                    <div className="space-y-1.5 text-left">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Full name
                       </label>
                       <input
                         type="text"
@@ -455,31 +578,29 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Dawit Kassahun"
-                        className="w-full bg-[#0B111E] border border-slate-700/80 rounded-2xl px-4 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner"
+                        className="w-full bg-slate-800/60 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-extrabold text-slate-300 flex items-center space-x-1.5">
-                      <Mail className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Email or Phone Number</span>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Email address
                     </label>
                     <input
-                      type="text"
+                      type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="student@acematric.edu.et"
-                      className="w-full bg-[#0B111E] border border-slate-700/80 rounded-2xl px-4 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner"
+                      placeholder="student@example.com"
+                      className="w-full bg-slate-800/60 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 text-left">
                     <div className="flex justify-between items-center">
-                      <label className="text-xs font-extrabold text-slate-300 flex items-center space-x-1.5">
-                        <Lock className="w-3.5 h-3.5 text-teal-400" />
-                        <span>Password</span>
+                      <label className="text-xs font-semibold text-slate-300">
+                        Password
                       </label>
                       
                       {!isSignUp && (
@@ -490,9 +611,9 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                             setErrorMsg('');
                             setSuccessMsg('');
                           }}
-                          className="text-[11px] text-teal-400 hover:text-teal-300 font-bold transition-all cursor-pointer"
+                          className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-all cursor-pointer"
                         >
-                          Forgot Password?
+                          Forgot password?
                         </button>
                       )}
                     </div>
@@ -503,13 +624,13 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-[#0B111E] border border-slate-700/80 rounded-2xl px-4 py-3.5 pr-11 text-sm text-white placeholder:text-slate-500 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner"
+                        placeholder="At least 8 characters"
+                        className="w-full bg-slate-800/60 border border-slate-700/80 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-white cursor-pointer"
+                        className="absolute inset-y-0 right-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -518,9 +639,9 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                   </div>
 
                   {isSignUp && (
-                    <div className="space-y-2 pt-1">
-                      <label className="text-xs font-extrabold text-slate-300">
-                        Academic Study Stream
+                    <div className="space-y-1.5 pt-1 text-left">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Study stream
                       </label>
                       <div className="grid grid-cols-2 gap-2.5">
                         {(['Natural Science', 'Social Science'] as Stream[]).map((s) => (
@@ -528,14 +649,13 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                             key={s}
                             type="button"
                             onClick={() => setStream(s)}
-                            className={`py-3 px-3 rounded-2xl border text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center space-x-2 ${
+                            className={`py-3 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-center ${
                               stream === s
-                                ? 'bg-teal-500/15 border-teal-400 text-teal-300 shadow-md'
-                                : 'bg-[#0B111E] border-slate-800 text-slate-400 hover:border-slate-700'
+                                ? 'bg-blue-600 text-white border-blue-500 shadow-sm font-bold'
+                                : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:border-slate-600 hover:bg-slate-800/70'
                             }`}
                           >
-                            <span>{s === 'Natural Science' ? '🧬' : '⚖️'}</span>
-                            <span>{s === 'Natural Science' ? 'Natural Sci.' : 'Social Sci.'}</span>
+                            {s}
                           </button>
                         ))}
                       </div>
@@ -545,29 +665,23 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-4 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-teal-500/25 transition-all flex items-center justify-center space-x-2 cursor-pointer mt-6 active:scale-[0.98]"
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer mt-6 active:scale-[0.98] shadow-sm disabled:opacity-50"
                   >
                     {isLoading ? (
-                      <span className="animate-pulse">Verifying credentials...</span>
+                      <span className="animate-pulse">Please wait...</span>
                     ) : (
                       <>
-                        <span>{isSignUp ? 'Create Account & Start Roadmap' : 'Sign In to Portal'}</span>
-                        <ArrowRight className="w-5 h-5" />
+                        <span>{isSignUp ? 'Create free account' : 'Sign in to dashboard'}</span>
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
                 </form>
 
-                <div className="mt-6 pt-5 border-t border-slate-800/80 text-center space-y-3">
-                  <p className="text-[10px] text-slate-500 leading-relaxed">
-                    By entering the portal, you agree to AceMatric academic standards, database guidelines, and security parameters.
+                <div className="mt-6 pt-5 border-t border-slate-800/60 text-center space-y-3">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    By continuing, you agree to AceMatric's terms and privacy policy.
                   </p>
-                  
-                  <div className="pt-1.5">
-                    <p className="text-[10px] text-slate-500 leading-relaxed text-center">
-                      Contact the administrator for demo access.
-                    </p>
-                  </div>
                 </div>
               </>
             )}
@@ -579,32 +693,30 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
 
       {/* Simulated Email Client Modal */}
       {showInbox && simulatedInboxEmail && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-[#0B111E] border border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col border-t-[3px] border-t-teal-400">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0B111E] border border-slate-800/60 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
             
-            {/* Header */}
-            <div className="bg-[#111827] border-b border-slate-800 p-4 flex justify-between items-center">
+            <div className="bg-slate-800/40 border-b border-slate-800/60 p-4 flex justify-between items-center">
               <div className="flex items-center space-x-2.5">
-                <span className="text-xl">📬</span>
                 <div className="text-left">
-                  <h3 className="font-extrabold text-sm text-white">Simulated Student Mail Client</h3>
-                  <p className="text-[10px] text-slate-500">Live development sandbox email server</p>
+                  <h3 className="font-medium text-sm text-white">Recovery email</h3>
+                  <p className="text-xs text-slate-500">Check your inbox for the code</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowInbox(false)}
-                className="text-xs font-black text-slate-400 hover:text-white px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer"
+                className="text-xs font-medium text-slate-400 hover:text-white px-3 py-1.5 bg-slate-800/60 border border-slate-700/60 rounded-lg cursor-pointer"
               >
-                Close Box
+                Close
               </button>
             </div>
 
             {/* Metadata */}
-            <div className="p-4 bg-slate-900/40 border-b border-slate-800 text-xs space-y-1.5 text-left font-mono">
-              <div><span className="font-extrabold text-slate-400">Sender:</span> <span className="text-teal-400">security@acematric.edu.et</span></div>
-              <div><span className="font-extrabold text-slate-400">Recipient:</span> <span className="text-slate-300">{simulatedInboxEmail.to}</span></div>
-              <div><span className="font-extrabold text-slate-400">Subject:</span> <span className="text-white font-bold">{simulatedInboxEmail.subject}</span></div>
+            <div className="p-4 bg-slate-900/40 border-b border-slate-800/60 text-xs space-y-1.5 text-left font-mono">
+              <div><span className="font-medium text-slate-400">From:</span> <span className="text-white">security@acematric.com</span></div>
+              <div><span className="font-medium text-slate-400">To:</span> <span className="text-slate-300">{simulatedInboxEmail.to}</span></div>
+              <div><span className="font-medium text-slate-400">Subject:</span> <span className="text-white">{simulatedInboxEmail.subject}</span></div>
             </div>
 
             {/* Email HTML Viewer */}
@@ -613,14 +725,14 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
             </div>
 
             {/* Action Bar */}
-            <div className="p-4 bg-[#111827] border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs">
-              <span className="text-slate-400 font-bold">Check your inbox for the verification code.</span>
+            <div className="p-4 bg-[#111827] border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs">
+              <span className="text-slate-400">Check your inbox for the recovery code.</span>
               <button
                 type="button"
                 onClick={() => {
                   setShowInbox(false);
                 }}
-                className="w-full sm:w-auto bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-black px-4 py-2.5 rounded-xl cursor-pointer hover:shadow-lg hover:shadow-teal-500/20 active:scale-95 transition-all"
+                className="w-full sm:w-auto bg-slate-800/50 hover:bg-white/15 text-white font-medium px-4 py-2 rounded-lg cursor-pointer transition-all"
               >
                 Close
               </button>
@@ -631,8 +743,8 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
       )}
 
       {/* Simple Footer */}
-      <footer className="w-full border-t border-slate-900/80 py-4 px-6 text-center text-xs text-slate-500 z-10">
-        <p>© 2026 AceMatric EdTech. All rights reserved. Precision-built for Ethiopian Scholars.</p>
+      <footer className="w-full border-t border-slate-800/60 py-4 px-6 text-center text-xs text-slate-500 z-10">
+        <p>© 2026 AceMatric. All rights reserved.</p>
       </footer>
     </div>
   );

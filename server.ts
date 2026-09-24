@@ -22,11 +22,11 @@ if (SENTRY_DSN && SENTRY_DSN !== 'your-sentry-dsn') {
   });
 }
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '4000', 10);
 
 async function startServer() {
   await testSupabaseConnection();
-  
+
   // Only seed in development or when SEED_DB=true
   if (process.env.NODE_ENV !== 'production' || process.env.SEED_DB === 'true') {
     await seedAllData();

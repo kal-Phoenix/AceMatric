@@ -2,9 +2,14 @@ import path from 'path';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { globalLimiter } from './middleware';
+import { testSupabaseConnection } from './db';
+import { redis } from './redis';
 import authRoutes from './routes/auth';
+import googleAuthRoutes from './routes/auth-google';
+import appleAuthRoutes from './routes/auth-apple';
 import profileRoutes from './routes/profile';
 import contactRoutes from './routes/contact';
 import notificationRoutes from './routes/notifications';
@@ -26,10 +31,13 @@ import pushRoutes from './routes/push';
 import contentManageRoutes from './routes/content-manage';
 import pastExamManageRoutes from './routes/past-exam-manage';
 import quizManageRoutes from './routes/quiz-manage';
+import contentGenerateRoutes from './routes/content-generate';
 
 const app = express();
 
 app.set('trust proxy', 1);
+
+app.use(compression());
 
 const isDev = process.env.NODE_ENV !== 'production';
 app.use(helmet({
@@ -48,7 +56,10 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,https://acematric.com,https://www.acematric.com').split(',').map(o => o.trim());
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,https://acematric.com,https://www.acematric.com')
+  .split(',')
+  .map(o => o.trim())
+  .filter(o => isDev || !o.startsWith('http://localhost'));
 app.use(cors({
   origin: ALLOWED_ORIGINS,
   credentials: true,
@@ -57,11 +68,13 @@ app.use(cors({
   maxAge: 86400,
 }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use('/api', globalLimiter);
 
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/google', googleAuthRoutes);
+app.use('/api/auth/apple', appleAuthRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -83,13 +96,25 @@ app.use('/api/push', pushRoutes);
 app.use('/api/content-manage', contentManageRoutes);
 app.use('/api/past-exam-manage', pastExamManageRoutes);
 app.use('/api/quiz-manage', quizManageRoutes);
+app.use('/api/content-generate', contentGenerateRoutes);
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (_req, res) => {
+  const dbOk = await testSupabaseConnection().then(() => true).catch(() => false);
+  let redisOk = true;
+  if (redis) {
+    try { await redis.ping(); } catch { redisOk = false; }
+  }
+  const healthy = dbOk && redisOk;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    db: dbOk,
+    redis: redisOk,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get('/api/version', (_req, res) => {
-  res.json({ version: '4.2.0', environment: process.env.NODE_ENV || 'development' });
+  res.json({ version: '4.2.0' });
 });
 
 app.all('/api/*', (_req, res) => {
@@ -97,8 +122,15 @@ app.all('/api/*', (_req, res) => {
 });
 
 app.use((err: any, _req: any, res: any, _next: any) => {
-  console.error('[ERROR] Unhandled server error:', err);
-  res.status(err.status || 500).json({ error: 'An unexpected server error occurred' });
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev) {
+    console.error('[app] Unhandled server error:', err);
+  } else {
+    console.error('[app] Unhandled server error:', err?.message || 'Unknown error');
+  }
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({ error: 'An unexpected server error occurred' });
+  }
 });
 
 export default app;

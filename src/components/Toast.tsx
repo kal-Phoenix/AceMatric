@@ -8,15 +8,15 @@ interface ToastProps {
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center space-x-3 px-5 py-4 rounded-2xl border shadow-2xl transition-all duration-300 transform scale-100 hover:scale-[1.02] ${
+    <div className={`fixed bottom-6 right-6 z-50 flex items-center space-x-3 px-5 py-4 rounded-2xl border shadow-xl transition-all duration-300 transform scale-100 hover:scale-[1.02] ${
       toast.type === 'success'
-        ? 'bg-emerald-950/95 border-emerald-500/40 text-emerald-300 shadow-emerald-900/10'
+        ? 'bg-emerald-950/95 border-emerald-500/40 text-emerald-300'
         : toast.type === 'warning'
-          ? 'bg-amber-950/95 border-amber-500/40 text-amber-300 shadow-amber-900/10'
-          : 'bg-slate-900/95 border-slate-700/50 text-slate-200 shadow-slate-900/20'
+          ? 'bg-amber-950/95 border-amber-500/40 text-amber-300'
+          : 'bg-slate-900/95 border-slate-700/50 text-slate-200'
     }`}>
       <span className="text-base shrink-0">
-        {toast.type === 'success' ? '🎉' : toast.type === 'warning' ? '⚠️' : 'ℹ️'}
+        {toast.type === 'success' ? '[Success]' : toast.type === 'warning' ? '[Warning]' : '[Info]'}
       </span>
       <span className="text-xs font-bold font-sans tracking-wide leading-none">{toast.message}</span>
       <button onClick={onDismiss} className="p-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">

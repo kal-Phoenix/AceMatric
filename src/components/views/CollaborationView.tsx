@@ -79,6 +79,8 @@ export default function CollaborationView({
 
   // Study status / sub-task focusing
   const [studyStatusText, setStudyStatusText] = useState('Solving mock exam sets');
+  const studyStatusRef = useRef(studyStatusText);
+  studyStatusRef.current = studyStatusText;
 
   // Video refs for webcam streaming
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -101,8 +103,8 @@ export default function CollaborationView({
   // Fetch Rooms active counts and custom rooms
   const fetchRooms = async () => {
     try {
-      const token = getAccessToken;
-      const res = await fetch('/api/collaboration/rooms', {
+      const token = getAccessToken();
+      const res = await fetch('/api/collaboration/rooms?page=1&limit=100', {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       });
       if (res.ok) {
@@ -119,6 +121,15 @@ export default function CollaborationView({
     const interval = setInterval(fetchRooms, 12000);
     return () => clearInterval(interval);
   }, []);
+
+  // Sync study status to other room members
+  useEffect(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !activeRoom) return;
+    wsRef.current.send(JSON.stringify({
+      type: 'update_member_state',
+      studyStatus: studyStatusText
+    }));
+  }, [studyStatusText, activeRoom]);
 
   // Cleanup camera stream tracks on unmount
   useEffect(() => {
@@ -139,7 +150,7 @@ export default function CollaborationView({
           const nextVal = Math.max(0, prev.timeLeft - 1);
           if (nextVal === 0) {
             clearInterval(timerInterval);
-            showToast('⏰ Pomodoro session completed! Time for a well-earned break.', 'success');
+            showToast('Pomodoro session completed! Time for a well-earned break.', 'success');
             return { ...prev, isPlaying: false, timeLeft: 0 };
           }
           return { ...prev, timeLeft: nextVal };
@@ -151,141 +162,183 @@ export default function CollaborationView({
     };
   }, [timerState.isPlaying]);
 
-  // WebSockets setup
+  // WebSockets setup with automatic reconnection
   useEffect(() => {
     if (!userProfile?.email) return;
 
-    // Establish persistent WS connection to server
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socketUrl = `${protocol}//${window.location.host}`;
-    
-    const socket = new WebSocket(socketUrl);
-    wsRef.current = socket;
-    connectionReadyRef.current = false;
+    let socket: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 10;
+    let unmounted = false;
 
-    socket.onopen = () => {
-      setIsConnected(true);
-      connectionReadyRef.current = true;
-      // Register socket on server with auth token
-      const token = getAccessToken;
-      socket.send(JSON.stringify({
-        type: 'register',
-        token: token
-      }));
+    function connect() {
+      if (unmounted) return;
 
-      // Re-join active room if connection dropped/re-established
-      if (activeRoomRef.current) {
-        socket.send(JSON.stringify({
-          type: 'join_room',
-          room: activeRoomRef.current,
-          email: userProfile.email,
-          name: userProfile.name,
-          avatar: userProfile.avatar || '👨‍🎓',
-          stream: userProfile.stream
-        }));
-      }
-    };
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socketUrl = `${protocol}//${window.location.host}`;
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        switch (data.type) {
-          case 'room_error': {
-            showToast(data.error || 'Study room limit reached.', 'warning');
-            setActiveRoom(null);
-            disableCameraTracks();
-            break;
-          }
-
-          case 'room_state': {
-            if (data.room === activeRoomRef.current) {
-              setRoomMembers(data.members);
-              setMessages(data.messages);
-              
-              if (data.activeQuiz) {
-                setActiveQuiz(data.activeQuiz);
-                const remaining = Math.max(0, Math.ceil((data.activeQuiz.endTime - Date.now()) / 1000));
-                setQuizTimeLeft(remaining);
-              } else {
-                setActiveQuiz(null);
-              }
-
-              if (data.goals) setGoals(data.goals);
-              if (data.sharedNotes !== undefined) setSharedNotes(data.sharedNotes);
-              if (data.timerState) setTimerState(data.timerState);
-            }
-            break;
-          }
-          
-          case 'member_joined': {
-            setRoomMembers(prev => {
-              if (prev.some(m => m.email === data.member.email)) return prev;
-              return [...prev, data.member];
-            });
-            showToast(`${data.member.name} joined the study room!`, 'info');
-            break;
-          }
-          
-          case 'member_left': {
-            setRoomMembers(prev => prev.filter(m => m.email !== data.email));
-            break;
-          }
-          
-          case 'receive_message': {
-            setMessages(prev => [...prev, data.message]);
-            scrollToBottom();
-            break;
-          }
-          
-          case 'goals_update': {
-            setGoals(data.goals);
-            break;
-          }
-
-          case 'notes_update': {
-            setSharedNotes(data.notes);
-            break;
-          }
-
-          case 'timer_update': {
-            setTimerState(data.timerState);
-            break;
-          }
-          
-          case 'quiz_started': {
-            setActiveQuiz(data.quiz);
-            setQuizTimeLeft(Math.max(0, Math.ceil((data.quiz.endTime - Date.now()) / 1000)));
-            setSelectedOptionId(null);
-            setSubmittedAnswer(false);
-            setQuizScores([]);
-            setActiveSidebarTab('chat');
-            showToast('🚨 Group Quiz Challenge Started! Go to Chat/Quiz to answer!', 'info');
-            break;
-          }
-          
-          case 'quiz_score_update': {
-            setQuizScores(data.scores);
-            break;
-          }
-          
-          case 'new_notification': {
-            showToast(`🔔 ${data.notification.title}: ${data.notification.message}`, 'success');
-            break;
-          }
-        }
-      } catch (err) {
-        console.error('WS client parser error:', err);
-      }
-    };
-
-    socket.onclose = () => {
-      setIsConnected(false);
+      socket = new WebSocket(socketUrl);
+      wsRef.current = socket;
       connectionReadyRef.current = false;
-    };
+
+      socket.onopen = () => {
+        setIsConnected(true);
+        connectionReadyRef.current = true;
+        reconnectAttempts = 0;
+
+        const token = getAccessToken();
+        socket!.send(JSON.stringify({
+          type: 'register',
+          token: token
+        }));
+
+        if (activeRoomRef.current) {
+          socket!.send(JSON.stringify({
+            type: 'join_room',
+            room: activeRoomRef.current,
+            email: userProfile.email,
+            name: userProfile.name,
+            avatar: userProfile.avatar || '',
+            stream: userProfile.stream
+          }));
+        }
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'room_error': {
+              showToast(data.error || 'Study room limit reached.', 'warning');
+              setActiveRoom(null);
+              disableCameraTracks();
+              break;
+            }
+            
+            case 'room_state': {
+              if (data.room === activeRoomRef.current) {
+                setRoomMembers(data.members);
+                setMessages(data.messages);
+                
+                if (data.activeQuiz) {
+                  setActiveQuiz(data.activeQuiz);
+                  const remaining = Math.max(0, Math.ceil((data.activeQuiz.endTime - Date.now()) / 1000));
+                  setQuizTimeLeft(remaining);
+                } else {
+                  setActiveQuiz(null);
+                }
+
+                if (data.goals) setGoals(data.goals);
+                if (data.sharedNotes !== undefined) setSharedNotes(data.sharedNotes);
+                if (data.timerState) setTimerState(data.timerState);
+              }
+              break;
+            }
+            
+            case 'member_joined': {
+              setRoomMembers(prev => {
+                if (prev.some(m => m.email === data.member.email)) return prev;
+                return [...prev, data.member];
+              });
+              showToast(`${data.member.name} joined the study room!`, 'info');
+              break;
+            }
+            
+            case 'member_left': {
+              setRoomMembers(prev => prev.filter(m => m.email !== data.email));
+              break;
+            }
+            
+            case 'receive_message': {
+              setMessages(prev => [...prev, data.message]);
+              scrollToBottom();
+              break;
+            }
+            
+            case 'goals_update': {
+              setGoals(data.goals);
+              break;
+            }
+
+            case 'notes_update': {
+              setSharedNotes(data.notes);
+              break;
+            }
+
+            case 'timer_update': {
+              setTimerState(data.timerState);
+              break;
+            }
+            
+            case 'quiz_started': {
+              setActiveQuiz(data.quiz);
+              setQuizTimeLeft(Math.max(0, Math.ceil((data.quiz.endTime - Date.now()) / 1000)));
+              setSelectedOptionId(null);
+              setSubmittedAnswer(false);
+              setQuizScores([]);
+              setActiveSidebarTab('chat');
+              showToast('Group Quiz Challenge Started! Go to Chat/Quiz to answer!', 'info');
+              break;
+            }
+            
+            case 'quiz_score_update': {
+              setQuizScores(data.scores);
+              break;
+            }
+
+            case 'quiz_answer_result': {
+              if (data.isCorrect) {
+                showToast('Brilliant! Correct Answer! +10 Points', 'success');
+              } else {
+                showToast('Incorrect! Let\'s solve this together.', 'warning');
+              }
+              break;
+            }
+
+            case 'timer_error': {
+              showToast(data.error || 'Only the room creator can control the timer.', 'warning');
+              break;
+            }
+            
+            case 'new_notification': {
+              showToast(`${data.notification.title}: ${data.notification.message}`, 'success');
+              break;
+            }
+          }
+        } catch (err) {
+          console.error('WS client parser error:', err);
+        }
+      };
+
+      socket.onclose = () => {
+        setIsConnected(false);
+        connectionReadyRef.current = false;
+        wsRef.current = null;
+
+        if (unmounted) return;
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          reconnectAttempts++;
+          reconnectTimeout = setTimeout(connect, delay);
+        }
+      };
+
+      socket.onerror = () => {
+        socket?.close();
+      };
+    }
+
+    connect();
 
     return () => {
-      socket.close();
+      unmounted = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
       wsRef.current = null;
       connectionReadyRef.current = false;
     };
@@ -360,7 +413,7 @@ export default function CollaborationView({
       room: roomId,
       email: userProfile.email,
       name: userProfile.name,
-      avatar: userProfile.avatar || '👨‍🎓',
+      avatar: userProfile.avatar || '',
       stream: userProfile.stream
     }));
   };
@@ -384,19 +437,19 @@ export default function CollaborationView({
   // Request to Join student-made group
   const handleRequestJoin = async (roomId: string) => {
     try {
-      const token = getAccessToken;
+      const token = getAccessToken();
       const res = await fetch(`/api/collaboration/rooms/${roomId}/request-join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           email: userProfile.email,
           name: userProfile.name,
-          avatar: userProfile.avatar || '👨‍🎓',
+          avatar: userProfile.avatar || '',
           stream: userProfile.stream
         })
       });
       if (res.ok) {
-        showToast('✉️ Join request sent successfully to the group creator!', 'success');
+        showToast('Join request sent successfully to the group creator!', 'success');
         fetchRooms();
       } else {
         const errorData = await res.json();
@@ -410,14 +463,14 @@ export default function CollaborationView({
   // Approve a student's Request
   const handleApproveRequest = async (roomId: string, studentEmail: string) => {
     try {
-      const token = getAccessToken;
+      const token = getAccessToken();
       const res = await fetch(`/api/collaboration/rooms/${roomId}/approve-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ email: studentEmail })
       });
       if (res.ok) {
-        showToast('✅ Student approved successfully!', 'success');
+        showToast('Student approved successfully!', 'success');
         fetchRooms();
       } else {
         showToast('Failed to approve request', 'warning');
@@ -430,7 +483,7 @@ export default function CollaborationView({
   // Decline a student's Request
   const handleDeclineRequest = async (roomId: string, studentEmail: string) => {
     try {
-      const token = getAccessToken;
+      const token = getAccessToken();
       const res = await fetch(`/api/collaboration/rooms/${roomId}/reject-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -496,7 +549,7 @@ export default function CollaborationView({
           voiceChannel: channelId
         }));
       }
-      showToast(`🔊 Connected to Voice Huddle`, 'success');
+      showToast(`Connected to Voice Huddle`, 'success');
     }
   };
 
@@ -593,21 +646,11 @@ export default function CollaborationView({
     setSelectedOptionId(optionId);
     setSubmittedAnswer(true);
     
-    const originalQuestion = allQuestions.find(q => q.id === activeQuiz.questionId);
-    const isCorrect = originalQuestion?.correctOptionId === optionId;
-    
     wsRef.current.send(JSON.stringify({
       type: 'submit_quiz_answer',
       questionId: activeQuiz.questionId,
       selectedOptionId: optionId,
-      isCorrect
     }));
-    
-    if (isCorrect) {
-      showToast('🎉 Brilliant! Correct Answer! +10 Points', 'success');
-    } else {
-      showToast('❌ Incorrect! Let\'s solve this together.', 'warning');
-    }
   };
 
   // Create custom study group
@@ -618,7 +661,7 @@ export default function CollaborationView({
       return;
     }
     try {
-      const token = getAccessToken;
+      const token = getAccessToken();
       const res = await fetch('/api/collaboration/rooms/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -632,7 +675,7 @@ export default function CollaborationView({
       });
       if (res.ok) {
         const data = await res.json();
-        showToast(`🎉 Room "${data.name}" opened! Entering workspace...`, 'success');
+        showToast(`Room "${data.name}" opened! Entering workspace...`, 'success');
         
         await fetchRooms();
         setIsCreatingRoom(false);
@@ -722,54 +765,25 @@ export default function CollaborationView({
     );
   }, [rooms, userProfile]);
 
-  // Combined real ws classmates + simulated partner cards for Focusmate grid (maximum of 10)
+  // Real WS-connected members displayed in the study grid
   const coStudyingPartners = useMemo(() => {
     if (!activeRoomDetail) return [];
 
-    // Map real WS connected members
-    const realMembers = roomMembers.map(m => {
+    return roomMembers.map(m => {
       const isMe = m.email.toLowerCase() === (userProfile?.email || '').toLowerCase();
       return {
         email: m.email,
         name: m.name,
-        avatar: m.avatar || '👨‍🎓',
+        avatar: m.avatar || '',
         isMe,
         videoEnabled: isMe ? isLocalVideoOn : !!m.videoEnabled,
         isMuted: isMe ? isMuted : !!m.isMuted,
         isDeafened: isMe ? isDeafened : !!m.isDeafened,
         subject: activeRoomDetail.subject,
-        status: isMe ? studyStatusText : 'Solving Past Exams',
+        status: isMe ? studyStatusText : (m.studyStatus || 'Studying'),
         stream: m.stream || 'Natural Science'
       };
     });
-
-    // Predefined co-study candidates that "match" you to populate the room to represent standard peer support
-    const targetSubj = activeRoomDetail.subject;
-    const allMockBuddies = [
-      { email: 'buddy-abebe@acematric.edu.et', name: 'Abebe Kebe', avatar: '👨‍🎓', isMe: false, videoEnabled: true, isMuted: true, isDeafened: false, subject: 'Physics', status: 'Solving electrostatic vector grids', stream: 'Natural Science' },
-      { email: 'buddy-hiwot@acematric.edu.et', name: 'Hiwot Tessema', avatar: '👩‍🎓', isMe: false, videoEnabled: true, isMuted: false, isDeafened: false, subject: 'Physics', status: 'Reviewing electrodynamics formulas', stream: 'Natural Science' },
-      { email: 'buddy-selam@acematric.edu.et', name: 'Selamawit Kebede', avatar: '👩‍🎓', isMe: false, videoEnabled: false, isMuted: true, isDeafened: true, subject: 'Physics', status: 'Reading textbook Chapter 3', stream: 'Natural Science' },
-      { email: 'buddy-yonas@acematric.edu.et', name: 'Yonas Girmay', avatar: '👨‍🎓', isMe: false, videoEnabled: true, isMuted: true, isDeafened: false, subject: 'SAT', status: 'Analyzing logical sequences', stream: 'Natural Science' },
-      { email: 'buddy-kaleb@acematric.edu.et', name: 'Kaleb Teshome', avatar: '👨‍🎓', isMe: false, videoEnabled: true, isMuted: true, isDeafened: false, subject: 'Mathematics', status: 'Drafting calculus graph', stream: 'Natural Science' },
-      { email: 'buddy-zene@acematric.edu.et', name: 'Zenebech Alula', avatar: '👩‍🎓', isMe: false, videoEnabled: false, isMuted: true, isDeafened: false, subject: 'Chemistry', status: 'Drawing ketone functional groups', stream: 'Natural Science' },
-      { email: 'buddy-samuel@acematric.edu.et', name: 'Samuel Desta', avatar: '👨‍🎓', isMe: false, videoEnabled: true, isMuted: false, isDeafened: false, subject: 'Mathematics', status: 'Solving limits equations', stream: 'Natural Science' },
-      { email: 'buddy-rebecca@acematric.edu.et', name: 'Rebecca Solomon', avatar: '👩‍🎓', isMe: false, videoEnabled: true, isMuted: true, isDeafened: true, subject: 'English', status: 'Reading grammar rules checklist', stream: 'Social Science' }
-    ];
-
-    // Filter buddies that match the subject, or fallback to any if none matches
-    let matchedBuddies = allMockBuddies.filter(b => b.subject === targetSubj);
-    if (matchedBuddies.length === 0) {
-      matchedBuddies = allMockBuddies.slice(0, 3);
-    }
-
-    // Combine
-    const list = [...realMembers];
-    for (const buddy of matchedBuddies) {
-      if (list.length < 10 && !list.some(item => item.name === buddy.name)) {
-        list.push(buddy);
-      }
-    }
-    return list.slice(0, 10);
   }, [roomMembers, userProfile, activeRoomDetail, isLocalVideoOn, isMuted, isDeafened, studyStatusText]);
 
   // Format timer
@@ -780,7 +794,7 @@ export default function CollaborationView({
   };
 
   return (
-    <div className="w-full flex h-[680px] max-h-[85vh] md:h-[720px] md:max-h-[80vh] bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative text-slate-200 font-sans">
+    <div className="w-full flex h-[680px] max-h-[85vh] md:h-[720px] md:max-h-[80vh] bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-sm relative text-slate-200 font-sans">
       
       {!activeRoomDetail ? (
         /* ================= LOBBY & DIRECTORY VIEW ================= */
@@ -810,7 +824,7 @@ export default function CollaborationView({
         />
       ) : (
         /* ================= NEW FOCUSMATE-INSPIRED STUDY WORKSPACE ================= */
-        <div className="flex-1 flex flex-col min-h-0 bg-slate-950/60 animate-in fade-in duration-200">
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-950/60">
           
           {/* Top Session Hub Header */}
           <div className="h-14 border-b border-slate-850 px-4 flex items-center justify-between shrink-0 bg-slate-900 z-10 shadow-sm relative">
@@ -820,7 +834,7 @@ export default function CollaborationView({
                 style={{ width: `${(timerState.timeLeft / (timerState.duration || 1500)) * 100}%` }} 
                 className={`h-full transition-all duration-1000 ${
                   timerState.isPlaying 
-                    ? 'bg-gradient-to-r from-indigo-500 to-violet-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.5)]' 
+                    ? 'bg-indigo-500' 
                     : 'bg-indigo-500/20'
                 }`}
               ></div>
@@ -838,17 +852,17 @@ export default function CollaborationView({
               </button>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-black text-white tracking-wide truncate max-w-[150px] sm:max-w-xs">{activeRoomDetail.name}</h3>
-                  <span className="px-1.5 py-0.5 rounded bg-slate-950 text-[9px] font-bold text-indigo-400 border border-slate-850 uppercase shrink-0">
+                  <h3 className="text-xs font-semibold text-white tracking-wide truncate max-w-[150px] sm:max-w-xs">{activeRoomDetail.name}</h3>
+                  <span className="px-1.5 py-0.5 rounded bg-slate-950 text-xs font-bold text-indigo-400 border border-slate-850 uppercase shrink-0">
                     {activeRoomDetail.subject}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-[9px] font-mono font-bold shrink-0">
+                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-xs font-mono font-bold shrink-0">
                     {coStudyingPartners.length}/10 Studying
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                  <span className="text-[9px] text-slate-450 font-semibold">Focusmate Mode Active • Video Match Enabled</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span className="text-xs text-slate-450 font-semibold">Focusmate Mode Active • Video Match Enabled</span>
                 </div>
               </div>
             </div>
@@ -866,14 +880,14 @@ export default function CollaborationView({
               <div className="flex items-center gap-1 px-1.5 py-0.5 sm:py-1 bg-slate-950/60 border border-slate-800/80 rounded-xl">
                 <button
                   onClick={() => handleJoinVoiceChannel('voice-1')}
-                  className={`px-2.5 py-1 text-[9px] sm:text-[10px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                     isVoiceConnected 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/30 font-black' 
+                      ? 'bg-emerald-600 text-white shadow-sm font-semibold' 
                       : 'bg-slate-900/90 text-slate-450 hover:text-white border border-slate-800/50 hover:bg-slate-800'
                   }`}
                   aria-label={isVoiceConnected ? 'Disconnect from voice channel' : 'Join voice channel'}
                 >
-                  <Volume2 className={`w-3.5 h-3.5 ${isVoiceConnected ? 'animate-pulse' : ''}`} />
+                  <Volume2 className="w-3.5 h-3.5" />
                   <span>{isVoiceConnected ? 'Connected' : 'Voice'}</span>
                 </button>
 
@@ -926,9 +940,9 @@ export default function CollaborationView({
               <div className="p-2 border-b border-slate-850 bg-slate-900 shrink-0 flex gap-2">
                 <button
                   onClick={() => setActiveSidebarTab('checklist')}
-                  className={`flex-1 py-2 text-xs font-black rounded-xl transition-all duration-250 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-250 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                     activeSidebarTab === 'checklist'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 border border-indigo-500/20'
+                      ? 'bg-indigo-600 text-white shadow-sm border border-indigo-500/20'
                       : 'text-slate-450 hover:text-slate-200 hover:bg-slate-800'
                   }`}
                 >
@@ -937,16 +951,16 @@ export default function CollaborationView({
                 </button>
                 <button
                   onClick={() => setActiveSidebarTab('chat')}
-                  className={`flex-1 py-2 text-xs font-black rounded-xl transition-all duration-250 flex items-center justify-center gap-1.5 cursor-pointer relative active:scale-95 ${
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-250 flex items-center justify-center gap-1.5 cursor-pointer relative active:scale-95 ${
                     activeSidebarTab === 'chat'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 border border-indigo-500/20'
+                      ? 'bg-indigo-600 text-white shadow-sm border border-indigo-500/20'
                       : 'text-slate-450 hover:text-slate-200 hover:bg-slate-800'
                   }`}
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Chat & Quiz</span>
                   {activeQuiz && (
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-rose-500 border border-slate-900 shadow-[0_0_8px_rgba(244,63,94,0.4)] animate-pulse"></span>
+                    <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-rose-500 border border-slate-900"></span>
                   )}
                 </button>
               </div>

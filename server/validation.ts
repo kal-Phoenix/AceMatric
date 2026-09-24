@@ -55,29 +55,6 @@ export const contactSchema = z.object({
   message: z.string().min(10, 'Message must be at least 10 characters').max(2000),
 });
 
-export const sessionHistorySchema = z.object({
-  type: z.enum(['study', 'practice', 'simulation']),
-  subject: z.string().min(1),
-  chapter: z.string().optional(),
-  score: z.number().optional(),
-  total: z.number().optional(),
-  durationMinutes: z.number().min(0),
-});
-
-export const profileUpdateSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  stream: z.enum(['Natural Science', 'Social Science']).optional(),
-  school: z.string().max(200).optional(),
-  region: z.string().max(100).optional(),
-  bio: z.string().max(500).optional(),
-  avatar: z.string().max(10).optional(),
-  targetScore: z.number().min(0).max(700).optional(),
-  studyStyle: z.enum(['Visual / Video', 'Practice / Quiz', 'Reading & Summaries', 'Collaborative']).optional(),
-  dailyHours: z.number().min(1).max(12).optional(),
-});
-
-// ── Question Schemas ─────────────────────────────────────────────────────────
-
 const questionOptionSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
@@ -92,6 +69,8 @@ export const createQuestionSchema = z.object({
   yearEC: z.string().optional(),
   questionText: z.string().min(1),
   questionTextAmharic: z.string().optional(),
+  hasImage: z.boolean().optional(),
+  imagePlaceholder: z.string().optional(),
   options: z.array(questionOptionSchema).min(2),
   correctOptionId: z.string().optional(),
   explanation: z.string().optional(),
@@ -107,6 +86,8 @@ export const updateQuestionSchema = z.object({
   yearEC: z.string().optional(),
   questionText: z.string().min(1).optional(),
   questionTextAmharic: z.string().optional(),
+  hasImage: z.boolean().optional(),
+  imagePlaceholder: z.string().optional(),
   options: z.array(questionOptionSchema).min(2).optional(),
   correctOptionId: z.string().optional(),
   explanation: z.string().optional(),
@@ -114,8 +95,6 @@ export const updateQuestionSchema = z.object({
   difficulty: z.enum(['Easy', 'Medium', 'Hard']).optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
 });
-
-// ── Mock Exam Schemas ────────────────────────────────────────────────────────
 
 export const createMockExamSchema = z.object({
   id: z.string().min(1),
@@ -140,8 +119,6 @@ export const updateMockExamSchema = z.object({
   status: z.enum(['draft', 'published', 'archived']).optional(),
 });
 
-// ── Notification Schema ──────────────────────────────────────────────────────
-
 export const createNotificationSchema = z.object({
   title: z.string().min(1).max(200),
   message: z.string().min(1).max(2000),
@@ -150,8 +127,6 @@ export const createNotificationSchema = z.object({
   userEmail: z.string().email().optional(),
 });
 
-// ── Analytics Schema ─────────────────────────────────────────────────────────
-
 export const trackEventSchema = z.object({
   eventType: z.string().min(1).max(100),
   subject: z.string().max(100).optional(),
@@ -159,8 +134,6 @@ export const trackEventSchema = z.object({
   durationSeconds: z.number().min(0).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
-
-// ── Flag Schemas ─────────────────────────────────────────────────────────────
 
 export const createFlagSchema = z.object({
   questionId: z.string().min(1),
@@ -171,8 +144,6 @@ export const createFlagSchema = z.object({
 export const updateFlagSchema = z.object({
   status: z.enum(['pending', 'reviewed', 'resolved', 'dismissed']),
 });
-
-// ── Daily Progress Schema ────────────────────────────────────────────────────
 
 export const upsertDailyProgressSchema = z.object({
   stream: z.string().min(1),
@@ -185,13 +156,9 @@ export const upsertDailyProgressSchema = z.object({
   completed: z.boolean().optional(),
 });
 
-// ── Notes Schema ─────────────────────────────────────────────────────────────
-
 export const toggleChapterSchema = z.object({
   chapterKey: z.string().min(1),
 });
-
-// ── Push Schema ──────────────────────────────────────────────────────────────
 
 export const pushSubscribeSchema = z.object({
   endpoint: z.string().url(),
@@ -202,8 +169,6 @@ export const pushSubscribeSchema = z.object({
 export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url(),
 });
-
-// ── AI Schemas ───────────────────────────────────────────────────────────────
 
 export const conceptExplainerSchema = z.object({
   prompt: z.string().min(1).max(2000),
@@ -253,19 +218,6 @@ export function validateBody(schema: z.ZodSchema) {
       return res.status(400).json({ error: errors[0] || 'Invalid request body' });
     }
     req.body = result.data;
-    next();
-  };
-}
-
-// Middleware factory: validates req.query against a Zod schema
-export function validateQuery(schema: z.ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const result = schema.safeParse(req.query);
-    if (!result.success) {
-      const errors = result.error.issues.map(i => i.message);
-      return res.status(400).json({ error: errors[0] || 'Invalid query parameters' });
-    }
-    req.query = result.data as any;
     next();
   };
 }

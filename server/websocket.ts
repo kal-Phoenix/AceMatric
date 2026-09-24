@@ -1,9 +1,10 @@
 import { WebSocket, WebSocketServer } from 'ws';
+// TODO: this file is getting big (~780 lines). Should split into room management, messaging, and whiteboard modules.
 import { Server } from 'http';
 import { ChatMessage, GoalItem } from './routes/collaboration';
 import { ServerNotification } from './routes/notifications';
 import { verifyToken } from './middleware';
-import { supabase } from './db';
+import { supabaseAdmin as supabase } from './db';
 import { redis, redisSub, redisAvailable, CHANNELS, KEYS } from './redis';
 
 const AUTH_TIMEOUT_MS = 5000;
@@ -38,6 +39,7 @@ interface MemberMeta {
   isMuted: boolean;
   isDeafened: boolean;
   videoEnabled: boolean;
+  studyStatus: string;
   x?: number;
   y?: number;
 }
@@ -109,7 +111,7 @@ async function saveRoom(roomId: string) {
     .eq('id', roomId);
 
   if (error) {
-    console.error('[WS] Failed to save room', roomId, error.message);
+    console.error('[ws] Failed to save room', roomId, error.message);
   } else {
     room.dirty = false;
   }
@@ -120,7 +122,7 @@ setInterval(() => {
   const STALE_MS = 30 * 60 * 1000; // 30 minutes
   for (const [id, room] of Object.entries(roomCache)) {
     if (room.dirty) saveRoom(id);
-    if (now - room.lastAccessed > STALE_MS && !localRoomMembers.has(id)) {
+    if (now - room.lastAccessed > STALE_MS) {
       delete roomCache[id];
     }
   }
@@ -137,7 +139,7 @@ async function getMemberMeta(roomId: string, email: string): Promise<MemberMeta 
     try {
       const json = await redis.hget(KEYS.roomMembers(roomId), email);
       return json ? JSON.parse(json) : null;
-    } catch { /* fallback to local */ }
+    } catch (err) { console.debug('[ws] Redis getMemberMeta fallback:', (err as Error).message); }
   }
   const room = localMemberMeta.get(roomId);
   return room?.get(email) ?? null;
@@ -147,7 +149,7 @@ async function setMemberMeta(roomId: string, email: string, meta: MemberMeta): P
   if (redisAvailable && redis) {
     try {
       await redis.hset(KEYS.roomMembers(roomId), email, JSON.stringify(meta));
-    } catch { /* fallback to local */ }
+    } catch (err) { console.debug('[ws] Redis setMemberMeta fallback:', (err as Error).message); }
   }
   if (!localMemberMeta.has(roomId)) localMemberMeta.set(roomId, new Map());
   localMemberMeta.get(roomId)!.set(email, meta);
@@ -157,16 +159,21 @@ async function deleteMemberMeta(roomId: string, email: string): Promise<void> {
   if (redisAvailable && redis) {
     try {
       await redis.hdel(KEYS.roomMembers(roomId), email);
-    } catch { /* fallback to local */ }
+    } catch (err) { console.debug('[ws] Redis deleteMemberMeta fallback:', (err as Error).message); }
   }
   localMemberMeta.get(roomId)?.delete(email);
+  // Clean up empty room maps to prevent memory leak
+  const room = localMemberMeta.get(roomId);
+  if (room && room.size === 0) {
+    localMemberMeta.delete(roomId);
+  }
 }
 
 async function getRoomMemberCount(roomId: string): Promise<number> {
   if (redisAvailable && redis) {
     try {
       return await redis.hlen(KEYS.roomMembers(roomId));
-    } catch { /* fallback to local */ }
+    } catch (err) { console.debug('[ws] Redis getRoomMemberCount fallback:', (err as Error).message); }
   }
   return localMemberMeta.get(roomId)?.size ?? 0;
 }
@@ -180,7 +187,7 @@ async function getAllRoomMembers(roomId: string): Promise<Record<string, MemberM
         result[email] = JSON.parse(json);
       }
       return result;
-    } catch { /* fallback to local */ }
+    } catch (err) { console.debug('[ws] Redis getAllRoomMembers fallback:', (err as Error).message); }
   }
   const room = localMemberMeta.get(roomId);
   if (!room) return {};
@@ -236,7 +243,11 @@ function sanitizeQuizForBroadcast(quiz: any): any {
 
 function broadcastToRoom(roomId: string, payload: any, excludeEmail?: string) {
   if (redisAvailable && redis) {
+    // Redis pub/sub self-subscribes: the subscriber registered in this same
+    // process will receive this publish and call deliverToRoomLocally itself.
+    // Delivering locally here too would send every message twice.
     redis.publish(CHANNELS.room(roomId), JSON.stringify({ payload, excludeEmail }));
+    return;
   }
   deliverToRoomLocally(roomId, payload, excludeEmail);
 }
@@ -336,7 +347,7 @@ export function setupWebSocket(server: Server) {
 
     const origin = request.headers.origin;
     if (!isOriginAllowed(origin)) {
-      console.warn(`[WS] Rejected connection from disallowed origin: ${origin || '(none)'}`);
+      console.warn(`[ws] Rejected connection from disallowed origin: ${origin || '(none)'}`);
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
       socket.destroy();
       return;
@@ -369,11 +380,13 @@ export function setupWebSocket(server: Server) {
 
   wss.on('close', () => { clearInterval(heartbeat); });
 
+  // Per-user rate limit tracking (shared across all connections for the same user)
+  const userMsgTimestamps = new Map<string, number[]>();
+
   wss.on('connection', (ws: WebSocket) => {
     let currentEmail = '';
     let currentRoom = '';
     let isAuthenticated = false;
-    let msgTimestamps: number[] = [];
 
     const authTimer = setTimeout(() => {
       if (!isAuthenticated) {
@@ -419,12 +432,14 @@ export function setupWebSocket(server: Server) {
         }
 
         const now = Date.now();
-        msgTimestamps = msgTimestamps.filter(t => now - t < MSG_RATE_WINDOW);
-        if (msgTimestamps.length >= MSG_RATE_MAX) {
+        const timestamps = userMsgTimestamps.get(currentEmail) || [];
+        const recent = timestamps.filter(t => now - t < MSG_RATE_WINDOW);
+        if (recent.length >= MSG_RATE_MAX) {
           ws.send(JSON.stringify({ type: 'error', error: 'Too many messages. Please slow down.' }));
           return;
         }
-        msgTimestamps.push(now);
+        recent.push(now);
+        userMsgTimestamps.set(currentEmail, recent);
 
         switch (data.type) {
           case 'join_room': {
@@ -444,11 +459,6 @@ export function setupWebSocket(server: Server) {
                 return;
               }
 
-              // Only assign currentRoom AFTER authorization succeeds
-              currentRoom = room;
-
-              ensureRoomSubscription(room);
-
               const memberCount = await getRoomMemberCount(room);
               const existingMember = await getMemberMeta(room, currentEmail);
               if (memberCount >= 10 && !existingMember) {
@@ -456,15 +466,20 @@ export function setupWebSocket(server: Server) {
                 return;
               }
 
+              // Only assign currentRoom AFTER authorization + capacity checks succeed
+              currentRoom = room;
+              ensureRoomSubscription(room);
+
               const newMeta: MemberMeta = {
-                name: data.name || 'Student',
-                avatar: data.avatar || '🎓',
-                stream: data.stream || 'Natural Science',
+                name: sanitizeText(data.name, 50) || 'Student',
+                avatar: sanitizeText(data.avatar, 20) || '🎓',
+                stream: sanitizeText(data.stream, 50) || 'Natural Science',
                 activeChannel: 'general',
                 voiceChannel: null,
                 isMuted: false,
                 isDeafened: false,
                 videoEnabled: false,
+                studyStatus: '',
               };
 
               await setMemberMeta(room, currentEmail, newMeta);
@@ -486,6 +501,9 @@ export function setupWebSocket(server: Server) {
                 type: 'member_joined',
                 member: { email: currentEmail, ...newMeta },
               }, currentEmail);
+            }).catch((err) => {
+              console.error('[ws] join_room error:', err);
+              ws.send(JSON.stringify({ type: 'room_error', error: 'Failed to join room. Please try again.' }));
             });
             break;
           }
@@ -612,6 +630,8 @@ export function setupWebSocket(server: Server) {
               email, name: ans.userName, isCorrect: ans.isCorrect, selectedOptionId: ans.selectedOptionId,
             }));
             broadcastToRoom(currentRoom, { type: 'quiz_score_update', scores: scoresList });
+
+            ws.send(JSON.stringify({ type: 'quiz_answer_result', isCorrect }));
             break;
           }
 
@@ -674,7 +694,10 @@ export function setupWebSocket(server: Server) {
             if (!currentRoom) return;
             const state = roomCache[currentRoom];
             if (!state) return;
-            if (state.creatorEmail !== currentEmail) return;
+            if (state.creatorEmail !== currentEmail) {
+              ws.send(JSON.stringify({ type: 'timer_error', error: 'Only the room creator can control the timer.' }));
+              return;
+            }
             const { action, duration } = data;
             if (action === 'start') {
               state.timerState.isPlaying = true;
@@ -701,6 +724,7 @@ export function setupWebSocket(server: Server) {
             if (data.isMuted !== undefined) member.isMuted = data.isMuted;
             if (data.isDeafened !== undefined) member.isDeafened = data.isDeafened;
             if (data.videoEnabled !== undefined) member.videoEnabled = data.videoEnabled;
+            if (data.studyStatus !== undefined) member.studyStatus = sanitizeText(data.studyStatus, 100);
 
             await setMemberMeta(currentRoom, currentEmail, member);
 
@@ -721,7 +745,7 @@ export function setupWebSocket(server: Server) {
           }
         }
       } catch (err) {
-        console.error('[WS Message Error]:', err);
+        console.error('[ws] Message handler error:', err);
       }
     });
 
@@ -752,6 +776,7 @@ async function getMembersList(roomId: string) {
     isMuted: !!m.isMuted,
     isDeafened: !!m.isDeafened,
     videoEnabled: !!m.videoEnabled,
+    studyStatus: m.studyStatus || '',
     x: m.x,
     y: m.y,
   }));

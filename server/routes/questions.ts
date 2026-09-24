@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import sanitizeHtml from 'sanitize-html';
-import { supabase, formatSupabaseError } from '../db';
-import { requireAuth, requireAdmin } from '../middleware';
+import { supabaseAdmin, formatSupabaseError } from '../db';
+import { requireAuth, requireAdmin, isAdminUser } from '../middleware';
 import { validateBody, createQuestionSchema, updateQuestionSchema } from '../validation';
 
 const router = Router();
@@ -17,14 +17,14 @@ function sanitize(html: string): string {
 }
 
 async function saveQuestionVersion(questionRow: Record<string, any>): Promise<void> {
-  const { count } = await supabase
+  const { count } = await supabaseAdmin
     .from('question_versions')
     .select('id', { count: 'exact', head: true })
     .eq('question_id', questionRow.id);
 
   const nextVersion = (count || 0) + 1;
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('question_versions')
     .insert({
       question_id: questionRow.id,
@@ -47,7 +47,7 @@ async function saveQuestionVersion(questionRow: Record<string, any>): Promise<vo
     console.error('[questions] Version save failed:', formatSupabaseError(error));
   }
 
-  const { data: versions } = await supabase
+  const { data: versions } = await supabaseAdmin
     .from('question_versions')
     .select('id')
     .eq('question_id', questionRow.id)
@@ -56,13 +56,13 @@ async function saveQuestionVersion(questionRow: Record<string, any>): Promise<vo
   if (versions && versions.length > 10) {
     const idsToDelete = versions.slice(10).map((v: any) => v.id);
     if (idsToDelete.length > 0) {
-      await supabase.from('question_versions').delete().in('id', idsToDelete);
+      await supabaseAdmin.from('question_versions').delete().in('id', idsToDelete);
     }
   }
 }
 
 async function getQuestionById(id: string): Promise<Record<string, any> | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('questions')
     .select('*')
     .eq('id', id)
@@ -75,7 +75,11 @@ async function getQuestionById(id: string): Promise<Record<string, any> | null> 
 // GET /api/questions
 router.get('/', requireAuth, async (req, res) => {
   try {
-    let query = supabase.from('questions').select('*');
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(20000, Math.max(1, parseInt(req.query.limit as string) || 20000));
+    const offset = (page - 1) * limit;
+
+    let query = supabaseAdmin.from('questions').select('*', { count: 'exact' });
 
     const subject = req.query.subject as string;
     const stream = req.query.stream as string;
@@ -84,12 +88,18 @@ router.get('/', requireAuth, async (req, res) => {
     if (stream) query = query.eq('stream', stream);
     if (questionType) query = query.eq('question_type', questionType);
 
-    if (req.user!.role !== 'admin') {
+    const isAdmin = await isAdminUser(req.user!.email);
+    if (!isAdmin) {
       query = query.eq('status', 'published');
     }
 
-    const { data, error } = await query;
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error('[questions] Fetch error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     const questions = (data || []).map((row: any) => ({
       id: row.id,
@@ -100,6 +110,8 @@ router.get('/', requireAuth, async (req, res) => {
       questionText: row.question_text,
       questionTextAmharic: row.question_text_amharic,
       passage: row.passage || null,
+      hasImage: row.has_image || false,
+      imagePlaceholder: row.image_placeholder || null,
       options: row.options,
       correctOptionId: row.correct_option_id,
       explanation: row.explanation,
@@ -109,9 +121,18 @@ router.get('/', requireAuth, async (req, res) => {
       questionType: row.question_type || 'practice',
     }));
 
-    res.json(questions);
+    res.json({
+      data: questions,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[questions] List error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -134,6 +155,8 @@ router.post('/', requireAdmin, validateBody(createQuestionSchema), async (req, r
       question_text: sanitize(q.questionText),
       question_text_amharic: q.questionTextAmharic || null,
       passage: q.passage || null,
+      has_image: q.hasImage || false,
+      image_placeholder: q.imagePlaceholder || null,
       options: (q.options || []).map((o: any) => ({ ...o, text: sanitize(o.text) })),
       correct_option_id: q.correctOptionId,
       explanation: sanitize(q.explanation),
@@ -142,14 +165,18 @@ router.post('/', requireAdmin, validateBody(createQuestionSchema), async (req, r
       status: q.status || 'published',
     };
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('questions')
       .upsert([row], { onConflict: 'id' });
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[questions] Upsert error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[questions] Create error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -173,6 +200,8 @@ router.put('/:id', requireAdmin, validateBody(updateQuestionSchema), async (req,
     if (q.yearEC !== undefined) row.year_ec = q.yearEC;
     if (q.questionText !== undefined) row.question_text = sanitize(q.questionText);
     if (q.questionTextAmharic !== undefined) row.question_text_amharic = q.questionTextAmharic;
+    if (q.hasImage !== undefined) row.has_image = q.hasImage;
+    if (q.imagePlaceholder !== undefined) row.image_placeholder = q.imagePlaceholder;
     if (q.options !== undefined) row.options = q.options.map((o: any) => ({ ...o, text: sanitize(o.text) }));
     if (q.correctOptionId !== undefined) row.correct_option_id = q.correctOptionId;
     if (q.explanation !== undefined) row.explanation = sanitize(q.explanation);
@@ -184,28 +213,35 @@ router.put('/:id', requireAdmin, validateBody(updateQuestionSchema), async (req,
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('questions')
       .update(row)
       .eq('id', id);
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[questions] Update error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[questions] Update error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
 // GET /api/questions/:id/versions (admin only)
 router.get('/:id/versions', requireAdmin, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('question_versions')
       .select('*')
       .eq('question_id', req.params.id)
       .order('saved_at', { ascending: false });
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[questions] Versions fetch error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
 
     const versions = (data || []).map((row: any) => ({
       id: row.id,
@@ -228,14 +264,15 @@ router.get('/:id/versions', requireAdmin, async (req, res) => {
 
     res.json(versions);
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[questions] Versions error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
 // DELETE /api/questions/:id (admin only)
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
-    const { data: refs } = await supabase
+    const { data: refs } = await supabaseAdmin
       .from('mock_exams')
       .select('id, title')
       .contains('question_ids', [req.params.id]);
@@ -248,17 +285,21 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       });
     }
 
-    await supabase.from('question_versions').delete().eq('question_id', req.params.id);
+    await supabaseAdmin.from('question_versions').delete().eq('question_id', req.params.id);
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('questions')
       .delete()
       .eq('id', req.params.id);
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[questions] Delete error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[questions] Delete error:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 

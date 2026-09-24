@@ -12,7 +12,7 @@ interface ContactUsViewProps {
 const FAQS = [
   {
     q: 'How do I upgrade to AceMatric Pro?',
-    a: 'Go to the Pro Upgrade page, select a plan, copy the account number, transfer the exact amount (199 ETB/month or 999 ETB/year), and upload your payment screenshot with transaction reference. Admin approves within 15 minutes.',
+    a: 'Go to the Pro Upgrade page, select a plan, copy the account number, transfer the exact amount (299 ETB/month or 999 ETB/year), and upload your payment screenshot with transaction reference. Admin approves within 15 minutes.',
   },
   {
     q: 'What payment methods are accepted?',
@@ -70,21 +70,21 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
     <div className="max-w-5xl mx-auto space-y-8 py-6 pb-16">
 
       {/* Header */}
-      <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+      <div className="bg-[#141920] border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-teal-400" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-teal-400">Support</span>
+              <MessageSquare className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Support</span>
             </div>
-            <h1 className="text-xl font-black text-white">Contact AceMatric</h1>
+            <h1 className="text-xl font-semibold text-white">Contact AceMatric</h1>
             <p className="text-xs text-slate-400">Questions about payments, features, or your account? We are here to help.</p>
           </div>
           <a
             href="https://t.me/acematric_et"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-teal-300 text-xs font-black hover:bg-slate-800 transition-colors flex items-center gap-2 shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-blue-300 text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-2 shrink-0"
           >
             Telegram Support
             <ExternalLink className="w-3.5 h-3.5" />
@@ -96,11 +96,11 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
 
         {/* Left: Contact Info */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h3 className="font-black text-sm text-white">Contact Channels</h3>
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-sm text-white">Contact Channels</h3>
 
             {[
-              { icon: Phone, label: 'Phone', value: '+251 911 223344', sub: 'Mon-Sat, 8AM-9PM', color: 'text-teal-400', bg: 'bg-teal-500/10' },
+              { icon: Phone, label: 'Phone', value: '+251 911 223344', sub: 'Mon-Sat, 8AM-9PM', color: 'text-blue-400', bg: 'bg-blue-500/10' },
               { icon: Mail, label: 'Email', value: 'support@acematric.edu.et', sub: 'Reply within 30 minutes', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
               { icon: MapPin, label: 'Office', value: 'Bole Road, Mega Building 4F', sub: 'Office 402, Addis Ababa', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
             ].map(({ icon: Icon, label, value, sub, color, bg }) => (
@@ -109,38 +109,38 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
                   <Icon className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</div>
+                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
                   <div className="text-xs font-bold text-white mt-0.5">{value}</div>
-                  <div className="text-[10px] text-slate-500">{sub}</div>
+                  <div className="text-xs text-slate-500">{sub}</div>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Quick FAQ Teaser */}
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5 text-center space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mx-auto">
-              <HelpCircle className="w-5 h-5 text-teal-400" />
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5 text-center space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto">
+              <HelpCircle className="w-5 h-5 text-blue-400" />
             </div>
-            <h4 className="font-black text-sm text-white">Common Questions</h4>
-            <p className="text-[11px] text-slate-400">Check the FAQ section below for quick answers about payments, features, and study tools.</p>
+            <h4 className="font-semibold text-sm text-white">Common Questions</h4>
+            <p className="text-xs text-slate-400">Check the FAQ section below for quick answers about payments, features, and study tools.</p>
           </div>
         </div>
 
         {/* Right: Contact Form */}
         <div className="lg:col-span-3">
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-5">
-            <h3 className="font-black text-sm text-white mb-4 flex items-center gap-2">
-              <Send className="w-4 h-4 text-teal-400" />
+          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">
+            <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2">
+              <Send className="w-4 h-4 text-blue-400" />
               Send a Message
             </h3>
 
             {isSent ? (
-              <div className="py-12 text-center space-y-3 animate-fadeIn">
+              <div className="py-12 text-center space-y-3">
                 <div className="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-7 h-7 text-emerald-400" />
                 </div>
-                <h3 className="text-base font-black text-white">Message Sent</h3>
+                <h3 className="text-base font-semibold text-white">Message Sent</h3>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">Our team will respond shortly. Check your email for updates.</p>
                 <button
                   onClick={() => setIsSent(false)}
@@ -153,57 +153,57 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Name</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Name</label>
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Your name"
-                      className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-colors"
+                      className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Email</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Email</label>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-colors"
+                      className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Subject</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Subject</label>
                   <input
                     type="text"
                     required
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Payment issue / Bug report / Feature request"
-                    className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-colors"
+                    className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Message</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Message</label>
                   <textarea
                     rows={4}
                     required
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Describe your question or issue..."
-                    className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-400 transition-colors resize-none"
+                    className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors resize-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={sending}
-                  className="w-full py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                   {sending ? 'Sending...' : 'Send Message'}
@@ -215,10 +215,10 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
       </div>
 
       {/* FAQ */}
-      <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-6">
+      <div className="bg-[#141920] border border-slate-800 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
-          <HelpCircle className="w-4 h-4 text-teal-400" />
-          <h3 className="font-black text-sm text-white">Frequently Asked Questions</h3>
+          <HelpCircle className="w-4 h-4 text-blue-400" />
+          <h3 className="font-semibold text-sm text-white">Frequently Asked Questions</h3>
         </div>
 
         <div className="space-y-0 divide-y divide-slate-800/60">
@@ -227,11 +227,11 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
             return (
               <div key={idx} className="py-3.5 cursor-pointer" onClick={() => setOpenFaq(isOpen ? null : idx)}>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-200 hover:text-teal-300 transition-colors">{faq.q}</span>
+                  <span className="text-xs font-bold text-slate-200 hover:text-blue-300 transition-colors">{faq.q}</span>
                   <ChevronDown className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
                 {isOpen && (
-                  <p className="text-[11px] text-slate-400 mt-2 leading-relaxed animate-fadeIn pr-4">
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed pr-4">
                     {faq.a}
                   </p>
                 )}

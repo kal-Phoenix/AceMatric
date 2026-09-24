@@ -1,33 +1,12 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
 import crypto from 'crypto';
 import { fileTypeFromBuffer } from 'file-type';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { supabase, formatSupabaseError, snakeToCamel } from '../db';
+import { supabaseAdmin, formatSupabaseError, snakeToCamel } from '../db';
 import { requireAuth, requireAdmin } from '../middleware';
+import { imageUpload, MIME_TO_EXT } from '../upload-utils';
 
 const router = Router();
-
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/gif': '.gif',
-  'image/webp': '.webp',
-};
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only JPEG, PNG, GIF, and WebP images are allowed'));
-    }
-  }
-});
 
 const PAYMENT_AMOUNT = Number(process.env.PRO_MONTHLY_PRICE) || 299;
 const MAX_TRANSACTION_REF_LENGTH = 200;
@@ -72,29 +51,33 @@ const submitLimiter = rateLimit({
   keyGenerator: (req: any) => req.user?.email || ipKeyGenerator(req),
 });
 
-// GET /api/payments/accounts — public account details
-router.get('/accounts', (_req, res) => {
+// GET /api/payments/accounts — account details (auth required)
+router.get('/accounts', requireAuth, (_req, res) => {
   res.json(ACCOUNT_DETAILS);
 });
 
 // GET /api/payments/my — user's own payment requests
 router.get('/my', requireAuth, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('payment_requests')
       .select('id, user_email, user_name, payment_method, amount, transaction_ref, screenshot_url, status, admin_notes, created_at, reviewed_at')
       .eq('user_email', req.user!.email)
       .order('created_at', { ascending: false });
 
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[payments] Fetch error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json((data || []).map(snakeToCamel));
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[payments] Error fetching payments:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
 // POST /api/payments/submit — submit a payment request with screenshot
-router.post('/submit', requireAuth, submitLimiter, upload.single('screenshot'), async (req, res) => {
+router.post('/submit', requireAuth, submitLimiter, imageUpload.single('screenshot'), async (req, res) => {
   try {
     const { paymentMethod, transactionRef } = req.body;
 
@@ -123,7 +106,7 @@ router.post('/submit', requireAuth, submitLimiter, upload.single('screenshot'), 
     const email = req.user!.email;
 
     // Check for existing pending payment
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from('payment_requests')
       .select('id, status')
       .eq('user_email', email)
@@ -131,7 +114,8 @@ router.post('/submit', requireAuth, submitLimiter, upload.single('screenshot'), 
       .maybeSingle();
 
     if (existingError) {
-      return res.status(500).json({ error: formatSupabaseError(existingError) });
+      console.error('[payments] Existing payment check error:', existingError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
     }
     if (existing) {
       return res.status(409).json({ error: 'You already have a pending payment request. Please wait for it to be reviewed.' });
@@ -168,7 +152,7 @@ router.post('/submit', requireAuth, submitLimiter, upload.single('screenshot'), 
     const screenshotUrl = signedData.signedUrl;
 
     // Get user name from profile
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from('student_profiles')
       .select('name')
       .eq('email', email)
@@ -191,27 +175,27 @@ router.post('/submit', requireAuth, submitLimiter, upload.single('screenshot'), 
       reviewed_at: null,
     };
 
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from('payment_requests')
       .insert([record]);
 
     if (insertError) {
-      return res.status(500).json({ error: formatSupabaseError(insertError) });
+      console.error('[payments] Insert error:', insertError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
     }
 
     res.json({ success: true, payment: snakeToCamel(record) });
   } catch (err: any) {
+    console.error('[payments] Error submitting payment:', err);
     res.status(500).json({ error: 'Failed to submit payment request.' });
   }
 });
-
-// ── Admin Routes ───────────────────────────────────────────────────────────
 
 // GET /api/payments — admin: list all payment requests
 router.get('/', requireAdmin, async (req, res) => {
   try {
     const { status } = req.query;
-    let query = supabase
+    let query = supabaseAdmin
       .from('payment_requests')
       .select('id, user_email, user_name, payment_method, amount, transaction_ref, screenshot_url, status, admin_notes, created_at, reviewed_at')
       .order('created_at', { ascending: false });
@@ -221,10 +205,14 @@ router.get('/', requireAdmin, async (req, res) => {
     }
 
     const { data, error } = await query.limit(200);
-    if (error) return res.status(500).json({ error: formatSupabaseError(error) });
+    if (error) {
+      console.error('[payments] Admin list error:', error);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
     res.json((data || []).map(snakeToCamel));
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[payments] Error listing payments:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 
@@ -238,52 +226,61 @@ router.put('/:id', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Status must be "approved" or "rejected".' });
     }
 
-    // Fetch the payment request
-    const { data: payment, error: fetchError } = await supabase
-      .from('payment_requests')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (fetchError || !payment) {
-      return res.status(404).json({ error: 'Payment request not found.' });
-    }
-
-    if (payment.status !== 'pending') {
-      return res.status(400).json({ error: 'This payment has already been reviewed.' });
-    }
-
-    // If approving, update isPremium first
-    if (status === 'approved') {
-      const { error: premiumError } = await supabase
-        .from('student_profiles')
-        .update({ is_premium: true })
-        .eq('email', payment.user_email);
-
-      if (premiumError) {
-        return res.status(500).json({ error: 'Failed to upgrade user to Pro. Please try again.' });
-      }
-    }
-
-    // Update payment status
-    const { error: updateError } = await supabase
+    // Atomic check-and-update to prevent race condition (two admins approving simultaneously)
+    const { data: payment, error: atomicUpdateError } = await supabaseAdmin
       .from('payment_requests')
       .update({
         status,
         admin_notes: adminNotes || '',
         reviewed_at: new Date().toISOString(),
       })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('status', 'pending')
+      .select('*')
+      .maybeSingle();
 
-    if (updateError) {
-      // Rollback isPremium if payment update fails after approval
-      if (status === 'approved') {
-        await supabase
-          .from('student_profiles')
-          .update({ is_premium: false })
-          .eq('email', payment.user_email);
+    if (atomicUpdateError) {
+      console.error('[payments] Atomic update error:', atomicUpdateError);
+      return res.status(500).json({ error: 'An error occurred. Please try again.' });
+    }
+
+    if (!payment) {
+      return res.status(400).json({ error: 'This payment has already been reviewed or was not found.' });
+    }
+
+    // If approving, update isPremium with expiry date (30 days from now)
+    if (status === 'approved') {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const { error: premiumError } = await supabaseAdmin
+        .from('student_profiles')
+        .update({
+          is_premium: true,
+          premium_expires_at: expiresAt.toISOString(),
+        })
+        .eq('email', payment.user_email);
+
+      if (premiumError) {
+        console.error('[payments] Premium upgrade error:', premiumError);
+        // Rollback: set payment back to pending since premium update failed
+        await supabaseAdmin
+          .from('payment_requests')
+          .update({ status: 'pending', admin_notes: '', reviewed_at: null })
+          .eq('id', id);
+        return res.status(500).json({ error: 'Failed to upgrade user to Pro. Please try again.' });
       }
-      return res.status(500).json({ error: formatSupabaseError(updateError) });
+    }
+
+    if (status === 'rejected') {
+      const { error: rejectError } = await supabaseAdmin
+        .from('student_profiles')
+        .update({ is_premium: false })
+        .eq('email', payment.user_email);
+
+      if (rejectError) {
+        console.error('[payments] Rejection error:', rejectError);
+      }
     }
 
     // Send notification (best effort, don't fail the request)
@@ -296,7 +293,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
       const notifType = status === 'approved' ? 'achievement' : 'info';
       const notifAction = status === 'approved' ? 'dashboard' : 'upgrade';
 
-      await supabase.from('notifications').insert([{
+      await supabaseAdmin.from('notifications').insert([{
         id: notifId,
         title: notifTitle,
         message: notifMessage,
@@ -340,7 +337,8 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: formatSupabaseError(err) });
+    console.error('[payments] Error reviewing payment:', err);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
 });
 

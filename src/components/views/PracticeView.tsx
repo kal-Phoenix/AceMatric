@@ -14,16 +14,15 @@ import {
   Award, 
   Lock, 
   FileText,
-  HelpCircle,
   TrendingUp,
   Flame,
   ChevronRight,
   Info
 } from 'lucide-react';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
-import { PRACTICE_QUESTIONS_NEW } from '../../data/practiceQuestions';
 import { Subject, Stream, Language, PracticeQuestion } from '../../types';
 import { db } from '../../lib/supabase';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 // Helper to extract all subjects and chapters for a given stream and grade
 const getSubjectsAndChapters = (stream: Stream, gradeFilter: number | 'All' = 'All') => {
@@ -62,14 +61,98 @@ const getSubjectsAndChapters = (stream: Stream, gradeFilter: number | 'All' = 'A
           'Grade 11 - Unit 1: Reading & Grammar',
           'Grade 11 - Unit 2: Paragraph Writing',
           'Grade 12 - Unit 1: Listening & Conversation',
-          'Grade 12 - Unit 2: Academic Writing & Vocabulary'
+          'Grade 12 - Unit 2: Writing & Vocabulary'
         );
       } else if (subject === 'SAT') {
         chaptersList.push(
-          'Unit 1: Verbal Reasoning & Analogies',
-          'Unit 2: Quantitative Reasoning (Math)',
-          'Unit 3: Analytical Reasoning & Logic',
-          'Unit 4: Reading Comprehension & Synonyms'
+          'Grade 9 - Chapter 1: Numbers and Operations',
+          'Grade 9 - Chapter 2: Algebra and Functions',
+          'Grade 9 - Chapter 3: Geometry and Measurement',
+          'Grade 9 - Chapter 4: Data Analysis and Probability',
+          'Grade 9 - Chapter 5: Advanced Mathematics',
+          'Grade 9 - Chapter 6: Problem Solving Strategies',
+          'Grade 9 - Chapter 7: Critical Reading',
+          'Grade 9 - Chapter 8: Writing and Language',
+          'Grade 9 - Chapter 9: Essay Writing',
+          'Grade 9 - Chapter 10: Vocabulary in Context',
+          'Grade 9 - Chapter 11: Informational Graphics',
+          'Grade 9 - Chapter 12: Evidence-Based Reasoning',
+          'Grade 9 - Chapter 13: Pairs of Quantities',
+          'Grade 9 - Chapter 14: Ratios and Proportional Relationships',
+          'Grade 9 - Chapter 15: Percentage and Percent Change',
+          'Grade 9 - Chapter 16: Data Interpretation',
+          'Grade 9 - Chapter 17: Science Passage Analysis',
+          'Grade 9 - Chapter 18: Social Science Passage Analysis',
+          'Grade 9 - Chapter 19: Historical Passage Analysis',
+          'Grade 9 - Chapter 20: Literary Passage Analysis',
+          'Grade 9 - Chapter 21: Writing Revision',
+          'Grade 9 - Chapter 22: Idioms and Common Expressions',
+          'Grade 10 - Chapter 1: Numbers and Operations',
+          'Grade 10 - Chapter 2: Algebra and Functions',
+          'Grade 10 - Chapter 3: Geometry and Measurement',
+          'Grade 10 - Chapter 4: Data Analysis and Probability',
+          'Grade 10 - Chapter 5: Advanced Mathematics',
+          'Grade 10 - Chapter 6: Problem Solving Strategies',
+          'Grade 10 - Chapter 7: Critical Reading',
+          'Grade 10 - Chapter 8: Writing and Language',
+          'Grade 10 - Chapter 9: Essay Writing',
+          'Grade 10 - Chapter 10: Vocabulary in Context',
+          'Grade 10 - Chapter 11: Informational Graphics',
+          'Grade 10 - Chapter 12: Evidence-Based Reasoning',
+          'Grade 10 - Chapter 13: Pairs of Quantities',
+          'Grade 10 - Chapter 14: Ratios and Proportional Relationships',
+          'Grade 10 - Chapter 15: Percentage and Percent Change',
+          'Grade 10 - Chapter 16: Data Interpretation',
+          'Grade 10 - Chapter 17: Science Passage Analysis',
+          'Grade 10 - Chapter 18: Social Science Passage Analysis',
+          'Grade 10 - Chapter 19: Historical Passage Analysis',
+          'Grade 10 - Chapter 20: Literary Passage Analysis',
+          'Grade 10 - Chapter 21: Writing Revision',
+          'Grade 10 - Chapter 22: Idioms and Common Expressions',
+          'Grade 11 - Chapter 1: Numbers and Operations',
+          'Grade 11 - Chapter 2: Algebra and Functions',
+          'Grade 11 - Chapter 3: Geometry and Measurement',
+          'Grade 11 - Chapter 4: Data Analysis and Probability',
+          'Grade 11 - Chapter 5: Advanced Mathematics',
+          'Grade 11 - Chapter 6: Problem Solving Strategies',
+          'Grade 11 - Chapter 7: Critical Reading',
+          'Grade 11 - Chapter 8: Writing and Language',
+          'Grade 11 - Chapter 9: Essay Writing',
+          'Grade 11 - Chapter 10: Vocabulary in Context',
+          'Grade 11 - Chapter 11: Informational Graphics',
+          'Grade 11 - Chapter 12: Evidence-Based Reasoning',
+          'Grade 11 - Chapter 13: Pairs of Quantities',
+          'Grade 11 - Chapter 14: Ratios and Proportional Relationships',
+          'Grade 11 - Chapter 15: Percentage and Percent Change',
+          'Grade 11 - Chapter 16: Data Interpretation',
+          'Grade 11 - Chapter 17: Science Passage Analysis',
+          'Grade 11 - Chapter 18: Social Science Passage Analysis',
+          'Grade 11 - Chapter 19: Historical Passage Analysis',
+          'Grade 11 - Chapter 20: Literary Passage Analysis',
+          'Grade 11 - Chapter 21: Writing Revision',
+          'Grade 11 - Chapter 22: Idioms and Common Expressions',
+          'Grade 12 - Chapter 1: Numbers and Operations',
+          'Grade 12 - Chapter 2: Algebra and Functions',
+          'Grade 12 - Chapter 3: Geometry and Measurement',
+          'Grade 12 - Chapter 4: Data Analysis and Probability',
+          'Grade 12 - Chapter 5: Advanced Mathematics',
+          'Grade 12 - Chapter 6: Problem Solving Strategies',
+          'Grade 12 - Chapter 7: Critical Reading',
+          'Grade 12 - Chapter 8: Writing and Language',
+          'Grade 12 - Chapter 9: Essay Writing',
+          'Grade 12 - Chapter 10: Vocabulary in Context',
+          'Grade 12 - Chapter 11: Informational Graphics',
+          'Grade 12 - Chapter 12: Evidence-Based Reasoning',
+          'Grade 12 - Chapter 13: Pairs of Quantities',
+          'Grade 12 - Chapter 14: Ratios and Proportional Relationships',
+          'Grade 12 - Chapter 15: Percentage and Percent Change',
+          'Grade 12 - Chapter 16: Data Interpretation',
+          'Grade 12 - Chapter 17: Science Passage Analysis',
+          'Grade 12 - Chapter 18: Social Science Passage Analysis',
+          'Grade 12 - Chapter 19: Historical Passage Analysis',
+          'Grade 12 - Chapter 20: Literary Passage Analysis',
+          'Grade 12 - Chapter 21: Writing Revision',
+          'Grade 12 - Chapter 22: Idioms and Common Expressions'
         );
       } else {
         chaptersList.push(
@@ -146,15 +229,16 @@ export default function PracticeView({
   // State Machine
   const [sessionState, setSessionState] = useState<SessionState>('config');
 
-  // Practice questions: merge static data with DB data
-  const [allQuestions, setAllQuestions] = useState<PracticeQuestion[]>(PRACTICE_QUESTIONS_NEW);
+  // Practice questions: load from database
+  const [allQuestions, setAllQuestions] = useState<PracticeQuestion[]>([]);
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
   useEffect(() => {
-    db.getQuestions({ questionType: 'practice' }).then(qs => {
-      const staticIds = new Set(PRACTICE_QUESTIONS_NEW.map(q => q.id));
-      const newDbOnly = qs.filter(q => !staticIds.has(q.id));
-      setAllQuestions([...PRACTICE_QUESTIONS_NEW, ...newDbOnly]);
+    db.getQuestions().then(qs => {
+      setAllQuestions(qs);
     }).catch(() => {
-      setAllQuestions(PRACTICE_QUESTIONS_NEW);
+      setAllQuestions([]);
+    }).finally(() => {
+      setQuestionsLoaded(true);
     });
   }, []);
 
@@ -172,7 +256,7 @@ export default function PracticeView({
   }, [stream, selectedGrade]);
 
   useEffect(() => {
-    if (initialSubject) {
+    if (initialSubject && questionsLoaded) {
       setSelectedSubject(initialSubject);
       if (initialAutoStart) {
         const pool = allQuestions.filter(q => (q.stream === stream || q.stream === 'Common') && q.subject === initialSubject);
@@ -189,7 +273,7 @@ export default function PracticeView({
       }
       if (onClearInitial) onClearInitial();
     }
-  }, [initialSubject, initialAutoStart, stream, allQuestions]);
+  }, [initialSubject, initialAutoStart, stream, allQuestions, questionsLoaded]);
 
   // Active Session State
   const [activeQuestions, setActiveQuestions] = useState<PracticeQuestion[]>([]);
@@ -222,7 +306,10 @@ export default function PracticeView({
   const matchingPool = useMemo(() => {
     // 1. Find exact real matches
     let exactRealMatches = streamQuestions.filter(q => {
-      if (selectedSubject !== 'All' && q.subject !== selectedSubject) return false;
+      if (selectedSubject !== 'All') {
+        const searchSubject = selectedSubject === 'Mathematics' ? 'Maths' : selectedSubject;
+        if (q.subject !== searchSubject) return false;
+      }
       
       // Filter by grade if selected (extract grade from chapter string like "Grade 12 - Chapter 1: ...")
       if (selectedGrade !== 'All') {
@@ -353,7 +440,7 @@ export default function PracticeView({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto pt-1 pb-4 font-sans select-none animate-fadeIn text-slate-100">
+    <div className="w-full max-w-7xl mx-auto pt-1 pb-4 font-sans select-none text-slate-100">
 
       {/* ═══════════ STATE 1: SESSION CONFIG ═══════════ */}
       {sessionState === 'config' && (
@@ -361,11 +448,11 @@ export default function PracticeView({
 
           {/* Compact Header */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-800/50 flex items-center justify-center shrink-0">
               <Target className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-white tracking-tight leading-tight">Configure Practice Session</h1>
+              <h1 className="text-xl font-semibold text-white tracking-tight leading-tight">Configure Practice Session</h1>
               <p className="text-xs text-slate-400">Select your subject, difficulty, and drill length to begin.</p>
             </div>
           </div>
@@ -374,18 +461,18 @@ export default function PracticeView({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
             {/* LEFT: All Settings in one card */}
-            <div className="lg:col-span-2 bg-[#131E32] rounded-2xl border border-slate-800/60 p-5">
+            <div className="lg:col-span-2 bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5">
               <div className="space-y-4">
 
                 {/* Subject & Grade & Chapter */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-slate-400">Subject</label>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Subject</label>
                       <select
                         value={selectedSubject}
                         onChange={(e) => { setSelectedSubject(e.target.value as any); setSelectedChapter('All'); }}
-                        className="w-full px-3 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-teal-500 transition-all cursor-pointer"
+                        className="w-full px-3 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
                       >
                         <option value="All">All Subjects</option>
                         {availableSubjects.map(s => (
@@ -394,11 +481,11 @@ export default function PracticeView({
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-slate-400">Grade</label>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Grade</label>
                       <select
                         value={selectedGrade}
                         onChange={(e) => { setSelectedGrade(e.target.value === 'All' ? 'All' : parseInt(e.target.value)); setSelectedChapter('All'); }}
-                        className="w-full px-3 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-teal-500 transition-all cursor-pointer"
+                        className="w-full px-3 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
                       >
                         <option value="All">All Grades</option>
                         <option value={9}>Grade 9</option>
@@ -408,11 +495,11 @@ export default function PracticeView({
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-slate-400">Chapter / Unit</label>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Chapter / Unit</label>
                       <select
                         value={selectedChapter}
                         onChange={(e) => setSelectedChapter(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-teal-500 transition-all cursor-pointer truncate"
+                        className="w-full px-3 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-500 transition-all cursor-pointer truncate"
                       >
                         <option value="All">All Chapters</option>
                         {availableChapters.map(ch => (
@@ -425,7 +512,7 @@ export default function PracticeView({
 
                 {/* Drill Length */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <Flame className="w-3.5 h-3.5 text-emerald-400" />
                     Session Drill Length
                   </label>
@@ -435,9 +522,9 @@ export default function PracticeView({
                         key={num}
                         type="button"
                         onClick={() => setQuestionCount(num)}
-                        className={`py-2.5 rounded-xl text-sm font-black transition-all cursor-pointer border ${
+                        className={`py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer border ${
                           questionCount === num
-                            ? 'bg-teal-500/15 border-teal-500/60 text-teal-300 shadow-lg shadow-teal-500/10'
+                            ? 'bg-blue-500/10 border-blue-500/60 text-blue-300 shadow-sm'
                             : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'
                         }`}
                       >
@@ -449,9 +536,9 @@ export default function PracticeView({
 
                 {/* Difficulty */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-                    Academic Difficulty
+                    Difficulty
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     {['All', 'Easy', 'Medium', 'Hard'].map(diff => (
@@ -461,7 +548,7 @@ export default function PracticeView({
                         onClick={() => setSelectedDifficulty(diff as any)}
                         className={`py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer border ${
                           selectedDifficulty === diff
-                            ? 'bg-teal-500/15 border-teal-500/60 text-teal-300 shadow-lg shadow-teal-500/10'
+                            ? 'bg-blue-500/10 border-blue-500/60 text-blue-300 shadow-sm'
                             : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'
                         }`}
                       >
@@ -473,7 +560,7 @@ export default function PracticeView({
 
                 {/* Timer */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
                     Exam Countdown Timer
                   </label>
@@ -490,7 +577,7 @@ export default function PracticeView({
                         onClick={() => setTimerMinutes(t.val)}
                         className={`py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer border ${
                           timerMinutes === t.val
-                            ? 'bg-amber-500/15 border-amber-500/60 text-amber-300 shadow-lg shadow-amber-500/10'
+                            ? 'bg-amber-500/10 border-amber-500/60 text-amber-300 shadow-sm'
                             : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'
                         }`}
                       >
@@ -505,7 +592,7 @@ export default function PracticeView({
               {/* Bottom status */}
               <div className="pt-3 mt-3 border-t border-slate-800/50 flex items-center justify-between text-xs text-slate-400">
                 <span className="flex items-center gap-1.5 font-bold">
-                  <Clock className="w-3.5 h-3.5 text-teal-400" />
+                  <Clock className="w-3.5 h-3.5 text-blue-400" />
                   {timerMinutes > 0 ? `${timerMinutes} min timer` : 'Untimed'}
                 </span>
                 {!isPremium && (
@@ -518,13 +605,13 @@ export default function PracticeView({
             </div>
 
             {/* RIGHT: Insights Panel */}
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-5 flex flex-col gap-4">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5 flex flex-col gap-4">
 
               {/* Match Count — compact */}
               <div className="text-center pb-3 border-b border-slate-800/50">
-                <span className="text-4xl font-black text-white tabular-nums">{matchingPool.length}</span>
+                <span className="text-4xl font-semibold text-white tabular-nums">{matchingPool.length}</span>
                 <span className="text-xs text-slate-500 font-bold uppercase ml-1">Qs available</span>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   {matchingPool.length > 0 ? 'Questions matched' : 'No matches — adjust filters'}
                 </p>
               </div>
@@ -532,25 +619,25 @@ export default function PracticeView({
               {/* Quick Stats */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-slate-900/60 rounded-xl py-2.5 text-center border border-slate-800/40">
-                  <div className="text-lg font-black text-teal-400">{timerMinutes || '∞'}</div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase">Min</div>
+                  <div className="text-lg font-semibold text-blue-400">{timerMinutes || '∞'}</div>
+                  <div className="text-xs text-slate-500 font-bold uppercase">Min</div>
                 </div>
                 <div className="bg-slate-900/60 rounded-xl py-2.5 text-center border border-slate-800/40">
-                  <div className="text-lg font-black text-emerald-400">{questionCount === 999 ? 'All' : questionCount}</div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase">Qs</div>
+                  <div className="text-lg font-semibold text-emerald-400">{questionCount === 999 ? 'All' : questionCount}</div>
+                  <div className="text-xs text-slate-500 font-bold uppercase">Qs</div>
                 </div>
               </div>
 
               {/* Focus Areas */}
               <div className="pb-3 border-b border-slate-800/50">
-                <label className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-2">
-                  <Info className="w-3.5 h-3.5 text-teal-400" />
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-2">
+                  <Info className="w-3.5 h-3.5 text-blue-400" />
                   Focus Areas
                 </label>
                 <div className="space-y-1.5">
                   {getSubjectConceptChecklist(selectedSubject === 'All' ? 'Mathematics' : selectedSubject).map((item, idx) => (
                     <div key={idx} className="flex items-start gap-2 py-0.5">
-                      <div className="w-4 h-4 rounded bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-[9px] text-teal-400 font-black shrink-0 mt-0.5">
+                      <div className="w-4 h-4 rounded bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xs text-blue-400 font-semibold shrink-0 mt-0.5">
                         {idx + 1}
                       </div>
                       <span className="text-xs text-slate-300 leading-snug">{item}</span>
@@ -562,36 +649,43 @@ export default function PracticeView({
               {/* Daily Pass */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-slate-400 uppercase">Daily Pass</span>
-                  <span className="font-black text-white">{dailyUsed}/{dailyCap}</span>
+                  <span className="font-semibold text-slate-400 uppercase">Daily Pass</span>
+                  <span className="font-semibold text-white">{dailyUsed}/{dailyCap}</span>
                 </div>
                 <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-teal-400 to-emerald-400 h-full rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-blue-400 to-emerald-400 h-full rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(100, (dailyUsed / (dailyCap || 1)) * 100)}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   {isPremium ? 'PRO — Unlimited passes' : `${dailyCap - dailyUsed} passes left today`}
                 </p>
               </div>
 
               {/* Start Button */}
-              <button
-                onClick={handleStartSession}
-                disabled={matchingPool.length === 0}
-                className={`w-full py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  matchingPool.length > 0
-                    ? 'bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 shadow-xl shadow-teal-500/20 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50'
-                }`}
-              >
-                <Play className="w-4 h-4 fill-slate-950" />
-                {matchingPool.length === 0
-                  ? 'No Matching Questions'
-                  : `Start Practice (${Math.min(questionCount === 999 ? matchingPool.length : questionCount, matchingPool.length)} Qs)`}
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {!questionsLoaded ? (
+                <div className="w-full py-3 rounded-xl bg-slate-800/80 text-slate-400 text-sm font-bold flex items-center justify-center gap-2 border border-slate-700/50">
+                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  Loading questions...
+                </div>
+              ) : (
+                <button
+                  onClick={handleStartSession}
+                  disabled={matchingPool.length === 0}
+                  className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    matchingPool.length > 0
+                      ? 'bg-blue-600 text-white shadow-sm hover:scale-[1.02] active:scale-[0.98]'
+                      : 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                  }`}
+                >
+                  <Play className="w-4 h-4 fill-slate-950" />
+                  {matchingPool.length === 0
+                    ? 'No Matching Questions'
+                    : `Start Practice (${Math.min(questionCount === 999 ? matchingPool.length : questionCount, matchingPool.length)} Qs)`}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
 
             </div>
 
@@ -608,7 +702,7 @@ export default function PracticeView({
           <div className="lg:col-span-8 space-y-3 min-h-0 flex flex-col">
 
             {/* Top Bar */}
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-3 flex items-center justify-between gap-3">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-3 flex items-center justify-between gap-3">
               <button
                 onClick={() => setSessionState('config')}
                 className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-600 transition-all cursor-pointer shrink-0"
@@ -621,18 +715,18 @@ export default function PracticeView({
               <div className="flex-1 flex items-center gap-3">
                 <div className="flex-1 bg-slate-800/60 h-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-teal-400 to-emerald-400 h-full rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-blue-400 to-emerald-400 h-full rounded-full transition-all duration-500"
                     style={{ width: `${((currentIndex + 1) / activeQuestions.length) * 100}%` }}
                   />
                 </div>
-                <span className="text-[11px] font-black text-white tabular-nums shrink-0">
+                <span className="text-[11px] font-semibold text-white tabular-nums shrink-0">
                   {currentIndex + 1}<span className="text-slate-500 font-normal">/{activeQuestions.length}</span>
                 </span>
               </div>
 
               {/* Timer */}
               {timerMinutes > 0 ? (
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-black text-xs shrink-0 border transition-all ${
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-semibold text-xs shrink-0 border transition-all ${
                   secondsRemaining <= 60
                     ? 'bg-rose-500/15 text-rose-300 border-rose-500/40 animate-pulse'
                     : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
@@ -646,12 +740,12 @@ export default function PracticeView({
             </div>
 
             {/* Question Card */}
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-5 sm:p-6 space-y-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5 sm:p-6 space-y-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
 
               {/* Chapter & Difficulty Tags */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-teal-400 truncate max-w-[70%]">{currentQ.chapter}</span>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-400 truncate max-w-[70%]">{currentQ.chapter}</span>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider ${
                   currentQ.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : currentQ.difficulty === 'Hard' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                   : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
@@ -663,16 +757,26 @@ export default function PracticeView({
               {/* Passage (if exists) */}
               {currentQ.passage && (
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-teal-400">
+                  <div className="flex items-center gap-2 text-blue-400">
                     <FileText className="w-4 h-4" />
                     <span className="text-xs font-bold uppercase tracking-wider">Reading Passage</span>
                   </div>
-                  <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: currentQ.passage }} />
+                  <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQ.passage) }} />
                 </div>
               )}
 
               {/* Question Text */}
-              <h2 className="text-base sm:text-lg font-bold text-white leading-relaxed" dangerouslySetInnerHTML={{ __html: currentQ.questionText }} />
+              <h2 className="text-base sm:text-lg font-bold text-white leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQ.questionText) }} />
+
+              {/* Image Placeholder */}
+              {currentQ.hasImage && currentQ.imagePlaceholder && (
+                <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center justify-center min-h-[120px]">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2"></div>
+                    <p className="text-slate-400 text-sm font-medium">{currentQ.imagePlaceholder}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Options */}
               <div className="grid grid-cols-1 gap-2.5">
@@ -683,7 +787,7 @@ export default function PracticeView({
                   let style = 'bg-slate-900/50 border-slate-800/80 hover:border-slate-600 hover:bg-slate-800/50 text-slate-300';
                   if (isAnswered) {
                     if (isOptCorrect) {
-                      style = 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200 shadow-lg shadow-emerald-500/10';
+                      style = 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200 shadow-sm';
                     } else if (isSelected) {
                       style = 'bg-rose-500/15 border-rose-500/60 text-rose-200';
                     } else {
@@ -698,14 +802,14 @@ export default function PracticeView({
                       disabled={isAnswered}
                       className={`p-4 rounded-xl border text-left text-sm font-medium transition-all flex items-start gap-3 cursor-pointer ${style}`}
                     >
-                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black uppercase text-xs shrink-0 transition-colors ${
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold uppercase text-xs shrink-0 transition-colors ${
                         isAnswered && isOptCorrect ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         : isAnswered && isSelected ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                         : 'bg-slate-800 text-slate-300 border border-slate-700'
                       }`}>
                         {opt.id}
                       </span>
-                      <span className="flex-1 pt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                      <span className="flex-1 pt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(opt.text) }} />
                       {isAnswered && isOptCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-1" />}
                       {isAnswered && isSelected && !isOptCorrect && <XCircle className="w-5 h-5 text-rose-400 shrink-0 mt-1" />}
                     </button>
@@ -725,10 +829,10 @@ export default function PracticeView({
                       Stuck? Reveal Hint
                     </button>
                   ) : (
-                    <div className="p-4 bg-amber-500/5 rounded-xl border border-amber-500/20 text-xs text-slate-300 leading-relaxed flex items-start gap-3 animate-fadeIn">
+                    <div className="p-4 bg-amber-500/5 rounded-xl border border-amber-500/20 text-xs text-slate-300 leading-relaxed flex items-start gap-3">
                       <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-black text-amber-300 block mb-1">Academic Clue</span>
+                        <span className="font-semibold text-amber-300 block mb-1">Clue</span>
                         Focus on the primary governing relationships of {currentQ.subject} — {currentQ.chapter.split(':').pop()?.trim()}.
                       </div>
                     </div>
@@ -738,23 +842,23 @@ export default function PracticeView({
 
               {/* Explanation */}
               {isAnswered && (
-                <div className="p-4 bg-slate-900/60 rounded-xl border border-teal-500/20 space-y-3 animate-fadeIn">
+                <div className="p-4 bg-slate-900/60 rounded-xl border border-blue-500/20 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-teal-400" />
+                    <span className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-blue-400" />
                       Verified Solution
                     </span>
-                    <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${isCorrect ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isCorrect ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
                       {isCorrect ? '+25 XP' : 'Needs Review'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
+                  <p className="text-xs text-slate-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQ.explanation) }} />
                   <div className="flex justify-end">
                     <button
                       onClick={() => onJumpToExplainer(currentQ.questionText, currentQ.subject)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[11px] font-black transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold transition-colors cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                      <Sparkles className="w-3.5 h-3.5 text-blue-400" />
                       Ask AI Tutor
                     </button>
                   </div>
@@ -776,7 +880,7 @@ export default function PracticeView({
                 {currentIndex < activeQuestions.length - 1 ? (
                   <button
                     onClick={() => { setShowHint(false); setCurrentIndex(prev => prev + 1); }}
-                    className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-teal-500/20 active:scale-95"
+                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all cursor-pointer flex items-center gap-2 shadow-sm active:scale-95"
                   >
                     Next Question
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -784,7 +888,7 @@ export default function PracticeView({
                 ) : (
                   <button
                     onClick={() => setSessionState('summary')}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-xs transition-all cursor-pointer flex items-center gap-2 shadow-sm active:scale-95"
                   >
                     Complete Practice
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -796,26 +900,26 @@ export default function PracticeView({
           </div>
 
           {/* RIGHT: Monitor Sidebar (4 cols) */}
-          <div className="lg:col-span-4 bg-[#131E32] border border-slate-800/60 rounded-2xl p-4 space-y-4 shadow-xl">
+          <div className="lg:col-span-4 bg-[#0F1218] border border-slate-800/60 rounded-2xl p-4 space-y-4 shadow-sm">
 
             <div className="flex items-center gap-2 border-b border-slate-800/50 pb-3">
-              <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center">
-                <Flame className="w-4 h-4 text-teal-400" />
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Flame className="w-4 h-4 text-blue-400" />
               </div>
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Arena Monitor</h4>
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Monitor</h4>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-2.5">
               <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/40 text-center">
-                <div className="text-[9px] text-slate-500 uppercase font-black tracking-wider">Answered</div>
-                <div className="text-xl font-black text-white mt-1">
+                <div className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Answered</div>
+                <div className="text-xl font-semibold text-white mt-1">
                   {Object.keys(userAnswers).length}<span className="text-xs text-slate-500 font-normal">/{activeQuestions.length}</span>
                 </div>
               </div>
               <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/40 text-center">
-                <div className="text-[9px] text-slate-500 uppercase font-black tracking-wider">Correct</div>
-                <div className="text-xl font-black text-emerald-400 mt-1">
+                <div className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Correct</div>
+                <div className="text-xl font-semibold text-emerald-400 mt-1">
                   {activeQuestions.filter(q => userAnswers[q.id] === q.correctOptionId).length}
                 </div>
               </div>
@@ -823,7 +927,7 @@ export default function PracticeView({
 
             {/* Question Navigator */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Question Map</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Question Map</label>
               <div className="grid grid-cols-5 gap-1.5">
                 {activeQuestions.map((q, idx) => {
                   const answered = userAnswers[q.id];
@@ -832,7 +936,7 @@ export default function PracticeView({
 
                   let btnStyle = 'bg-slate-900/60 text-slate-500 border-slate-800/60 hover:bg-slate-800/60 hover:text-slate-300';
                   if (isCurrent) {
-                    btnStyle = 'bg-teal-500 text-slate-950 font-black border-teal-400 shadow-lg shadow-teal-500/20';
+                    btnStyle = 'bg-blue-600 text-white font-semibold border-blue-400 shadow-sm';
                   } else if (answered) {
                     btnStyle = correct
                       ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
@@ -843,7 +947,7 @@ export default function PracticeView({
                     <button
                       key={q.id}
                       onClick={() => setCurrentIndex(idx)}
-                      className={`aspect-square rounded-xl border text-[10px] font-bold flex items-center justify-center transition-all cursor-pointer ${btnStyle}`}
+                      className={`aspect-square rounded-xl border text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${btnStyle}`}
                     >
                       {idx + 1}
                     </button>
@@ -854,11 +958,11 @@ export default function PracticeView({
 
             {/* Tip */}
             <div className="bg-slate-900/40 border border-slate-800/40 rounded-xl p-3 space-y-1.5">
-              <span className="text-[10px] font-black text-amber-400 uppercase flex items-center gap-1">
+              <span className="text-xs font-semibold text-amber-400 uppercase flex items-center gap-1">
                 <Info className="w-3 h-3" />
                 Study Tip
               </span>
-              <p className="text-[10px] text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-400 leading-relaxed">
                 Read verified explanations for both correct and incorrect answers to reinforce your understanding.
               </p>
             </div>
@@ -871,25 +975,25 @@ export default function PracticeView({
 
       {/* ═══════════ STATE 3: SESSION SUMMARY ═══════════ */}
       {sessionState === 'summary' && (
-        <div className="space-y-6 animate-fadeIn max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto">
 
           {/* Hero Card */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0c1929] via-[#132238] to-[#0f1d30] border border-slate-800/60 p-8 text-center">
-            <div className="absolute -right-20 -top-20 w-72 h-72 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative overflow-hidden rounded-xl bg-[#0F1218] border border-slate-800/60 p-8 text-center">
+            <div className="absolute -right-20 -top-20 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10 space-y-4">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-400 to-emerald-400 flex items-center justify-center mx-auto text-slate-950 shadow-2xl shadow-teal-500/30">
+              <div className="w-20 h-20 rounded-xl bg-blue-400 flex items-center justify-center mx-auto text-slate-950 shadow-xl">
                 <Award className="w-10 h-10" />
               </div>
               <div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Practice Complete!</h2>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">Practice Complete!</h2>
                 <p className="text-sm text-slate-400 mt-1">Here is your entrance exam readiness scorecard.</p>
               </div>
               <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-slate-900/60 border border-slate-800/60">
-                <span className="text-3xl font-black text-white">{accuracyPercent}%</span>
+                <span className="text-3xl font-semibold text-white">{accuracyPercent}%</span>
                 <div className="text-left">
-                  <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Accuracy</div>
-                  <div className="text-sm font-black text-teal-400">
+                  <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Accuracy</div>
+                  <div className="text-sm font-semibold text-blue-400">
                     {accuracyPercent >= 80 ? 'Summa Scholar' : accuracyPercent >= 60 ? 'Passing Merit' : 'Needs Revision'}
                   </div>
                 </div>
@@ -899,21 +1003,21 @@ export default function PracticeView({
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-4 text-center">
-              <div className="text-3xl font-black text-white">{correctCount}<span className="text-lg text-slate-500 font-normal">/{totalAnswered}</span></div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Score</div>
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-4 text-center">
+              <div className="text-3xl font-semibold text-white">{correctCount}<span className="text-lg text-slate-500 font-normal">/{totalAnswered}</span></div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Score</div>
             </div>
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-4 text-center">
-              <div className="text-3xl font-black text-teal-400">{accuracyPercent}%</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Accuracy</div>
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-4 text-center">
+              <div className="text-3xl font-semibold text-blue-400">{accuracyPercent}%</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Accuracy</div>
             </div>
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-4 text-center">
-              <div className="text-3xl font-black text-amber-400">{timerMinutes || '∞'}</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Minutes</div>
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-4 text-center">
+              <div className="text-3xl font-semibold text-amber-400">{timerMinutes || '∞'}</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Minutes</div>
             </div>
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-4 text-center">
-              <div className="text-3xl font-black text-emerald-400">{totalAnswered}</div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Questions</div>
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-4 text-center">
+              <div className="text-3xl font-semibold text-emerald-400">{totalAnswered}</div>
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Questions</div>
             </div>
           </div>
 
@@ -921,61 +1025,61 @@ export default function PracticeView({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
             {/* Recommendation */}
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-5 space-y-3">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5 space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-800/50 pb-3">
-                <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
                   <Lightbulb className="w-4 h-4 text-amber-400" />
                 </div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">Scholar Recommendation</h3>
+                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Scholar Recommendation</h3>
               </div>
               <ul className="space-y-2">
                 <li className="flex items-start gap-2.5 text-xs text-slate-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <span>Review step-by-step verified explanations in the question navigator.</span>
                 </li>
                 <li className="flex items-start gap-2.5 text-xs text-slate-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <span>Open Study Hub to read targeted formulas for this chapter.</span>
                 </li>
                 <li className="flex items-start gap-2.5 text-xs text-slate-300">
-                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <span>{accuracyPercent >= 60 ? 'Great progress! Move to more advanced chapters.' : 'Focus on fundamentals before retaking this session.'}</span>
                 </li>
               </ul>
             </div>
 
             {/* Actions */}
-            <div className="bg-[#131E32] rounded-2xl border border-slate-800/60 p-5 space-y-4">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5 space-y-4">
               <div className="flex items-center gap-2 border-b border-slate-800/50 pb-3">
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                   <Play className="w-4 h-4 text-emerald-400" />
                 </div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">Next Steps</h3>
+                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Next Steps</h3>
               </div>
               <div className="space-y-2.5">
                 <button
                   onClick={() => setSessionState('config')}
-                  className="w-full py-3 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-white font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-white font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-teal-400" />
+                  <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
                   New Practice Session
                 </button>
                 <button
                   onClick={() => { setSessionState('config'); onNavigate?.('dashboard'); }}
-                  className="w-full py-3 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-white font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-white font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
                   Back to Dashboard
                 </button>
                 <button
                   onClick={onOpenUpgrade}
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 font-black text-xs transition-all cursor-pointer shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl bg-blue-600 text-white font-semibold text-xs transition-all cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  Unlock Pro Unlimited
+                  Get Pro Unlimited
                 </button>
               </div>
-              <p className="text-[9px] text-slate-500 text-center">Evaluated on {new Date().toLocaleDateString()}</p>
+              <p className="text-xs text-slate-500 text-center">Evaluated on {new Date().toLocaleDateString()}</p>
             </div>
 
           </div>

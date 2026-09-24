@@ -8,12 +8,23 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+    build: {
+      target: 'es2022',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'motion': ['motion/react'],
+            'icons': ['lucide-react'],
+          },
+        },
       },
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? {} : {},
       proxy: {
         '/api': 'http://localhost:3000',
         '/ws': {

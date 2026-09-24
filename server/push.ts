@@ -1,5 +1,5 @@
 // Push notification subscription management
-import { supabase, formatSupabaseError } from './db';
+import { supabaseAdmin as supabase, formatSupabaseError } from './db';
 
 export async function savePushSubscription(
   userEmail: string,

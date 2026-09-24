@@ -60,7 +60,7 @@ export default function CurriculumMatrixView({
         text: 'text-rose-400',
         bg: 'bg-rose-500/10',
         border: 'border-rose-500/20',
-        glow: 'shadow-rose-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-rose-500',
         accent: 'rose'
       };
@@ -70,7 +70,7 @@ export default function CurriculumMatrixView({
         text: 'text-sky-400',
         bg: 'bg-sky-500/10',
         border: 'border-sky-500/20',
-        glow: 'shadow-sky-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-sky-500',
         accent: 'sky'
       };
@@ -80,7 +80,7 @@ export default function CurriculumMatrixView({
         text: 'text-emerald-400',
         bg: 'bg-emerald-500/10',
         border: 'border-emerald-500/20',
-        glow: 'shadow-emerald-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-emerald-500',
         accent: 'emerald'
       };
@@ -90,7 +90,7 @@ export default function CurriculumMatrixView({
         text: 'text-amber-400',
         bg: 'bg-amber-500/10',
         border: 'border-amber-500/20',
-        glow: 'shadow-amber-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-amber-500',
         accent: 'amber'
       };
@@ -100,18 +100,18 @@ export default function CurriculumMatrixView({
         text: 'text-indigo-400',
         bg: 'bg-indigo-500/10',
         border: 'border-indigo-500/20',
-        glow: 'shadow-indigo-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-indigo-500',
         accent: 'indigo'
       };
     }
     if (norm.includes('geog')) {
       return {
-        text: 'text-teal-400',
-        bg: 'bg-teal-500/10',
-        border: 'border-teal-500/20',
-        glow: 'shadow-teal-500/20',
-        pillBg: 'bg-teal-500',
+        text: 'text-blue-400',
+        bg: 'bg-blue-500/10',
+        border: 'border-blue-500/20',
+        glow: 'shadow-sm',
+        pillBg: 'bg-blue-500',
         accent: 'teal'
       };
     }
@@ -120,7 +120,7 @@ export default function CurriculumMatrixView({
         text: 'text-fuchsia-400',
         bg: 'bg-fuchsia-500/10',
         border: 'border-fuchsia-500/20',
-        glow: 'shadow-fuchsia-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-fuchsia-500',
         accent: 'fuchsia'
       };
@@ -130,7 +130,7 @@ export default function CurriculumMatrixView({
         text: 'text-violet-400',
         bg: 'bg-violet-500/10',
         border: 'border-violet-500/20',
-        glow: 'shadow-violet-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-violet-500',
         accent: 'violet'
       };
@@ -140,7 +140,7 @@ export default function CurriculumMatrixView({
         text: 'text-orange-400',
         bg: 'bg-orange-500/10',
         border: 'border-orange-500/20',
-        glow: 'shadow-orange-500/20',
+        glow: 'shadow-sm',
         pillBg: 'bg-orange-500',
         accent: 'orange'
       };
@@ -149,7 +149,7 @@ export default function CurriculumMatrixView({
       text: 'text-slate-400',
       bg: 'bg-slate-500/10',
       border: 'border-slate-500/20',
-      glow: 'shadow-slate-500/20',
+      glow: 'shadow-sm',
       pillBg: 'bg-slate-500',
       accent: 'slate'
     };
@@ -198,13 +198,13 @@ export default function CurriculumMatrixView({
     : 0;
 
   return (
-    <div className="space-y-6 animate-fadeIn text-slate-100">
+    <div className="space-y-6 text-slate-100">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400">
+          <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
               <Layers className="w-5 h-5" />
             </span>
             <span>Syllabus Map</span>
@@ -225,26 +225,26 @@ export default function CurriculumMatrixView({
       </div>
 
       {/* 1. FILTER & SEARCH CONTROL BAR */}
-      <div className="bg-[#1E293B] border border-slate-800 p-5 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[#141920] border border-slate-800 p-5 rounded-xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         {/* Stream toggler inside Grid */}
         <div className="flex flex-col gap-1.5 shrink-0">
-          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+          <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
             Syllabus Stream Focus
           </label>
-          <div className="flex bg-[#0F172A] rounded-2xl border border-slate-800 p-1 self-start">
+          <div className="flex bg-[#0A0E14] rounded-2xl border border-slate-800 p-1 self-start">
             <button
               onClick={() => {
                 setMatrixStream('Natural');
                 setMatrixSearch('');
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center space-x-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center space-x-2 ${
                 matrixStream === 'Natural' 
-                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black shadow-xs' 
+                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold shadow-xs' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
               <span>Natural Science</span>
             </button>
             <button
@@ -252,13 +252,13 @@ export default function CurriculumMatrixView({
                 setMatrixStream('Social');
                 setMatrixSearch('');
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center space-x-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center space-x-2 ${
                 matrixStream === 'Social' 
-                  ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 font-black shadow-xs' 
+                  ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 font-semibold shadow-xs' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
               <span>Social Science</span>
             </button>
           </div>
@@ -266,10 +266,10 @@ export default function CurriculumMatrixView({
 
         {/* Completion Status Filter */}
         <div className="flex flex-col gap-1.5 shrink-0">
-          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+          <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
             Completion Tracker Status
           </label>
-          <div className="flex bg-[#0F172A] rounded-2xl border border-slate-800 p-1 self-start">
+          <div className="flex bg-[#0A0E14] rounded-2xl border border-slate-800 p-1 self-start">
             {[
               { id: 'all', label: 'All Chapters' },
               { id: 'studied', label: 'Completed' },
@@ -280,7 +280,7 @@ export default function CurriculumMatrixView({
                 onClick={() => setMatrixStatusFilter(filt.id as any)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   matrixStatusFilter === filt.id 
-                    ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' 
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -292,7 +292,7 @@ export default function CurriculumMatrixView({
 
         {/* Real-time Spreadsheet Search Bar */}
         <div className="flex flex-col gap-1.5 flex-1 max-w-md">
-          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+          <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
             Spreadsheet Filter
           </label>
           <div className="relative">
@@ -302,7 +302,7 @@ export default function CurriculumMatrixView({
               value={matrixSearch}
               onChange={(e) => setMatrixSearch(e.target.value)}
               placeholder="Search topics e.g. Calculus, Atom, Cell..."
-              className="w-full bg-[#0F172A] border border-slate-800 text-slate-100 rounded-2xl pl-10 pr-10 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+              className="w-full bg-[#0A0E14] border border-slate-800 text-slate-100 rounded-2xl pl-10 pr-10 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
             {matrixSearch && (
               <button
@@ -319,63 +319,63 @@ export default function CurriculumMatrixView({
       {/* 2. CURRICULUM MATRIX STATISTICS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div className="bg-[#131E32] border border-slate-800 rounded-3xl p-5 shadow-lg flex items-center space-x-4">
+        <div className="bg-[#0F1218] border border-slate-800 rounded-xl p-5 shadow-lg flex items-center space-x-4">
           <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-indigo-400">
             <BookMarked className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
+            <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider block">
               Syllabus Chapters
             </span>
             <div className="flex items-baseline space-x-2 mt-0.5">
-              <span className="text-xl font-black text-white">{totalChaptersCount}</span>
+              <span className="text-xl font-semibold text-white">{totalChaptersCount}</span>
               <span className="text-xs text-slate-400 font-bold">Total Units</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#131E32] border border-slate-800 rounded-3xl p-5 shadow-lg flex items-center space-x-4">
+        <div className="bg-[#0F1218] border border-slate-800 rounded-xl p-5 shadow-lg flex items-center space-x-4">
           <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
+            <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider block">
               Units Studied
             </span>
             <div className="flex items-baseline space-x-2 mt-0.5">
-              <span className="text-xl font-black text-emerald-400">{completedChaptersCount}</span>
+              <span className="text-xl font-semibold text-emerald-400">{completedChaptersCount}</span>
               <span className="text-xs text-slate-400 font-bold">/ {totalChaptersCount} ({overallProgressPercent}%)</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#131E32] border border-slate-800 rounded-3xl p-5 shadow-lg flex items-center space-x-4">
+        <div className="bg-[#0F1218] border border-slate-800 rounded-xl p-5 shadow-lg flex items-center space-x-4">
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-400">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
+            <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider block">
               Curriculum Mastery
             </span>
-            <div className="w-full bg-[#0F172A] rounded-full h-2.5 mt-2 overflow-hidden border border-slate-800">
+            <div className="w-full bg-[#0A0E14] rounded-full h-2.5 mt-2 overflow-hidden border border-slate-800">
               <div 
-                className="bg-gradient-to-r from-teal-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-500"
                 style={{ width: `${overallProgressPercent}%` }}
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-[#131E32] border border-slate-800 rounded-3xl p-5 shadow-lg flex items-center space-x-4">
+        <div className="bg-[#0F1218] border border-slate-800 rounded-xl p-5 shadow-lg flex items-center space-x-4">
           <div className="p-3 bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-2xl text-fuchsia-400">
             <Award className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
+            <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider block">
               Exam Readiness
             </span>
-            <span className="text-base font-black text-white mt-1 block">
-              {overallProgressPercent >= 80 ? '🏆 Excellence' : overallProgressPercent >= 50 ? '⚡ Strong Pace' : '📘 Needs Review'}
+            <span className="text-base font-semibold text-white mt-1 block">
+              {overallProgressPercent >= 80 ? 'Excellence' : overallProgressPercent >= 50 ? 'Strong Pace' : 'Needs Review'}
             </span>
           </div>
         </div>
@@ -383,27 +383,27 @@ export default function CurriculumMatrixView({
       </div>
 
       {/* 3. CURRICULUM SYLLABUS MATRIX GRID */}
-      <div className="bg-[#131E32] border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+      <div className="bg-[#0F1218] border border-slate-800 rounded-xl shadow-2xl overflow-hidden">
         
         <div className="overflow-x-auto">
               <table className="w-full table-fixed border-collapse border-b border-slate-800 text-left min-w-[950px]">
                 
                 <thead>
                   {/* Main Row Headers */}
-                  <tr className="bg-[#111A2E] border-b border-slate-800 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-                    <th className="p-4 border-r border-slate-800 font-black text-slate-200 w-[18%] min-w-[170px] shrink-0">
+                  <tr className="bg-[#111A2E] border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="p-4 border-r border-slate-800 font-semibold text-slate-200 w-[18%] min-w-[170px] shrink-0">
                       Subject / Discipline
                     </th>
-                    <th className="p-4 border-r border-slate-800 text-center font-black text-slate-200 w-[20.5%] min-w-[195px]">
+                    <th className="p-4 border-r border-slate-800 text-center font-semibold text-slate-200 w-[20.5%] min-w-[195px]">
                       Grade 9
                     </th>
-                    <th className="p-4 border-r border-slate-800 text-center font-black text-slate-200 w-[20.5%] min-w-[195px]">
+                    <th className="p-4 border-r border-slate-800 text-center font-semibold text-slate-200 w-[20.5%] min-w-[195px]">
                       Grade 10
                     </th>
-                    <th className="p-4 border-r border-slate-800 text-center font-black text-slate-200 w-[20.5%] min-w-[195px]">
+                    <th className="p-4 border-r border-slate-800 text-center font-semibold text-slate-200 w-[20.5%] min-w-[195px]">
                       Grade 11
                     </th>
-                    <th className="p-4 border-r border-slate-800 text-center font-black text-slate-200 w-[20.5%] min-w-[195px]">
+                    <th className="p-4 border-r border-slate-800 text-center font-semibold text-slate-200 w-[20.5%] min-w-[195px]">
                       Grade 12
                     </th>
                   </tr>
@@ -432,8 +432,8 @@ export default function CurriculumMatrixView({
                             {getSubjectIcon(subj)}
                           </div>
                           <div>
-                            <h4 className="text-sm font-black text-slate-100">{subj}</h4>
-                            <span className="text-[10px] text-slate-400 font-semibold block">
+                            <h4 className="text-sm font-semibold text-slate-100">{subj}</h4>
+                            <span className="text-xs text-slate-400 font-semibold block">
                               {subProgress.total} Total Units
                             </span>
                           </div>
@@ -441,7 +441,7 @@ export default function CurriculumMatrixView({
 
                         {/* Subject Mini-Progress Bar */}
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[9px] font-bold text-slate-500">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-500">
                             <span>Syllabus coverage</span>
                             <span className="text-emerald-400">{subProgressPercent}%</span>
                           </div>
@@ -484,13 +484,13 @@ export default function CurriculumMatrixView({
                         >
                           {chapters.length === 0 ? (
                             <div className="h-full min-h-[90px] border border-dashed border-slate-800/80 rounded-2xl flex flex-col items-center justify-center p-3 text-center">
-                              <span className="text-[10px] font-mono text-slate-600 font-semibold">
+                              <span className="text-xs font-mono text-slate-600 font-semibold">
                                 N/A in Syllabus
                               </span>
                             </div>
                           ) : filteredChapters.length === 0 ? (
                             <div className="h-full min-h-[90px] bg-slate-950/20 rounded-2xl flex items-center justify-center p-3 text-center">
-                              <span className="text-[10px] text-slate-500 font-bold">
+                              <span className="text-xs text-slate-500 font-bold">
                                 {matrixSearch ? 'No matches' : 'Empty filter'}
                               </span>
                             </div>
@@ -513,14 +513,14 @@ export default function CurriculumMatrixView({
                                         : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
                                     } ${
                                       isHighlighted 
-                                        ? 'ring-2 ring-teal-400 border-teal-400 shadow-teal-500/10' 
+                                        ? 'ring-2 ring-blue-400 border-blue-400' 
                                         : ''
                                     }`}
                                   >
                                     
                                     {/* Top Metadata */}
                                     <div className="flex items-start justify-between gap-1.5">
-                                      <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md ${colors.bg} ${colors.text} border ${colors.border}`}>
+                                      <span className={`text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${colors.bg} ${colors.text} border ${colors.border}`}>
                                         Ch {ch.chapterNumber}
                                       </span>
                                       
@@ -533,12 +533,12 @@ export default function CurriculumMatrixView({
                                     </div>
 
                                     {/* Chapter Title */}
-                                    <p className="font-extrabold text-[11px] leading-snug text-slate-100 group-hover:text-teal-300 transition-colors block">
+                                    <p className="font-semibold text-xs leading-snug text-slate-100 group-hover:text-blue-300 transition-colors block">
                                       {ch.chapterName}
                                     </p>
 
                                     {/* Quick Link Hover Arrow */}
-                                    <div className="flex items-center justify-between text-[10px] text-slate-500 group-hover:text-teal-400 pt-1 border-t border-slate-900/40 transition-colors">
+                                    <div className="flex items-center justify-between text-xs text-slate-500 group-hover:text-blue-400 pt-1 border-t border-slate-900/40 transition-colors">
                                       <span>Study notes</span>
                                       <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
                                     </div>

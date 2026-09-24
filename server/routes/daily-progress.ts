@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { supabase, formatSupabaseError } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth } from '../middleware';
 import { validateBody, upsertDailyProgressSchema } from '../validation';
 

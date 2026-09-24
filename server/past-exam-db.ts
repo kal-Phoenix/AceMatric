@@ -1,4 +1,4 @@
-import { supabase as db, snakeToCamel, formatSupabaseError } from './db';
+import { supabaseAdmin as db, snakeToCamel, formatSupabaseError } from './db';
 import sanitizeHtml from 'sanitize-html';
 
 // Cast supabase proxy to any for proper query builder type inference
@@ -27,8 +27,6 @@ export interface PastExamQuestion {
   options: string[];
   correctIndex: number;
   explanation: string;
-  hasImage?: boolean;
-  imagePlaceholder?: string;
   needsReview?: boolean;
   reviewReason?: string;
   passageId?: string;
@@ -228,9 +226,15 @@ export async function getPastExamVersions(id: string): Promise<PastExamEntry[]> 
       title: r.title,
       grade: r.grade,
       subject: r.subject,
+      yearEC: r.yearEc || r.year_ec || '',
+      yearGC: r.yearGc || r.year_gc || '',
       durationMinutes: r.durationMinutes || 90,
       totalQuestions: r.totalQuestions || 0,
       questions: typeof r.questions === 'string' ? JSON.parse(r.questions) : (r.questions || []),
+      passages: typeof r.passages === 'string' ? JSON.parse(r.passages) : (r.passages || []),
+      examCode: r.examCode || r.exam_code || '',
+      sourceFile: r.sourceFile || r.source_file || '',
+      extractionNotes: typeof r.extractionNotes === 'string' ? JSON.parse(r.extractionNotes) : (r.extractionNotes || []),
       status: r.status,
       createdAt: r.savedAt,
       updatedAt: r.savedAt,

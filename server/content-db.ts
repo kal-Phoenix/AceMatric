@@ -1,9 +1,7 @@
-import { supabase as db, getSupabase, snakeToCamel, formatSupabaseError } from './db';
+import { supabaseAdmin as db, getSupabaseAdmin as getSupabase, snakeToCamel, formatSupabaseError } from './db';
 
 // Cast supabase proxy to any for proper query builder type inference
 const supabase = db as any;
-
-const CONTENT_IMAGES_BUCKET = 'content-images';
 
 export interface ContentEntry {
   subject: string;
@@ -17,7 +15,7 @@ export interface ContentEntry {
   youtubeVideoId: string;
   videoDuration: string;
   materials: Array<{ name: string; formula: string; description: string }>;
-  subtopics: Array<{ title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string; imageAlign?: string; imageSize?: string; practiceProblems?: Array<{ question: string; options: string[]; answer: string; solution: string }> }>;
+  subtopics: Array<{ title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string; practiceProblems?: Array<{ question: string; options: string[]; answer: string; solution: string }> }>;
   contentHtml: string;
   status: 'draft' | 'published';
   createdAt: string;
@@ -158,6 +156,7 @@ async function saveVersion(entry: ContentEntry): Promise<void> {
     exam_tips: entry.examTips || '',
     youtube_video_id: entry.youtubeVideoId || '',
     video_duration: entry.videoDuration || '',
+    materials: JSON.stringify(entry.materials || []),
     subtopics: JSON.stringify(entry.subtopics || []),
     content_html: entry.contentHtml || '',
     status: entry.status,
@@ -231,17 +230,15 @@ export async function listContent(filters?: { subject?: string; grade?: number; 
   return data.map(mapRowToEntry);
 }
 
-export async function deleteContent(subject: string, grade: number, chapterNumber: number): Promise<{ deleted: boolean; imageFiles: string[] }> {
+export async function deleteContent(subject: string, grade: number, chapterNumber: number): Promise<{ deleted: boolean }> {
   const id = makeId(subject, grade, chapterNumber);
   const entry = await getContent(subject, grade, chapterNumber);
-  if (!entry) return { deleted: false, imageFiles: [] };
-
-  const imageFiles = extractImageFilesFromEntry(entry);
+  if (!entry) return { deleted: false };
 
   await supabase.from('content_entries').delete().eq('id', id);
   await supabase.from('content_versions').delete().eq('subject', subject).eq('grade', grade).eq('chapter_number', chapterNumber);
 
-  return { deleted: true, imageFiles };
+  return { deleted: true };
 }
 
 export async function duplicateContent(subject: string, grade: number, chapterNumber: number, newChapterNumber: number): Promise<ContentEntry | null> {
@@ -275,12 +272,12 @@ export async function getContentVersions(subject: string, grade: number, chapter
       stream: r.stream || '',
       title: r.title,
       overview: r.overview || '',
-      corePoints: typeof r.corePoints === 'string' ? JSON.parse(r.corePoints) : (r.corePoints || []),
+      corePoints: typeof r.corePoints === 'string' ? safeJsonParse(r.corePoints, []) : (r.corePoints || []),
       examTips: r.examTips || '',
       youtubeVideoId: r.youtubeVideoId || '',
       videoDuration: r.videoDuration || '',
-      materials: typeof r.materials === 'string' ? JSON.parse(r.materials) : (r.materials || []),
-      subtopics: typeof r.subtopics === 'string' ? JSON.parse(r.subtopics) : (r.subtopics || []),
+      materials: typeof r.materials === 'string' ? safeJsonParse(r.materials, []) : (r.materials || []),
+      subtopics: typeof r.subtopics === 'string' ? safeJsonParse(r.subtopics, []) : (r.subtopics || []),
       contentHtml: r.contentHtml || '',
       status: r.status,
       createdAt: r.savedAt,
@@ -288,46 +285,4 @@ export async function getContentVersions(subject: string, grade: number, chapter
       version: r.version,
     };
   });
-}
-
-export function extractImageFilesFromEntry(entry: ContentEntry): string[] {
-  const files: string[] = [];
-  const proxyRegex = /\/api\/content-manage\/images\/([a-f0-9-]+\.\w+)/g;
-  const supabaseRegex = /content-images\/([a-f0-9-]+\.\w+)/g;
-
-  for (const html of [entry.contentHtml, entry.overview, entry.examTips, ...entry.subtopics.map(s => s.content)]) {
-    if (!html) continue;
-    let match;
-    while ((match = proxyRegex.exec(html)) !== null) {
-      files.push(match[1]);
-    }
-    while ((match = supabaseRegex.exec(html)) !== null) {
-      files.push(match[1]);
-    }
-  }
-
-  return [...new Set(files)];
-}
-
-export async function listContentImages(): Promise<Array<{ filename: string; url: string; size: number; createdAt: string }>> {
-  const client = getSupabase();
-  const { data, error } = await client.storage
-    .from(CONTENT_IMAGES_BUCKET)
-    .list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
-
-  if (error || !data) return [];
-
-  return data
-    .filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name))
-    .map(f => {
-      const { data: urlData } = client.storage
-        .from(CONTENT_IMAGES_BUCKET)
-        .getPublicUrl(f.name);
-      return {
-        filename: f.name,
-        url: urlData?.publicUrl || '',
-        size: f.metadata?.size || 0,
-        createdAt: f.created_at || new Date().toISOString(),
-      };
-    });
 }

@@ -1,4 +1,4 @@
-import { supabase as db, snakeToCamel, formatSupabaseError } from './db';
+import { supabaseAdmin as db, snakeToCamel, formatSupabaseError } from './db';
 import sanitizeHtml from 'sanitize-html';
 
 // Cast supabase proxy to any for proper query builder type inference

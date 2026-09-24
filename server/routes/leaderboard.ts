@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabase, formatSupabaseError } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth } from '../middleware';
 
 const router = Router();
@@ -29,16 +29,19 @@ router.get('/', requireAuth, async (req, res) => {
     const { stream, limit } = req.query;
     const maxLimit = Math.min(Number(limit) || 50, 100);
 
+    // Order by the dominant score component (xp) so the in-memory computed-score
+    // ranking is computed from the true top candidates, not an arbitrary slice.
     let query = supabase
       .from('student_profiles')
-      .select('email, name, school, region, stream, xp, streak_days, exam_readiness_score')
-      .limit(Math.min(maxLimit * 4, 200));
+      .select('email, name, school, region, stream, xp, streak_days, exam_readiness_score', { count: 'exact' })
+      .order('xp', { ascending: false })
+      .limit(500);
 
     if (stream && typeof stream === 'string' && stream !== 'All') {
       query = query.eq('stream', stream);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) return res.status(500).json({ error: formatSupabaseError(error) });
 
@@ -55,8 +58,8 @@ router.get('/', requireAuth, async (req, res) => {
         email: entry.email,
       }))
       .sort((a, b) => {
-        const scoreA = a.xp + (a.streak * 50) + (a.examReadinessScore * 2);
-        const scoreB = b.xp + (b.streak * 50) + (b.examReadinessScore * 2);
+        const scoreA = calculateLeaderScore(a);
+        const scoreB = calculateLeaderScore(b);
         return scoreB - scoreA;
       })
       .slice(0, maxLimit)
@@ -68,7 +71,7 @@ router.get('/', requireAuth, async (req, res) => {
     res.json({
       leaderboard: entries.map(({ email, ...rest }) => rest),
       currentUserRank: currentUserEntry ? currentUserEntry.rank : null,
-      totalStudents: data?.length || 0,
+      totalStudents: count || 0,
     });
   } catch (err: any) {
     res.status(500).json({ error: formatSupabaseError(err) });

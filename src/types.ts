@@ -26,6 +26,8 @@ export interface PracticeQuestion {
   yearEC: string;
   passage?: string;
   questionText: string;
+  hasImage?: boolean;
+  imagePlaceholder?: string;
   questionTextAmharic?: string;
   options: QuestionOption[];
   correctOptionId: string;
@@ -64,18 +66,6 @@ export interface StudyNote {
   }[];
 }
 
-export interface Flashcard {
-  id: string;
-  subject: Subject;
-  front: string;
-  frontAmharic?: string;
-  back: string;
-  backAmharic?: string;
-  category: string;
-  status: 'new' | 'learning' | 'review' | 'mastered';
-  nextReviewDate: number;
-}
-
 export interface UserProfile {
   name: string;
   email?: string;
@@ -89,6 +79,7 @@ export interface UserProfile {
   dailyQuestionsUsed: number;
   dailyQuestionsCap: number;
   isPremium: boolean;
+  premiumExpiresAt?: string;
   examReadinessScore: number;
   subjectsPerformance: Record<string, number>;
   savedQuestionIds: string[];
@@ -114,16 +105,7 @@ export interface UserProfile {
   proStudyAudit?: string;
   activeGrade?: number;
   xp?: number;
-}
-
-export type StudyStyle = 'Visual / Video' | 'Practice / Quiz' | 'Reading & Summaries' | 'Collaborative';
-
-export interface OnboardingData {
-  dailyHours: number;
-  studyStyle: StudyStyle;
-  targetScore: number;
-  weakSubjects: Subject[];
-  stream: Stream;
+  videoWatchHistory?: Record<string, number>;
 }
 
 export interface SessionHistoryEntry {
@@ -146,8 +128,6 @@ export interface ContactMessage {
   createdAt: string;
 }
 
-// ── API Response Types ───────────────────────────────────────────────────────
-
 export interface ApiSuccessResponse<T = Record<string, never>> {
   success: true;
   data?: T;
@@ -158,8 +138,6 @@ export interface ApiErrorResponse {
 }
 
 export type ApiResponse<T = Record<string, never>> = ApiSuccessResponse<T> | ApiErrorResponse;
-
-// ── Auth Response Types ──────────────────────────────────────────────────────
 
 export interface AuthSignupResponse {
   success: true;
@@ -182,8 +160,6 @@ export interface AuthVerifyResponse {
   success: true;
   user: { email: string; name: string; role?: string };
 }
-
-// ── Server Entity Types ──────────────────────────────────────────────────────
 
 export type NotificationType = 'challenge' | 'mock' | 'achievement' | 'study_group' | 'info';
 
@@ -226,7 +202,22 @@ export interface AiResponse {
   audit?: string;
 }
 
-// ── Collaboration Types ──────────────────────────────────────────────────────
+export type PaymentMethod = 'cbe' | 'telebirr' | 'abyssinia';
+export type PaymentStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PaymentRequest {
+  id: string;
+  userEmail: string;
+  userName: string;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  transactionRef: string;
+  screenshotUrl: string;
+  status: PaymentStatus;
+  adminNotes: string;
+  createdAt: string;
+  reviewedAt: string | null;
+}
 
 export interface JoinRequest {
   email: string;
@@ -259,6 +250,21 @@ export interface TimerState {
   lastUpdated: number;
 }
 
+export interface RoomListItem {
+  id: string;
+  name: string;
+  activeCount: number;
+  lastMessage: string;
+  creatorEmail: string;
+  subject: string;
+  description: string;
+  createdAt: string;
+  goalsCount: number;
+  completedGoalsCount: number;
+  allowedEmails: string[];
+  joinRequests: JoinRequest[];
+}
+
 export interface RoomMember {
   email: string;
   name: string;
@@ -271,6 +277,7 @@ export interface RoomMember {
   isMuted?: boolean;
   isDeafened?: boolean;
   videoEnabled?: boolean;
+  studyStatus?: string;
 }
 
 export interface RoomState {
@@ -288,40 +295,6 @@ export interface RoomState {
   timerState: TimerState;
   allowedEmails?: string[];
   joinRequests?: JoinRequest[];
-}
-
-export interface RoomListItem {
-  id: string;
-  name: string;
-  activeCount: number;
-  lastMessage: string;
-  creatorEmail: string;
-  subject: string;
-  description: string;
-  createdAt: string;
-  goalsCount: number;
-  completedGoalsCount: number;
-  allowedEmails: string[];
-  joinRequests: JoinRequest[];
-}
-
-// ── Payment Types ──────────────────────────────────────────────────────────
-
-export type PaymentMethod = 'cbe' | 'telebirr' | 'abyssinia';
-export type PaymentStatus = 'pending' | 'approved' | 'rejected';
-
-export interface PaymentRequest {
-  id: string;
-  userEmail: string;
-  userName: string;
-  paymentMethod: PaymentMethod;
-  amount: number;
-  transactionRef: string;
-  screenshotUrl: string;
-  status: PaymentStatus;
-  adminNotes: string;
-  createdAt: string;
-  reviewedAt: string | null;
 }
 
 export interface FormulaOrKeyTerm {
@@ -343,8 +316,6 @@ export interface SubTopicInfo {
   examInsight: string;
   imageUrl?: string;
   imageCaption?: string;
-  imageAlign?: 'left' | 'center' | 'right';
-  imageSize?: 'small' | 'medium' | 'large' | 'full';
   practiceProblems?: PracticeProblem[];
 }
 
@@ -358,4 +329,56 @@ export interface ChapterStudyMaterial {
   materials: FormulaOrKeyTerm[];
   subtopics: SubTopicInfo[];
   contentHtml?: string;
+}
+
+export interface LeaderboardEntry {
+  email: string;
+  name: string;
+  avatar: string;
+  stream: string;
+  examReadinessScore: number;
+  streakDays: number;
+  rank: number;
+}
+
+export interface AdminAnalyticsUser {
+  email: string;
+  sessions: number;
+}
+
+export interface AdminAnalyticsDaily {
+  date: string;
+  activeUsers: number;
+  totalSessions: number;
+}
+
+export interface AdminAnalyticsSubject {
+  name: string;
+  sessions: number;
+  avgScore: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  premiumUsers: number;
+  freeUsers: number;
+  totalPayments: number;
+  pendingPayments: number;
+  approvedPayments: number;
+  rejectedPayments: number;
+}
+
+export interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[];
+  currentUserRank: number | null;
+  totalStudents: number;
+}
+
+export interface AdminAnalyticsResponse {
+  totalEvents: number;
+  activeUsersWeekly: number;
+  activeUsersToday: number;
+  subjectPerformance: AdminAnalyticsSubject[];
+  dailyActiveUsers: AdminAnalyticsDaily[];
+  topUsers: AdminAnalyticsUser[];
 }

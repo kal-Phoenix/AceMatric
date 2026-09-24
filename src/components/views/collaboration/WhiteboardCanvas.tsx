@@ -42,11 +42,11 @@ export default function WhiteboardCanvas({
       
       {/* Header inside of Focusmate camera grid */}
       <div className="flex items-center justify-between px-1">
-        <span className="text-[10px] font-bold text-slate-450 uppercase tracking-widest flex items-center gap-1.5">
+        <span className="text-xs font-bold text-slate-450 uppercase tracking-widest flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
           National Co-Study Grid • Max 10 Students
         </span>
-        <span className="text-[10px] font-semibold text-slate-500">
+        <span className="text-xs font-semibold text-slate-500">
           Double click to pin partner
         </span>
       </div>
@@ -75,7 +75,7 @@ export default function WhiteboardCanvas({
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-3 relative bg-gradient-to-b from-slate-900/60 to-slate-950">
                   {member.videoEnabled ? (
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                      <div className="absolute inset-0 bg-indigo-950/25 animate-pulse duration-5000"></div>
+                      <div className="absolute inset-0 bg-indigo-950/25"></div>
                       <div className="absolute bottom-4 w-full px-4 flex justify-center gap-1">
                         <span className="w-1 h-3 rounded-full bg-indigo-500/40 animate-bounce duration-800" style={{ animationDelay: '100ms' }}></span>
                         <span className="w-1 h-5 rounded-full bg-indigo-500/50 animate-bounce duration-800" style={{ animationDelay: '300ms' }}></span>
@@ -83,9 +83,9 @@ export default function WhiteboardCanvas({
                         <span className="w-1 h-6 rounded-full bg-indigo-500/50 animate-bounce duration-800" style={{ animationDelay: '200ms' }}></span>
                         <span className="w-1 h-3 rounded-full bg-indigo-500/40 animate-bounce duration-800" style={{ animationDelay: '400ms' }}></span>
                       </div>
-                      <div className="text-[28px] opacity-40 animate-pulse filter blur-xs">{member.avatar}</div>
-                      <span className="absolute text-[9px] bg-emerald-950/80 text-emerald-400 border border-emerald-900/30 px-1.5 py-0.5 rounded-md top-2 right-2 font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <div className="text-4xl opacity-40 filter blur-xs">{member.avatar}</div>
+                        <span className="absolute text-xs bg-emerald-950/80 text-emerald-400 border border-emerald-900/30 px-1.5 py-0.5 rounded-md top-2 right-2 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                         Live Cam
                       </span>
                     </div>
@@ -93,11 +93,11 @@ export default function WhiteboardCanvas({
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-11 h-11 rounded-full bg-slate-950/80 border border-slate-800 flex items-center justify-center text-lg shadow-inner relative">
                         {member.avatar}
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-slate-600 rounded-full border border-slate-900 flex items-center justify-center text-[7px] text-white">
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-slate-600 rounded-full border border-slate-900 flex items-center justify-center text-xs text-white">
                           <VideoOff className="w-2 h-2" />
                         </span>
                       </div>
-                      <span className="text-[9px] text-slate-500 mt-2 font-semibold bg-slate-950/50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                      <span className="text-xs text-slate-500 mt-2 font-semibold bg-slate-950/50 px-1.5 py-0.5 rounded uppercase tracking-wider">
                         Camera Off
                       </span>
                     </div>
@@ -107,7 +107,7 @@ export default function WhiteboardCanvas({
 
               {/* Device Overlay Indicators on individual cards */}
               <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
-                <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded flex items-center gap-0.5 ${
+                <span className={`px-1.5 py-0.5 text-xs font-bold rounded flex items-center gap-0.5 ${
                   member.isMe 
                     ? 'bg-indigo-600 text-white' 
                     : 'bg-slate-950/80 text-slate-300'
@@ -116,12 +116,12 @@ export default function WhiteboardCanvas({
                 </span>
                 
                 {member.isMuted && (
-                  <span className="bg-rose-950/90 text-rose-400 p-0.5 rounded text-[8px]" title="Microphone Muted">
+                  <span className="bg-rose-950/90 text-rose-400 p-0.5 rounded text-xs" title="Microphone Muted">
                     <MicOff className="w-2.5 h-2.5" />
                   </span>
                 )}
                 {member.isDeafened && (
-                  <span className="bg-slate-950/90 text-slate-400 p-0.5 rounded text-[8px]" title="Audio Deafened">
+                  <span className="bg-slate-950/90 text-slate-400 p-0.5 rounded text-xs" title="Audio Deafened">
                     <VolumeX className="w-2.5 h-2.5" />
                   </span>
                 )}
@@ -130,12 +130,12 @@ export default function WhiteboardCanvas({
               {/* Footer Info overlay on stream */}
               <div className="absolute bottom-0 inset-x-0 bg-slate-950/90 border-t border-slate-900 px-2 py-1.5 flex flex-col justify-center min-h-10 z-10">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-slate-100 truncate">{member.name}</span>
-                  <span className="text-[8px] text-slate-500 shrink-0 uppercase tracking-widest">{member.stream}</span>
+                  <span className="text-xs font-bold text-slate-100 truncate">{member.name}</span>
+                  <span className="text-xs text-slate-500 shrink-0 uppercase tracking-widest">{member.stream}</span>
                 </div>
                 <div className="flex items-center gap-1 mt-0.5">
                   <Laptop className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
-                  <span className="text-[8.5px] text-indigo-300 font-medium truncate italic" title={member.status}>
+                  <span className="text-xs text-indigo-300 font-medium truncate italic" title={member.status}>
                     {member.status}
                   </span>
                 </div>
@@ -147,14 +147,14 @@ export default function WhiteboardCanvas({
       </div>
 
       {/* Bottom device controller (Focusmate panel) */}
-      <div className="p-3 bg-slate-900 border border-slate-800/80 rounded-2xl shrink-0 flex flex-col sm:flex-row gap-3 items-center justify-between shadow-lg">
+      <div className="p-3 bg-slate-900 border border-slate-800/80 rounded-2xl shrink-0 flex flex-col sm:flex-row gap-3 items-center justify-between shadow-sm">
         {/* Device controls */}
         <div className="flex items-center gap-2.5">
           <button
             onClick={toggleCamera}
             className={`px-4 py-2 text-xs font-black rounded-xl transition-all duration-200 flex items-center gap-2 cursor-pointer active:scale-95 border ${
               isLocalVideoOn 
-                ? 'bg-emerald-600 text-white border-emerald-500/30 hover:bg-emerald-500 shadow-md shadow-emerald-950/40' 
+                ? 'bg-emerald-600 text-white border-emerald-500/30 hover:bg-emerald-500 shadow-sm' 
                 : 'bg-slate-950 text-slate-400 hover:text-slate-200 hover:bg-slate-850 hover:border-slate-700 border-slate-850'
             }`}
             aria-label={isLocalVideoOn ? 'Turn off camera' : 'Turn on camera'}
@@ -167,7 +167,7 @@ export default function WhiteboardCanvas({
             onClick={handleToggleMute}
             className={`p-2.5 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 border ${
               isMuted 
-                ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500/30 shadow-md shadow-rose-950/40' 
+                ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500/30 shadow-sm' 
                 : 'bg-slate-950 hover:bg-slate-850 text-emerald-400 border-slate-850 hover:border-slate-700'
             }`}
             title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
@@ -180,7 +180,7 @@ export default function WhiteboardCanvas({
             onClick={handleToggleDeafen}
             className={`p-2.5 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 border ${
               isDeafened 
-                ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-500/30 shadow-md shadow-amber-950/40' 
+                ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-500/30 shadow-sm' 
                 : 'bg-slate-950 hover:bg-slate-850 text-indigo-400 border-slate-850 hover:border-slate-700'
             }`}
             title={isDeafened ? 'Undeafen audio' : 'Deafen audio huddle'}
@@ -192,7 +192,7 @@ export default function WhiteboardCanvas({
 
         {/* Study status focus update (what you're doing) */}
         <div className="w-full sm:w-auto flex-1 max-w-sm flex items-center gap-2">
-          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider shrink-0">Focusing On:</span>
+          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider shrink-0">Focusing On:</span>
           <input
             type="text"
             value={studyStatusText}

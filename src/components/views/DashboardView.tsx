@@ -1,16 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
+// FIXME: this component is ~1800 lines. Needs to be broken into smaller components.
 import { 
   Sparkles, ArrowRight, BookOpen, Clock, 
   CheckCircle2, Flame, Award, RefreshCw, HelpCircle, AlertCircle, Check, X,
-  FileText, Globe, GraduationCap, TrendingUp, Zap, Wifi, WifiOff,
-  Compass, Brain, Layers, Target, Trophy, Landmark, Lock, MessageSquare, Play,
-  ChevronDown, ChevronUp, Trash2
+  Globe, GraduationCap, TrendingUp, Zap,
+  Compass, Brain, Layers, Target, Trophy, Lock, Play,
+  ChevronDown, ChevronUp, Trash2, Coins
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Stream, Language, Subject, PracticeQuestion, SessionHistoryEntry } from '../../types';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
-import { PRACTICE_QUESTIONS_NEW } from '../../data/practiceQuestions';
 import { db } from '../../lib/supabase';
+import { fisherYatesShuffle } from '../../lib/utils';
+import { getAccessToken } from '../../lib/authToken';
+import { AceSpadeIcon } from '../ui/BrandLogo';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 interface Milestone {
   id: string;
@@ -111,35 +115,6 @@ export function getTopicsForGrade(subject: string, grade: number): { title: stri
       // Assign custom icons based on chapter number or index
       const icons = ['compass', 'target', 'zap', 'brain', 'layers', 'sparkles', 'globe', 'coins'];
       const icon = icons[idx % icons.length];
-      
-      let titleAm = ch.chapterName;
-      
-      // Detailed translations for specific grade subjects
-      if (subject === 'Physics') {
-        if (grade === 9) {
-          const amNames: string[] = [
-          ];
-          titleAm = amNames[idx] || ch.chapterName;
-        } else if (grade === 10) {
-          const amNames: string[] = [
-          ];
-          titleAm = amNames[idx] || ch.chapterName;
-        } else if (grade === 11) {
-          const amNames: string[] = [
-          ];
-          titleAm = amNames[idx] || ch.chapterName;
-        } else if (grade === 12) {
-          const amNames: string[] = [
-          ];
-          titleAm = amNames[idx] || ch.chapterName;
-        }
-      } else if (subject === 'Mathematics' || subject === 'Maths') {
-        if (grade === 9) {
-          const amNames: string[] = [
-          ];
-          titleAm = amNames[idx] || ch.chapterName;
-        }
-      }
       return {
         title: ch.chapterName,
         icon: icon
@@ -196,7 +171,7 @@ export function generateDynamicRoadmap(
       unitTitle = 'Unit 1: Foundations & Core Weakness Drills';
     } else if (topic.topicIdx <= 3) {
       unitNumber = 2;
-      unitTitle = 'Unit 2: Conceptual Mastery & Intermediate Problem Solving';
+      unitTitle = 'Unit 2: Progress & Intermediate Problem Solving';
     } else {
       unitNumber = 3;
       unitTitle = 'Unit 3: Advanced Applications & High-Yield Speed Tests';
@@ -213,10 +188,10 @@ export function generateDynamicRoadmap(
     let color = 'from-indigo-500 to-blue-600';
     let ringColor = 'border-indigo-500';
     if (topic.isWeak) {
-      color = 'from-rose-500 to-orange-600';
-      ringColor = 'border-rose-500';
+      color = 'from-blue-600 to-indigo-600';
+      ringColor = 'border-blue-500';
     } else if (unitNumber === 2) {
-      color = 'from-emerald-500 to-teal-600';
+      color = 'bg-white/10';
       ringColor = 'border-emerald-500';
     } else if (unitNumber === 3) {
       color = 'from-purple-500 to-fuchsia-600';
@@ -238,7 +213,7 @@ export function generateDynamicRoadmap(
       } else if (isRdStyle) {
         subtitle = `Lock in core definitions in ${topic.subject}. Review interactive study notes and formula summary cards for "${topic.title}".`;
       } else {
-        subtitle = `Discuss complex aspects of "${topic.title}" (${topic.subject}) with the Gemini AI Coach to untangle confusion.`;
+        subtitle = `Review challenging aspects of "${topic.title}" (${topic.subject}) with interactive step-by-step guidance.`;
       }
     } else {
       if (isAmStyle) {
@@ -248,7 +223,7 @@ export function generateDynamicRoadmap(
       } else if (isRdStyle) {
         subtitle = `Read summary boxes, physical constants, and key vocabulary for "${topic.title}".`;
       } else {
-        subtitle = `Analyze shortcuts and exam pitfalls for "${topic.title}" in ${topic.subject} with AI.`;
+        subtitle = `Analyze shortcuts and key exam pitfalls for "${topic.title}" in ${topic.subject}.`;
       }
     }
 
@@ -282,7 +257,7 @@ export function generateDynamicRoadmap(
       icon: 'award',
       actionType: 'simulator',
       xp: xpReward,
-      color: 'from-cyan-500 to-sky-600',
+      color: 'bg-white/10',
       ringColor: 'border-cyan-500'
     });
   });
@@ -297,8 +272,8 @@ export function generateDynamicRoadmap(
     icon: 'trophy',
     actionType: 'upgrade',
     xp: 500,
-    color: 'from-amber-500 via-yellow-500 to-orange-600 animate-pulse',
-    ringColor: 'border-amber-400'
+      color: 'from-blue-600 via-indigo-600 to-violet-600',
+    ringColor: 'border-blue-400'
   });
 
   return milestones;
@@ -318,18 +293,11 @@ const renderMilestoneIcon = (iconName: string, className = "w-6 h-6") => {
     case 'zap': return <Zap className={className} />;
     case 'award': return <Award className={className} />;
     case 'book-open': return <BookOpen className={className} />;
+    case 'coins': return <Coins className={className} />;
+    case 'globe': return <Globe className={className} />;
     default: return <HelpCircle className={className} />;
   }
 };
-
-function fisherYatesShuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 interface DashboardViewProps {
   stream: Stream;
@@ -390,15 +358,11 @@ export default function DashboardView({
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [studyPlanError, setStudyPlanError] = useState('');
   
-  // State for Daily Questions
-  const [allQuestions, setAllQuestions] = useState<PracticeQuestion[]>(PRACTICE_QUESTIONS_NEW);
+  // State for Daily Questions: loaded exclusively from Supabase
+  const [allQuestions, setAllQuestions] = useState<PracticeQuestion[]>([]);
   useEffect(() => {
     db.getQuestions().then(qs => {
-      if (qs.length > 0) {
-        const staticIds = new Set(PRACTICE_QUESTIONS_NEW.map(q => q.id));
-        const newDbOnly = qs.filter(q => !staticIds.has(q.id));
-        setAllQuestions([...PRACTICE_QUESTIONS_NEW, ...newDbOnly]);
-      }
+      if (qs.length > 0) setAllQuestions(qs);
     }).catch(() => {});
   }, []);
 
@@ -597,9 +561,13 @@ export default function DashboardView({
     setIsGeneratingPlan(true);
     setStudyPlanError('');
     try {
+      const token = getAccessToken();
       const res = await fetch('/api/ai/study-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           targetScore: user?.targetScore || 520,
           currentHours: user?.dailyHours || 4,
@@ -641,24 +609,9 @@ export default function DashboardView({
     ? ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'SAT']
     : ['Mathematics', 'History', 'Geography', 'Economics', 'English', 'SAT'];
 
-  const getSubjectAmharic = (subj: Subject) => {
-    switch (subj) {
-      case 'Mathematics': return 'Mathematics';
-      case 'Physics': return 'Physics';
-      case 'Chemistry': return 'Chemistry';
-      case 'Biology': return 'Biology';
-      case 'History': return 'History';
-      case 'Geography': return 'Geography';
-      case 'Economics': return 'Economics';
-      case 'English': return 'English';
-      case 'SAT': return 'SAT';
-      default: return subj;
-    }
-  };
-
   const getSubjectIcon = (subj: Subject) => {
     switch (subj) {
-      case 'Mathematics': return <TrendingUp className="w-5 h-5 text-teal-400" />;
+      case 'Mathematics': return <TrendingUp className="w-5 h-5 text-blue-400" />;
       case 'Physics': return <GraduationCap className="w-5 h-5 text-indigo-400" />;
       case 'Chemistry': return <Award className="w-5 h-5 text-sky-400" />;
       case 'Biology': return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
@@ -675,137 +628,141 @@ export default function DashboardView({
   const userPlan = user?.customRoadmap || '';
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn text-slate-100 pb-10 select-none">
+    <div className="max-w-6xl mx-auto space-y-6 text-slate-100 pb-10 select-none">
       
-      {/* 1. WELCOME & REFINED STREAK HEADER WITH HERO BACKGROUND IMAGE */}
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between p-6 sm:p-8 bg-slate-900 border border-slate-800/85 rounded-2xl gap-6 overflow-hidden shadow-xl min-h-[160px]">
-        {/* Background Graphic Illustration */}
-        <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=1200"
-            alt="Study Library Background" 
-            className="w-full h-full object-cover opacity-25 mix-blend-luminosity scale-105"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-900/50" />
+      {/* 1. Dashboard banner */}
+      <div className="relative flex flex-col md:flex-row md:items-center justify-between p-6 sm:p-8 bg-[#0C1018] border border-white/[0.08] rounded-2xl gap-6 overflow-hidden shadow-2xl brand-border-hover transition-all min-h-[160px]">
+        {/* Background ambient glow */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-600/[0.08] rounded-full blur-[90px] pointer-events-none" />
+        <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-sky-500/[0.05] rounded-full blur-[80px] pointer-events-none" />
+
+        {/* Faint Ace Logo Watermark in Banner Background */}
+        <div className="absolute -right-4 -bottom-8 w-44 h-44 opacity-[0.04] pointer-events-none">
+          <AceSpadeIcon className="w-full h-full text-white" />
         </div>
 
         {/* Content Panel */}
         <div className="relative z-10">
-          <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-            <span>{`Welcome back, ${user?.name || 'Scholar'}!`}</span>
-            <span className="animate-bounce">👋</span>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-400" />
+            <span className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">
+              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, Scholar
+            </span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            {user?.name ? `Welcome back, ${user.name}!` : 'Welcome back, Scholar!'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl font-medium leading-relaxed">
-            {'Ace your matric preparation with your interactive daily drills & customized roadmap.'}
+          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl font-normal leading-relaxed">
+            Your study hub for the Ethiopian Grade 12 Matric exam.
           </p>
           <div className="flex flex-wrap gap-2 mt-4">
-            <span className="px-3 py-1 bg-teal-500/10 border border-teal-500/20 rounded-lg text-[11px] font-extrabold text-teal-300 backdrop-blur-sm">
-              ⚡ {stream} Stream
+            <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[11px] font-semibold text-blue-300">
+              {stream} Stream
             </span>
-            <span className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-[11px] font-extrabold text-indigo-300 backdrop-blur-sm">
-              🎯 Target Score: {user?.targetScore || 590}+
+              <span className="px-3 py-1 bg-slate-800/50 border border-white/[0.1] rounded-lg text-[11px] font-semibold text-white">
+              Target Score: {user?.targetScore || 520}+
             </span>
           </div>
         </div>
 
-        <div className="relative z-10 flex items-center space-x-4 bg-slate-950/80 p-4 border border-slate-800 rounded-xl self-start md:self-auto shrink-0 backdrop-blur-md">
-          <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <Flame className="w-5 h-5 fill-current" />
+        {/* Streak Counter Badge */}
+        <div className="relative z-10 flex items-center space-x-4 bg-[#07090E]/90 p-4 border border-white/[0.08] rounded-xl self-start md:self-auto shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0">
+            <Flame className="w-6 h-6 fill-current" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{'Study Streak'}</div>
-            <div className="text-base font-black text-white">{streakDays} {'Days'}</div>
+            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Study Streak</div>
+            <div className="text-lg font-extrabold text-white">{streakDays} Days</div>
           </div>
         </div>
       </div>
 
-      {/* EXECUTIVE DIAGNOSTIC METRICS GRID (Bento-style layout) */}
+      {/* Diagnostic metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Metric 1: Diagnostic Exam Readiness */}
-        <div className="bg-[#1E293B] border border-slate-800/80 p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+        <div className="bg-[#0D1017] border border-white/[0.08] p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group card-lift hover:border-blue-500/30">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
             <Award className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              {'Exam Readiness'}
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Exam Readiness
             </div>
-            <div className="text-xl font-black text-emerald-400 mt-1">{readinessScore}% Ready</div>
-            <div className="text-[10px] text-slate-500 font-bold mt-0.5">
-              {'Diagnostic Score'}
+            <div className="text-xl font-extrabold text-blue-400 mt-0.5">{readinessScore}% Ready</div>
+            <div className="text-xs text-slate-400 font-medium mt-0.5">
+              Diagnostic Score
             </div>
           </div>
         </div>
 
         {/* Metric 2: Quick Actions */}
-        <div className="bg-[#1E293B] border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
+        <div className="bg-[#0D1017] border border-white/[0.08] p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden group card-lift hover:border-blue-500/30">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-teal-500/10 border border-teal-500/20 text-teal-400">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 border border-blue-500/20 text-blue-400">
               <Target className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 truncate">
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 truncate">
                 Quick Start
               </div>
-              <div className="text-xs font-black mt-0.5 text-teal-400">
+              <div className="text-xs font-semibold mt-0.5 text-blue-400">
                 Practice & Study
               </div>
             </div>
           </div>
           <button
             onClick={() => onTabChange('practice')}
-            className="mt-3 py-1.5 px-3 rounded-lg text-[10px] font-black tracking-wide uppercase bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer"
+            className="mt-3 py-2 px-3 rounded-lg text-xs font-bold tracking-wider uppercase bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
           >
             Start Practice
           </button>
         </div>
       </div>
 
-      {/* 2. REFINED DAILY CHALLENGE CTA BUTTON/CARD */}
-      <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Daily challenge card */}
+      <div className="bg-[#0D1017] border border-white/[0.08] hover:border-blue-500/30 transition-all rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 card-lift">
         <div className="flex items-start sm:items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-full bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
-            <Award className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <Sparkles className="w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-extrabold text-base text-white">
-              {"Today's Daily Challenge"}
+            <h3 className="font-bold text-base text-white">
+              Today's Daily Challenge
             </h3>
             <p className="text-xs text-slate-400 mt-0.5 max-w-xl">
-              {'Take your 5-question daily practice challenge to test your stream readiness.'}
+              Five questions from your stream subjects — takes about 5 minutes.
             </p>
           </div>
         </div>
         <button
           onClick={() => setShowChallengeModal(true)}
-          className="w-full sm:w-auto py-3 px-6 bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-lg shadow-teal-500/10 cursor-pointer flex items-center justify-center gap-2 shrink-0"
+          className="w-full sm:w-auto py-3 px-6 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]"
         >
           <Sparkles className="w-3.5 h-3.5 fill-current" />
-          <span>{'Start Daily Challenge'}</span>
+          <span>Start Daily Challenge</span>
         </button>
       </div>
 
-      {/* 3. IMMERSIVE DAILY CHALLENGE OVERLAY MODAL */}
+      {/* Daily challenge modal */}
       {showChallengeModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1E293B] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+          <div className="bg-[#141920] border border-slate-800 rounded-xl overflow-hidden shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             
             {/* Header bar */}
             <div className="px-6 pt-5 pb-4 bg-slate-900/45 border-b border-slate-800 shrink-0">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
                     <Award className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-extrabold text-base text-white truncate">
-                      {"Today's Daily Challenge"}
+                    <h3 className="font-semibold text-base text-white truncate">
+                      Today's Daily Challenge
                     </h3>
                     <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                      {'5-question diagnostic drill'}
+                      5-question diagnostic drill
                     </p>
                   </div>
                 </div>
@@ -822,7 +779,7 @@ export default function DashboardView({
               {dailyQuestions.length > 0 && !dailyCompleted && (
                 <div className="mt-4 h-1 bg-slate-900 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full transition-all duration-500"
+                    className="h-full bg-white/10 rounded-full transition-all duration-500"
                     style={{ width: `${((currentQuestionIndex + (isAnswerChecked ? 1 : 0)) / dailyQuestions.length) * 100}%` }}
                   />
                 </div>
@@ -833,14 +790,14 @@ export default function DashboardView({
             <div className="px-6 py-6 overflow-y-auto flex-1">
               {dailyQuestions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 min-h-[300px] text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center text-teal-400 animate-pulse">
+                  <div className="w-16 h-16 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400 animate-pulse">
                     <Award className="w-8 h-8" />
                   </div>
-                  <h4 className="mt-5 text-base font-extrabold text-white">
-                    {'Assembling your daily challenge...'}
+                  <h4 className="mt-5 text-base font-semibold text-white">
+                    Loading questions...
                   </h4>
                   <p className="mt-1 text-xs text-slate-400">
-                    {`Selecting 5 questions across your ${stream} subjects`}
+                    {`Picking 5 questions from your ${stream} subjects`}
                   </p>
                   <div className="mt-8 w-full max-w-sm space-y-3 animate-pulse" aria-hidden="true">
                     <div className="h-3 bg-slate-800 rounded-full w-3/4" />
@@ -856,8 +813,8 @@ export default function DashboardView({
                   <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 animate-bounce">
                     <Trophy className="w-8 h-8" />
                   </div>
-                  <h4 className="mt-5 text-xl font-black text-white">
-                    {'Daily Challenge Completed!'}
+                  <h4 className="mt-5 text-xl font-semibold text-white">
+                    Daily Challenge Completed!
                   </h4>
                   <p className="mt-2 text-sm text-slate-400 leading-relaxed">
                     {`You scored ${correctAnswersCount} out of ${dailyQuestions.length} correct in today's diagnostic drill.`}
@@ -865,13 +822,13 @@ export default function DashboardView({
 
                   {/* Score breakdown metrics */}
                   <div className="mt-6 w-full grid grid-cols-2 gap-3">
-                    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-4">
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{'Accuracy'}</div>
-                      <div className="mt-1 text-2xl font-black text-teal-400">{Math.round((correctAnswersCount / dailyQuestions.length) * 100)}%</div>
+                    <div className="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-4">
+                      <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Accuracy</div>
+                      <div className="mt-1 text-2xl font-semibold text-blue-400">{Math.round((correctAnswersCount / dailyQuestions.length) * 100)}%</div>
                     </div>
-                    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-4">
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{'XP Awarded'}</div>
-                      <div className="mt-1 text-2xl font-black text-indigo-400">+50 XP</div>
+                    <div className="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-4">
+                      <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">XP Awarded</div>
+                      <div className="mt-1 text-2xl font-semibold text-indigo-400">+50 XP</div>
                     </div>
                   </div>
 
@@ -880,16 +837,16 @@ export default function DashboardView({
                       onClick={handleResetChallenge}
                       className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
                     >
-                      {'Practice Again'}
+                      Practice Again
                     </button>
                     <button
                       onClick={() => {
                         setShowChallengeModal(false);
                         onTabChange('practice');
                       }}
-                      className="py-3 px-4 bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <span>{'Browse Practice Banks'}</span>
+                      <span>Browse Practice Banks</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -901,21 +858,21 @@ export default function DashboardView({
                   {/* Question text box */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-md text-[10px] font-bold text-teal-300 uppercase tracking-wide">
+                      <span className="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs font-bold text-blue-300 uppercase tracking-wide">
                         {activeQuestion.subject} • {activeQuestion.yearEC}
                       </span>
                       {activeQuestion.questionTextAmharic && (
                         <button
                           onClick={() => setShowAmharicQuestion(!showAmharicQuestion)}
-                          className="text-[10px] font-bold text-teal-400 hover:text-teal-300 underline cursor-pointer"
+                          className="text-xs font-bold text-blue-400 hover:text-blue-300 underline cursor-pointer"
                         >
-                          {showAmharicQuestion ? 'Switch to English' : 'በአማርኛ ያንብቡ (Amharic)'}
+                          {showAmharicQuestion ? 'View in English' : 'Translate to Amharic'}
                         </button>
                       )}
                     </div>
 
-                    <h4 className="text-sm sm:text-base font-extrabold text-white leading-relaxed font-sans"
-                      dangerouslySetInnerHTML={{ __html: showAmharicQuestion && activeQuestion.questionTextAmharic ? activeQuestion.questionTextAmharic : activeQuestion.questionText }}
+                    <h4 className="text-sm sm:text-base font-semibold text-white leading-relaxed font-sans"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(showAmharicQuestion && activeQuestion.questionTextAmharic ? activeQuestion.questionTextAmharic : activeQuestion.questionText) }}
                     />
                   </div>
 
@@ -930,17 +887,17 @@ export default function DashboardView({
                       let badgeStyles = 'bg-slate-800 border-slate-700 text-slate-400';
 
                       if (isSelected) {
-                        optionStyles = 'bg-teal-500/10 border-teal-400/70 text-teal-100';
-                        badgeStyles = 'bg-teal-500 border-teal-500 text-slate-950';
+                        optionStyles = 'bg-blue-500/10 border-blue-400/70 text-blue-100';
+                        badgeStyles = 'bg-blue-600 border-blue-600 text-white';
                       }
 
                       if (isAnswerChecked) {
                         if (isCorrect) {
                           optionStyles = 'bg-emerald-500/10 border-emerald-400/70 text-emerald-100';
-                          badgeStyles = 'bg-emerald-500 border-emerald-500 text-slate-950';
+                          badgeStyles = 'bg-emerald-600 border-emerald-600 text-white';
                         } else if (isSelected) {
                           optionStyles = 'bg-rose-500/10 border-rose-400/70 text-rose-100';
-                          badgeStyles = 'bg-rose-500 border-rose-500 text-slate-950';
+                          badgeStyles = 'bg-rose-600 border-rose-600 text-white';
                         } else {
                           optionStyles = 'bg-slate-900/40 border-slate-800/60 text-slate-500 cursor-not-allowed';
                           badgeStyles = 'bg-slate-800/60 border-slate-700/60 text-slate-500';
@@ -954,11 +911,11 @@ export default function DashboardView({
                           disabled={isAnswerChecked}
                           className={`p-3.5 sm:p-4 rounded-xl border text-left text-xs sm:text-sm font-semibold transition-all duration-150 flex items-start gap-3 cursor-pointer ${optionStyles}`}
                         >
-                          <span className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center text-[11px] font-black border shrink-0 transition-colors ${badgeStyles}`}>
+                          <span className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center text-[11px] font-semibold border shrink-0 transition-colors ${badgeStyles}`}>
                             {letter}
                           </span>
                           <span className="flex-1 font-sans leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: showAmharicQuestion && opt.textAmharic ? opt.textAmharic : opt.text }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(showAmharicQuestion && opt.textAmharic ? opt.textAmharic : opt.text) }}
                           />
                           <span className="ml-1 shrink-0 mt-0.5">
                             {isAnswerChecked && isCorrect && <Check className="w-4 h-4 text-emerald-400" />}
@@ -972,21 +929,21 @@ export default function DashboardView({
                   {/* Feedback and Explanation Box */}
                   {isAnswerChecked && (
                     <div className={`p-4 rounded-xl border-l-4 space-y-2 ${selectedOptionId === activeQuestion.correctOptionId ? 'bg-emerald-500/5 border-emerald-500' : 'bg-rose-500/5 border-rose-500'}`}>
-                      <div className="flex items-center gap-2 text-xs font-extrabold">
+                      <div className="flex items-center gap-2 text-xs font-semibold">
                         {selectedOptionId === activeQuestion.correctOptionId ? (
                           <>
                             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span className="text-emerald-400">{'Correct Answer!'}</span>
+                            <span className="text-emerald-400">Correct Answer!</span>
                           </>
                         ) : (
                           <>
                             <AlertCircle className="w-4 h-4 text-rose-400" />
-                            <span className="text-rose-400">{'Incorrect'}</span>
+                            <span className="text-rose-400">Incorrect</span>
                           </>
                         )}
                       </div>
                       <p className="text-xs text-slate-300 leading-relaxed font-sans"
-                        dangerouslySetInnerHTML={{ __html: showAmharicQuestion && activeQuestion.explanationAmharic ? activeQuestion.explanationAmharic : activeQuestion.explanation }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(showAmharicQuestion && activeQuestion.explanationAmharic ? activeQuestion.explanationAmharic : activeQuestion.explanation) }}
                       />
                     </div>
                   )}
@@ -1004,14 +961,14 @@ export default function DashboardView({
                   <button
                     onClick={handleCheckAnswer}
                     disabled={!selectedOptionId}
-                    className="w-full sm:w-auto py-3 px-6 bg-teal-500 hover:bg-teal-400 disabled:opacity-40 disabled:hover:bg-teal-500 text-slate-950 text-xs font-black rounded-xl transition-all cursor-pointer"
+                    className="w-full sm:w-auto py-3 px-6 bg-blue-500 hover:bg-blue-400 disabled:opacity-40 disabled:hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
                   >
-                    {'Check Answer'}
+                    Check Answer
                   </button>
                 ) : (
                   <button
                     onClick={handleNextQuestion}
-                    className="w-full sm:w-auto py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full sm:w-auto py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>
                       {currentQuestionIndex === dailyQuestions.length - 1
@@ -1031,14 +988,14 @@ export default function DashboardView({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-extrabold text-lg text-white">
-              {'Your Stream Subjects'}
+            <h3 className="font-semibold text-lg text-white">
+              Your Stream Subjects
             </h3>
             <p className="text-xs text-slate-400">
-              {'Monitor diagnostic score performance and trigger review cards.'}
+              Track your readiness across each subject and jump into practice.
             </p>
           </div>
-          <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-3 py-1.5 border border-teal-500/25 rounded-full flex items-center gap-1.5">
+          <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1.5 border border-blue-500/25 rounded-full flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5" />
             {`Avg Readiness: ${readinessScore}%`}
           </span>
@@ -1048,21 +1005,24 @@ export default function DashboardView({
           {activeSubjects.map((subj) => {
             const score = subjectPerformance[subj] || 75;
             
-            // Get performance level color
-            let barColor = 'bg-teal-500';
-            let textColor = 'text-teal-400';
-            if (score < 70) {
-              barColor = 'bg-rose-500';
-              textColor = 'text-rose-400';
+            // Unified, premium blue-indigo progress scale
+            let barColor = 'bg-gradient-to-r from-blue-600 to-indigo-600';
+            let textColor = 'text-blue-400';
+            if (score < 60) {
+              barColor = 'bg-gradient-to-r from-sky-500 to-blue-500';
+              textColor = 'text-sky-400';
             } else if (score < 80) {
-              barColor = 'bg-amber-500';
-              textColor = 'text-amber-400';
+              barColor = 'bg-gradient-to-r from-blue-500 to-indigo-500';
+              textColor = 'text-blue-400';
+            } else {
+              barColor = 'bg-gradient-to-r from-blue-600 to-indigo-600';
+              textColor = 'text-indigo-400';
             }
 
             return (
               <div 
                 key={subj}
-                className="p-5 bg-[#1E293B] border border-slate-800 hover:border-slate-700/80 rounded-2xl flex flex-col justify-between transition-all duration-200 group hover:shadow-lg hover:shadow-slate-950/20"
+                className="p-5 bg-[#141920] border border-slate-800 hover:border-slate-700/80 rounded-xl flex flex-col justify-between transition-all duration-200 group hover:shadow-lg hover:shadow-slate-950/20"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
@@ -1071,15 +1031,15 @@ export default function DashboardView({
                         {getSubjectIcon(subj)}
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-sm text-white group-hover:text-teal-300 transition-colors">
+                        <h4 className="font-semibold text-sm text-white group-hover:text-blue-300 transition-colors">
                           {subj}
                         </h4>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                          {'Matric Prep'}
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                          Matric Prep
                         </p>
                       </div>
                     </div>
-                    <span className={`text-sm font-black ${textColor}`}>
+                    <span className={`text-sm font-semibold ${textColor}`}>
                       {score}%
                     </span>
                   </div>
@@ -1092,10 +1052,10 @@ export default function DashboardView({
                         style={{ width: `${score}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[9px] text-slate-500 font-semibold uppercase">
-                      <span>{'Weak'}</span>
-                      <span>{'Average'}</span>
-                      <span>{'Mastery'}</span>
+                    <div className="flex justify-between text-xs text-slate-500 font-semibold uppercase">
+                      <span>Weak</span>
+                      <span>Average</span>
+                      <span>Mastery</span>
                     </div>
                   </div>
                 </div>
@@ -1109,15 +1069,15 @@ export default function DashboardView({
                         onTabChange('practice');
                       }
                     }}
-                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-[11px] font-extrabold text-slate-300 border border-slate-800 hover:border-slate-700 rounded-lg transition-all cursor-pointer"
+                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-800 hover:border-slate-700 rounded-lg transition-all cursor-pointer"
                   >
-                    {'Practice Bank'}
+                    Practice Bank
                   </button>
                   <button 
                     onClick={() => onTabChange('study')}
-                    className="px-3.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-[11px] font-extrabold text-indigo-400 border border-indigo-500/15 hover:border-indigo-500/30 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                    className="px-3.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-[11px] font-semibold text-indigo-400 border border-indigo-500/15 hover:border-indigo-500/30 rounded-lg transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <span>{'Study Notes'}</span>
+                    <span>Study Notes</span>
                     <ArrowRight className="w-3" />
                   </button>
                 </div>
@@ -1128,17 +1088,17 @@ export default function DashboardView({
       </div>
 
       {/* 4.5. ACADEMIC SESSION HISTORY TRACKER */}
-      <div id="session-history-tracker" className="bg-[#131E32] border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
+      <div id="session-history-tracker" className="bg-[#0F1218] border border-slate-800 rounded-xl p-6 shadow-2xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase font-black tracking-wider text-teal-400 bg-teal-500/10 px-2.5 py-1 border border-teal-500/20 rounded-full">
-              {'Academic Footprint'}
+            <span className="text-xs uppercase font-semibold tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-1 border border-blue-500/20 rounded-full">
+              Study history
             </span>
-            <h3 className="font-extrabold text-lg text-white mt-1.5">
-              {'Activity & Performance History'}
+            <h3 className="font-semibold text-lg text-white mt-1.5">
+              Activity & Performance History
             </h3>
             <p className="text-xs text-slate-400">
-              {'Real-time trace of study completions, practice scores, and mock attempts.'}
+              A log of your recent study sessions, practice attempts, and mock scores.
             </p>
           </div>
           
@@ -1158,7 +1118,7 @@ export default function DashboardView({
                   onClick={() => setActiveHistoryFilter(type)}
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-all ${
                     isActive 
-                      ? 'bg-teal-500 text-slate-950 shadow-md font-black' 
+                      ? 'bg-blue-600 text-white shadow-md font-semibold' 
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -1185,15 +1145,15 @@ export default function DashboardView({
         {/* List of sessions */}
         {filteredHistory.length === 0 ? (
           <div className="py-8 text-center text-slate-500 text-xs font-semibold">
-            {'No history matching the selected filter.'}
+            No history matching the selected filter.
           </div>
         ) : (
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
             {filteredHistory.map((item) => {
               // Icon & color based on session type
-              let itemIcon = <BookOpen className="w-4 h-4 text-teal-400" />;
+              let itemIcon = <BookOpen className="w-4 h-4 text-blue-400" />;
               let typeLabel = 'Study Note';
-              let badgeColor = 'bg-teal-500/10 border-teal-500/20 text-teal-400';
+              let badgeColor = 'bg-blue-500/10 border-blue-500/20 text-blue-400';
               let scoreDisplay = null;
 
               if (item.type === 'practice') {
@@ -1201,8 +1161,8 @@ export default function DashboardView({
                 typeLabel = 'Practice Set';
                 badgeColor = 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
                 scoreDisplay = (
-                  <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg shrink-0">
-                    {item.score} / {item.total} {'Correct'}
+                  <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg shrink-0">
+                    {item.score} / {item.total} Correct
                   </span>
                 );
               } else if (item.type === 'simulation') {
@@ -1210,8 +1170,8 @@ export default function DashboardView({
                 typeLabel = 'National Simulation';
                 badgeColor = 'bg-sky-500/10 border-sky-500/20 text-sky-400';
                 scoreDisplay = (
-                  <span className="text-xs font-black text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg shrink-0">
-                    {item.score}% {'Score'}
+                  <span className="text-xs font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg shrink-0">
+                    {item.score}% Score
                   </span>
                 );
               }
@@ -1219,7 +1179,7 @@ export default function DashboardView({
               return (
                 <div 
                   key={item.id}
-                  className="p-4 bg-slate-900/40 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-800 rounded-2xl flex items-center justify-between gap-4 transition-all"
+                  className="p-4 bg-slate-900/40 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-800 rounded-xl flex items-center justify-between gap-4 transition-all"
                 >
                   <div className="flex items-center space-x-3.5 min-w-0">
                     <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-xl shrink-0">
@@ -1227,10 +1187,10 @@ export default function DashboardView({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 border rounded-md shrink-0 ${badgeColor}`}>
+                        <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 border rounded-md shrink-0 ${badgeColor}`}>
                           {typeLabel}
                         </span>
-                        <span className="text-[10px] font-bold text-slate-500">
+                        <span className="text-xs font-bold text-slate-500">
                           {item.date}
                         </span>
                       </div>
@@ -1260,7 +1220,7 @@ export default function DashboardView({
       </div>
 
       {/* 5. YOUR GAMIFIED STUDY ROADMAP SECTION */}
-      <div className="bg-[#1E293B] border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+      <div className="bg-[#141920] border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400">
@@ -1268,15 +1228,15 @@ export default function DashboardView({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
-                  {'Your Personalized Roadmap'}
+                <h3 className="font-semibold text-base sm:text-lg text-white tracking-tight">
+                  Your Personalized Roadmap
                 </h3>
-                <span className="bg-slate-950 text-indigo-400 text-[9px] px-2.5 py-0.5 rounded-full font-black border border-slate-800 uppercase tracking-wider shrink-0">
-                  {completedMilestones.length}/{roadMilestones.length} {'Done'}
+                <span className="bg-slate-950 text-indigo-400 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-slate-800 uppercase tracking-wider shrink-0">
+                  {completedMilestones.length}/{roadMilestones.length} Done
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                {'Custom 4-Unit curriculum based on your weak subjects and study style.'}
+                A 16-topic path built around your weaker subjects and study habits.
               </p>
             </div>
           </div>
@@ -1296,23 +1256,23 @@ export default function DashboardView({
               <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
                 <button
                   onClick={() => setActiveRoadmapTab('grid')}
-                  className={`py-1 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`py-1 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     activeRoadmapTab === 'grid' 
                       ? 'bg-indigo-600 text-white shadow-md' 
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  📊 {'Tracker'}
+                  Tracker
                 </button>
                 <button
                   onClick={() => setActiveRoadmapTab('syllabus')}
-                  className={`py-1 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`py-1 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     activeRoadmapTab === 'syllabus' 
                       ? 'bg-indigo-600 text-white shadow-md' 
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  📄 {'AI Plan'}
+                  AI Plan
                 </button>
               </div>
             )}
@@ -1329,7 +1289,7 @@ export default function DashboardView({
         </div>
 
         {studyPlanError && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 font-semibold text-center animate-pulse">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 font-semibold text-center">
             {studyPlanError}
           </div>
         )}
@@ -1338,7 +1298,7 @@ export default function DashboardView({
           // ==========================================
           // COLLAPSED COMPACT SUMMARY VIEW (PREMIUM)
           // ==========================================
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-900/20 p-5 rounded-2xl border border-slate-800/60 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-900/20 p-5 rounded-xl border border-slate-800/60 shadow-md relative overflow-hidden">
             
             {/* Left circular gauge panel (md:col-span-4) */}
             <div className="md:col-span-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-800/50 pb-5 md:pb-0 md:pr-6">
@@ -1370,15 +1330,15 @@ export default function DashboardView({
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center text-center">
-                  <span className="text-xl font-black text-white tracking-tight">
+                  <span className="text-xl font-semibold text-white tracking-tight">
                     {Math.round((completedMilestones.length / roadMilestones.length) * 100)}%
                   </span>
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">
-                    {'Curriculum'}
+                  <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    Curriculum
                   </span>
                 </div>
               </div>
-              <div className="mt-2 text-[10px] font-black text-indigo-400 tracking-wider uppercase text-center bg-indigo-500/5 px-2.5 py-0.5 rounded-full border border-indigo-500/10">
+              <div className="mt-2 text-xs font-semibold text-indigo-400 tracking-wider uppercase text-center bg-indigo-500/5 px-2.5 py-0.5 rounded-full border border-indigo-500/10">
                 {`STAGE ${completedMilestones.length + 1} ACTIVE`}
               </div>
             </div>
@@ -1391,17 +1351,17 @@ export default function DashboardView({
                 <div className="md:col-span-8 flex flex-col justify-between h-full space-y-4">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[9px] font-black uppercase tracking-wider rounded-md">
-                        ⚡ {'Up Next'}
+                      <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold uppercase tracking-wider rounded-md">
+                        Up Next
                       </span>
                       {nextMilestone.isWeak && (
-                        <span className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[9px] font-black uppercase tracking-wider rounded-md">
-                          ⚠️ {'Priority weak topic'}
+                        <span className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider rounded-md">
+                          Priority weak topic
                         </span>
                       )}
                     </div>
                     <div>
-                      <h4 className="text-sm sm:text-base font-black text-slate-100 tracking-tight line-clamp-1">
+                      <h4 className="text-sm sm:text-base font-semibold text-slate-100 tracking-tight line-clamp-1">
                         {nextMilestone.title}
                       </h4>
                       <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
@@ -1413,16 +1373,16 @@ export default function DashboardView({
                   <div className="flex flex-wrap items-center gap-3 pt-1">
                     <button
                       onClick={() => setSelectedMilestone(nextMilestone)}
-                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs cursor-pointer transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95"
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs cursor-pointer transition-all flex items-center gap-1.5 shadow-md active:scale-95"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>{'Launch Target Step'}</span>
+                      <span>Launch Target Step</span>
                     </button>
                     <button
                       onClick={() => setIsRoadmapExpanded(true)}
                       className="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white rounded-xl text-xs font-bold cursor-pointer transition-all border border-slate-800"
                     >
-                      {'Browse Complete 16-Topic Roadmap'}
+                      Browse Complete 16-Topic Roadmap
                     </button>
                   </div>
                 </div>
@@ -1438,7 +1398,7 @@ export default function DashboardView({
             {activeRoadmapTab === 'grid' ? (
               <div className="space-y-6">
                 {/* Horizontal Selector for the 4 Units */}
-                <div className="bg-slate-950 p-1.5 rounded-2xl border border-slate-850 flex items-center gap-1 overflow-x-auto scrollbar-none">
+                <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-850 flex items-center gap-1 overflow-x-auto scrollbar-none">
                   {[1, 2, 3, 4].map(unitNum => {
                     const unitMilestones = roadMilestones.filter(m => m.unit === unitNum);
                     const doneInUnit = unitMilestones.filter(m => completedMilestones.includes(m.id)).length;
@@ -1451,21 +1411,21 @@ export default function DashboardView({
                         onClick={() => setActiveUnitTab(unitNum)}
                         className={`flex-1 min-w-[125px] py-3 px-4 rounded-xl text-center cursor-pointer transition-all ${
                           isActive
-                            ? 'bg-gradient-to-br from-indigo-600 to-violet-650 text-white shadow-lg shadow-indigo-600/10 font-black'
+                            ? 'bg-indigo-600 text-white shadow-md font-semibold'
                             : 'text-slate-400 hover:text-slate-200 font-bold hover:bg-slate-900/40'
                         }`}
                       >
-                        <div className="text-[9px] uppercase tracking-wider opacity-85">
+                        <div className="text-xs uppercase tracking-wider opacity-85">
                           {`Unit ${unitNum}`}
                         </div>
-                        <div className="text-xs mt-0.5 truncate font-black">
+                        <div className="text-xs mt-0.5 truncate font-semibold">
                           {unitNum === 1 && ('Foundations')}
                           {unitNum === 2 && ('Concept Mastery')}
                           {unitNum === 3 && ('Speed Trials')}
-                          {unitNum === 4 && ('Peak Mastery')}
+                          {unitNum === 4 && ('Completed')}
                         </div>
                         <div className="mt-1.5 flex items-center justify-center gap-1">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                             isActive ? 'bg-indigo-900/40 text-indigo-200' : 'bg-slate-900 text-slate-500'
                           }`}>
                             {doneInUnit}/{unitMilestones.length}
@@ -1481,7 +1441,7 @@ export default function DashboardView({
 
                 {/* Unit Description */}
                 <div className="p-4 bg-slate-900/30 rounded-xl border border-slate-800/60">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-200 uppercase tracking-wide">
+                  <h4 className="text-xs sm:text-sm font-semibold text-slate-200 uppercase tracking-wide">
                     {(() => {
                       const firstMilestone = roadMilestones.find(m => m.unit === activeUnitTab);
                       return firstMilestone ? firstMilestone.unitTitle : '';
@@ -1507,7 +1467,7 @@ export default function DashboardView({
                       return (
                         <div
                           key={m.id}
-                          className={`group relative p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between gap-4 ${
+                          className={`group relative p-5 rounded-xl border transition-all duration-300 flex flex-col justify-between gap-4 ${
                             isCompleted
                               ? 'bg-emerald-950/10 border-emerald-500/20 text-slate-200'
                               : isUnlocked
@@ -1517,7 +1477,7 @@ export default function DashboardView({
                         >
                           {/* Top row */}
                           <div className="flex items-center justify-between">
-                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                            <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
                               isCompleted 
                                 ? 'bg-emerald-500/10 text-emerald-400'
                                 : isUnlocked
@@ -1528,14 +1488,14 @@ export default function DashboardView({
                             </span>
                             <div className="flex items-center gap-1.5">
                               {isCompleted ? (
-                                <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-extrabold bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/10">
+                                <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/10">
                                   <CheckCircle2 className="w-3.5 h-3.5" />
-                                  {'Done'}
+                                  Done
                                 </span>
                               ) : !isUnlocked ? (
-                                <span className="text-[10px] font-black text-slate-600 bg-slate-950/40 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-900">
+                                <span className="text-xs font-semibold text-slate-600 bg-slate-950/40 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-900">
                                   <Lock className="w-3 h-3" />
-                                  {'Locked'}
+                                  Locked
                                 </span>
                               ) : null}
                             </div>
@@ -1543,7 +1503,7 @@ export default function DashboardView({
 
                           {/* Title and Subtitle */}
                           <div className="space-y-1">
-                            <h5 className={`text-sm font-black line-clamp-1 group-hover:text-white transition-colors tracking-tight ${
+                            <h5 className={`text-sm font-semibold line-clamp-1 group-hover:text-white transition-colors tracking-tight ${
                               isUnlocked ? 'text-slate-100' : 'text-slate-500'
                             }`}>
                               {m.title.substring(m.title.indexOf(':') + 1).trim()}
@@ -1557,8 +1517,8 @@ export default function DashboardView({
 
                           {/* Action */}
                           <div className="flex items-center justify-between border-t border-slate-800/40 pt-3 mt-1">
-                            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">
-                              <span className="opacity-75">{'Action'}:</span>
+                            <div className="flex items-center gap-1 text-xs text-slate-400 font-semibold uppercase tracking-wide">
+                              <span className="opacity-75">Action:</span>
                               <span className="text-slate-200">
                                 {m.actionType === 'study' && ('Study Guide')}
                                 {m.actionType === 'practice' && ('Interactive MCQ')}
@@ -1571,14 +1531,14 @@ export default function DashboardView({
                             {isUnlocked && (
                               <button
                                 onClick={() => setSelectedMilestone(m)}
-                                className={`px-3 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all flex items-center gap-1 shadow-md ${
+                                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 shadow-md ${
                                   isCompleted
                                     ? 'bg-slate-950 text-slate-300 hover:bg-slate-900 border border-slate-800'
-                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/10 active:scale-95'
+                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95'
                                 }`}
                               >
                                 {isCompleted ? (
-                                  <span>{'Review'}</span>
+                                  <span>Review</span>
                                 ) : (
                                   <>
                                     <Play className="w-2.5 h-2.5 fill-white" />
@@ -1600,19 +1560,17 @@ export default function DashboardView({
                 </div>
               </div>
             ) : (
-              // ==========================================
-              // SYLLABUS AI TEXT PLAN
-              // ==========================================
-              <div className="space-y-4 animate-fadeIn">
+              // Study plan content
+              <div className="space-y-4">
                 {userPlan ? (
                   <div className="space-y-4">
-                    <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-wrap max-h-96 overflow-y-auto shadow-inner">
+                    <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-wrap max-h-96 overflow-y-auto shadow-inner">
                       {userPlan}
                     </div>
                     <div className="flex items-center space-x-2 text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/50">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>
-                        {'This study plan was generated once upon signup and is persisted to your student profile.'}
+                        This study plan was generated once upon signup and is persisted to your student profile.
                       </span>
                     </div>
                   </div>
@@ -1621,26 +1579,26 @@ export default function DashboardView({
                     <HelpCircle className="w-12 h-12 text-indigo-400/80 mx-auto" />
                     <div className="space-y-1">
                       <h4 className="text-sm font-bold text-white">
-                        {'No Study Plan Found'}
+                        No Study Plan Found
                       </h4>
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        {'Let Gemini AI construct a full 4-week timeline matching your daily hours, stream, and priority weak subjects.'}
+                        Generate a personalised 4-week study plan based on your stream, daily hours, and weak subjects.
                       </p>
                     </div>
                     <button
                       onClick={handleGenerateAIStudyPlan}
                       disabled={isGeneratingPlan}
-                      className="py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2 cursor-pointer mx-auto"
+                      className="py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer mx-auto"
                     >
                       {isGeneratingPlan ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>{'Generating with Gemini AI...'}</span>
+                          <span>Generating plan...</span>
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-3.5 h-3.5" />
-                          <span>{'🤖 Generate My Study Plan'}</span>
+                          <span>Generate My Study Plan</span>
                         </>
                       )}
                     </button>
@@ -1653,10 +1611,10 @@ export default function DashboardView({
             <div className="pt-2 flex justify-center border-t border-slate-800/40">
               <button
                 onClick={() => setIsRoadmapExpanded(false)}
-                className="py-2.5 px-5 bg-slate-900 hover:bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all shadow-md"
+                className="py-2.5 px-5 bg-slate-900 hover:bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-md"
               >
                 <ChevronUp className="w-4 h-4" />
-                <span>{'Collapse Roadmap View'}</span>
+                <span>Collapse Roadmap View</span>
               </button>
             </div>
           </div>
@@ -1671,13 +1629,13 @@ export default function DashboardView({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-[#131E32] border border-slate-800 w-full max-w-md rounded-3xl p-6 relative overflow-hidden shadow-2xl space-y-5 text-left"
+              className="bg-[#0F1218] border border-slate-800 w-full max-w-md rounded-xl p-6 relative overflow-hidden shadow-2xl space-y-5 text-left"
             >
               {/* Colored background glow */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
               <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                <span className="bg-indigo-500/10 text-indigo-300 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                <span className="bg-indigo-500/10 text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
                   {`Unit ${selectedMilestone.unit} • Milestone`}
                 </span>
                 <button
@@ -1689,7 +1647,7 @@ export default function DashboardView({
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-lg font-black text-white flex items-center gap-2">
+                <h4 className="text-lg font-semibold text-white flex items-center gap-2">
                   <span className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400">
                     {renderMilestoneIcon(selectedMilestone.icon, "w-5 h-5")}
                   </span>
@@ -1700,28 +1658,28 @@ export default function DashboardView({
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800/60 flex items-center justify-between">
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/60 flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    {'Mastery Reward'}
+                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                    Reward
                   </div>
-                  <div className="text-sm font-black text-amber-400 mt-0.5 flex items-center gap-1.5">
+                  <div className="text-sm font-semibold text-amber-400 mt-0.5 flex items-center gap-1.5">
                     <Zap className="w-4 h-4 fill-amber-400" />
                     <span>+{selectedMilestone.xp} XP Score</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    {'Status'}
+                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                    Status
                   </div>
                   <div className="mt-0.5">
                     {completedMilestones.includes(selectedMilestone.id) ? (
-                      <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-black">
-                        ✓ {'Completed'}
+                      <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-semibold">
+                        Completed
                       </span>
                     ) : (
-                      <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-[10px] font-black">
-                        ⚡ {'In Progress'}
+                      <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold">
+                        In Progress
                       </span>
                     )}
                   </div>
@@ -1744,7 +1702,7 @@ export default function DashboardView({
                       onTabChange('upgrade');
                     }
                   }}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-lg shadow-indigo-600/20"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-md"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>
@@ -1763,12 +1721,12 @@ export default function DashboardView({
                   {completedMilestones.includes(selectedMilestone.id) ? (
                     <>
                       <X className="w-3.5 h-3.5" />
-                      <span>{'Mark as Incomplete'}</span>
+                      <span>Mark as Incomplete</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>{'Mark as Completed'}</span>
+                      <span>Mark as Completed</span>
                     </>
                   )}
                 </button>

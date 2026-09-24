@@ -21,7 +21,8 @@ import {
   Coins,
   BookMarked,
   Award,
-  GraduationCap
+  GraduationCap,
+  Target
 } from 'lucide-react';
 import { Stream, Language, PracticeQuestion } from '../../types';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
@@ -31,6 +32,7 @@ import VideoPlayer from './learning/VideoPlayer';
 import ChapterSelector from './learning/ChapterSelector';
 import StudyNotes from './learning/StudyNotes';
 import FormulaSheet from './learning/FormulaSheet';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 interface LearningViewProps {
   stream: Stream;
@@ -156,10 +158,10 @@ export default function LearningView({
     let parsed = text;
     keywords.forEach(keyword => {
       const regex = new RegExp(`\\b(${keyword}s?)\\b`, 'gi');
-      parsed = parsed.replace(regex, '<mark class="bg-yellow-500/20 text-yellow-300 border border-yellow-500/20 px-1 py-0.5 rounded font-extrabold">$1</mark>');
+      parsed = parsed.replace(regex, '<mark class="bg-yellow-500/20 text-yellow-300 border border-yellow-500/20 px-1 py-0.5 rounded font-semibold">$1</mark>');
     });
 
-    return <span dangerouslySetInnerHTML={{ __html: parsed }} />;
+    return <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(parsed) }} />;
   };
 
 
@@ -402,7 +404,7 @@ export default function LearningView({
     if (norm.includes('biol')) return <Dna className="w-4 h-4 text-emerald-400" />;
     if (norm.includes('math')) return <Percent className="w-4 h-4 text-amber-400" />;
     if (norm.includes('hist')) return <BookOpen className="w-4 h-4 text-indigo-400" />;
-    if (norm.includes('geog')) return <Globe className="w-4 h-4 text-teal-400" />;
+    if (norm.includes('geog')) return <Globe className="w-4 h-4 text-blue-400" />;
     if (norm.includes('econ')) return <Coins className="w-4 h-4 text-fuchsia-400" />;
     if (norm.includes('engl')) return <BookMarked className="w-4 h-4 text-violet-400" />;
     if (norm.includes('sat')) return <Award className="w-4 h-4 text-orange-400" />;
@@ -460,42 +462,42 @@ export default function LearningView({
         />
       ) : (
         /* IS CHAPTER ENTERED (DEDICATED IMMERSIVE STUDY PAGE) */
-        <div className="space-y-6 animate-fadeIn text-slate-100">
+        <div className="space-y-6 text-slate-100">
           
           {/* Focused Study Room Header with Back Button */}
-          <div className="bg-[#1E293B] border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-[#141920] border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <button
                 onClick={() => {
                   setIsChapterEntered(false);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-slate-300 font-black text-xs rounded-xl flex items-center space-x-2 border border-slate-850 transition-all cursor-pointer self-start sm:self-center"
+                className="px-4 py-2 bg-[#0A0E14] hover:bg-slate-800 text-slate-300 font-semibold text-xs rounded-xl flex items-center space-x-2 border border-slate-850 transition-all cursor-pointer self-start sm:self-center"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>{'Back to Directory'}</span>
+                <span>Back to Directory</span>
               </button>
               
               <div className="space-y-1 text-left">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-teal-500/15 border border-teal-500/25 text-teal-300 text-[10px] font-mono font-black uppercase">
+                  <span className="px-2 py-0.5 rounded bg-blue-500/15 border border-blue-500/25 text-blue-300 text-xs font-mono font-semibold uppercase">
                     Grade {selectedGrade} • {selectedSubject}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-mono font-bold">
+                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-mono font-bold">
                     Unit {selectedChapterNum}
                   </span>
                   {isCurrentChapterSaved && (
-                    <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
-                      💾 Saved Offline
+                    <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono font-bold">
+                      Saved Offline
                     </span>
                   )}
                   {(studiedChapters.includes(`${selectedGrade}-${selectedSubject}-${selectedChapterNum}`) || studiedChapters.includes(`${selectedSubject}-${selectedChapterNum}`)) && (
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold flex items-center gap-0.5">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold flex items-center gap-0.5">
                       ✓ Done
                     </span>
                   )}
                 </div>
-                <h3 className="font-black text-sm sm:text-base md:text-lg text-white">
+                <h3 className="font-semibold text-sm sm:text-base md:text-lg text-white">
                   {selectedChapter ? selectedChapter.chapterName : `Chapter ${selectedChapterNum}`}
                 </h3>
               </div>
@@ -503,12 +505,12 @@ export default function LearningView({
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
               {/* Font Sizer */}
-              <div className="bg-[#0F172A] p-0.5 rounded-xl border border-slate-800 flex items-center">
+              <div className="bg-[#0A0E14] p-0.5 rounded-xl border border-slate-800 flex items-center">
                 <button
                   onClick={() => setNoteFontSize('sm')}
                   title="Small text size"
-                  className={`w-7 h-7 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
-                    noteFontSize === 'sm' ? 'bg-slate-800 text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+                  className={`w-7 h-7 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
+                    noteFontSize === 'sm' ? 'bg-slate-800 text-blue-400 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   A-
@@ -517,7 +519,7 @@ export default function LearningView({
                   onClick={() => setNoteFontSize('base')}
                   title="Normal text size"
                   className={`w-7 h-7 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
-                    noteFontSize === 'base' ? 'bg-slate-800 text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+                    noteFontSize === 'base' ? 'bg-slate-800 text-blue-400 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   A
@@ -526,7 +528,7 @@ export default function LearningView({
                   onClick={() => setNoteFontSize('lg')}
                   title="Large text size"
                   className={`w-7 h-7 text-sm font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
-                    noteFontSize === 'lg' ? 'bg-slate-800 text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+                    noteFontSize === 'lg' ? 'bg-slate-800 text-blue-400 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   A+
@@ -536,10 +538,10 @@ export default function LearningView({
               {/* Mark Completed */}
               <button
                 onClick={toggleMarkStudied}
-                className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center space-x-1.5 border cursor-pointer transition-all ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 border cursor-pointer transition-all ${
                   (studiedChapters.includes(`${selectedGrade}-${selectedSubject}-${selectedChapterNum}`) || studiedChapters.includes(`${selectedSubject}-${selectedChapterNum}`))
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-[#0F172A] border-slate-800 text-slate-400 hover:text-slate-200'
+                    : 'bg-[#0A0E14] border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <Check className={`w-3.5 h-3.5 ${
@@ -559,46 +561,46 @@ export default function LearningView({
                   setZenTimeElapsed(0);
                   setIsTimerPaused(false);
                 }}
-                className="px-3.5 py-2 rounded-xl text-xs font-black flex items-center space-x-1.5 border border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 cursor-pointer transition-all"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 border border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 cursor-pointer transition-all"
                 title="Enter fullscreen study environment"
               >
                 <Maximize2 className="w-3.5 h-3.5 text-purple-400" />
-                <span>{'Fullscreen'}</span>
+                <span>Fullscreen</span>
               </button>
             </div>
           </div>
 
-          {/* Core Content Arena */}
+          {/* Main Content Area */}
           <div className="lg:col-span-12 space-y-6">
             
             {/* Simplified Two-Mode Tab Navigator */}
-            <div className="bg-[#1E293B] border border-slate-800 p-2 rounded-2xl flex items-center space-x-2 shadow-md">
+            <div className="bg-[#141920] border border-slate-800 p-2 rounded-xl flex items-center space-x-2 shadow-md">
               <button
                 onClick={() => setActiveSubTab('notebook')}
-                className={`flex-1 flex items-center justify-center space-x-2.5 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center space-x-2.5 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   activeSubTab === 'notebook'
-                    ? 'bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-teal-300 border border-teal-500/30 shadow-xs scale-[1.01]'
+                    ? 'bg-white/10 text-slate-300 border border-white/10 shadow-xs scale-[1.01]'
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
               >
-                <BookOpen className="w-4 h-4 text-teal-400" />
-                <span>{'Syllabus Study Notebook'}</span>
+                <BookOpen className="w-4 h-4 text-blue-400" />
+                <span>Syllabus Study Notebook</span>
               </button>
 
               <button
                 onClick={() => setActiveSubTab('recall')}
-                className={`flex-1 flex items-center justify-center space-x-2.5 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center space-x-2.5 py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   activeSubTab === 'recall'
-                    ? 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-500/30 shadow-xs scale-[1.01]'
+                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-xs scale-[1.01]'
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
               >
                 <Layers className="w-4 h-4 text-indigo-400" />
-                <span>{'Active Recall Practice'}</span>
+                <span>Active Recall Practice</span>
               </button>
             </div>
 
-            {/* Content Arena */}
+            {/* Content Area */}
             {contentLoading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center space-y-3">
@@ -607,7 +609,7 @@ export default function LearningView({
                 </div>
               </div>
             ) : studyMaterial ? (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6">
             
             {activeSubTab === 'notebook' && (
               <>
@@ -649,9 +651,9 @@ export default function LearningView({
                         resetQuizState();
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="px-6 py-3 bg-[#0F172A] hover:bg-slate-800 text-slate-300 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-800/85 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                      className="px-6 py-3 bg-[#0A0E14] hover:bg-slate-800 text-slate-300 text-xs font-semibold uppercase tracking-wider rounded-xl border border-slate-800/85 transition-all flex items-center justify-center space-x-2 cursor-pointer"
                     >
-                      <span>{'Next Unit'}</span>
+                      <span>Next Unit</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -663,53 +665,51 @@ export default function LearningView({
               <div className="space-y-6">
                 
                 {/* Selector inside Active Recall block */}
-                <div className="bg-[#1E293B] border border-slate-800 p-1.5 rounded-2xl flex items-center space-x-1 shadow-md">
+                <div className="bg-[#141920] border border-slate-800 p-1.5 rounded-xl flex items-center space-x-1 shadow-md">
                   <button
                     onClick={() => setRecallMode('quiz')}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                       recallMode === 'quiz'
-                        ? 'bg-[#0F172A] text-white border border-slate-800 shadow-inner'
+                        ? 'bg-[#0A0E14] text-white border border-slate-800 shadow-inner'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <span>🎯</span>
-                    <span>{'Interactive Micro-Quiz'}</span>
+                    <span>Interactive Micro-Quiz</span>
                   </button>
 
                   <button
                     onClick={() => setRecallMode('flashcards')}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                       recallMode === 'flashcards'
-                        ? 'bg-[#0F172A] text-white border border-slate-800 shadow-inner'
+                        ? 'bg-[#0A0E14] text-white border border-slate-800 shadow-inner'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <span>🃏</span>
-                    <span>{'Spaced Flashcards'}</span>
+                    <span>Spaced Flashcards</span>
                   </button>
                 </div>
 
                 {/* A. QUIZ INTERACTION PANEL */}
                 {recallMode === 'quiz' && (
-                  <div className="bg-[#1E293B] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+                  <div className="bg-[#141920] border border-slate-800 rounded-xl p-6 sm:p-8 shadow-xl space-y-6">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                       <div>
-                        <h4 className="font-extrabold text-base text-white">
-                          🎯 Active Recall Chapter Micro-Quiz
+                        <h4 className="font-semibold text-base text-white">
+                          Active Recall Chapter Micro-Quiz
                         </h4>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {'Test your conceptual mastery. Instant score & analytical explanations.'}
+                          Test your conceptual mastery. Instant score & analytical explanations.
                         </p>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-teal-500/10 text-teal-400 text-[10px] font-black uppercase">
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold uppercase">
                         Mastery Check
                       </span>
                     </div>
 
                     {displayedQuestions.length === 0 ? (
-                      <div className="p-8 text-center bg-[#0F172A] border border-slate-800 rounded-3xl space-y-3">
-                        <div className="text-3xl text-slate-500">❓</div>
-                        <h5 className="font-extrabold text-white">No active questions for this chapter yet</h5>
+                      <div className="p-8 text-center bg-[#0A0E14] border border-slate-800 rounded-xl space-y-3">
+                        <div className="text-3xl text-slate-500">?</div>
+                        <h5 className="font-semibold text-white">No active questions for this chapter yet</h5>
                         <p className="text-xs text-slate-400 max-w-sm mx-auto">
                           Use the AI Tutor Explainer to generate custom quiz questions for this chapter instantly.
                         </p>
@@ -718,7 +718,7 @@ export default function LearningView({
                             `Please generate a 5-question multiple choice quiz on Grade ${selectedGrade} ${selectedSubject} Chapter ${selectedChapterNum}: ${selectedChapter.chapterName}`,
                             selectedSubject
                           )}
-                          className="mt-2 px-4 py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs rounded-xl cursor-pointer"
+                          className="mt-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl cursor-pointer"
                         >
                           Ask AI Tutor to Quiz Me
                         </button>
@@ -727,12 +727,12 @@ export default function LearningView({
                       <div className="space-y-4">
                         <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                           <span>Question {currentQuizQuestionIdx + 1} of {displayedQuestions.length}</span>
-                          <span className="text-teal-400">Difficulty: {currentQuestion.difficulty}</span>
+                          <span className="text-blue-400">Difficulty: {currentQuestion.difficulty}</span>
                         </div>
 
-                        <div className="bg-[#0F172A] p-5 rounded-2xl border border-slate-800 space-y-3">
-                          <p className="text-sm sm:text-base font-extrabold text-white leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }}
+                        <div className="bg-[#0A0E14] p-5 rounded-xl border border-slate-800 space-y-3">
+                          <p className="text-sm sm:text-base font-semibold text-white leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQuestion.questionText) }}
                           />
                         </div>
 
@@ -742,7 +742,7 @@ export default function LearningView({
                             const isSelected = selectedOptionId === opt.id;
                             const isCorrectOpt = opt.id === currentQuestion.correctOptionId;
                             
-                            let optStyle = "bg-[#0F172A] border-slate-800 text-slate-300 hover:bg-[#131E32] hover:text-white";
+                            let optStyle = "bg-[#0A0E14] border-slate-800 text-slate-300 hover:bg-[#0F1218] hover:text-white";
                             if (isSelected) {
                               optStyle = "bg-indigo-500/10 border-indigo-500 text-indigo-200";
                             }
@@ -752,7 +752,7 @@ export default function LearningView({
                               } else if (isSelected) {
                                 optStyle = "bg-rose-500/20 border-rose-500 text-rose-300";
                               } else {
-                                optStyle = "bg-[#0F172A] border-slate-800 opacity-60 text-slate-400";
+                                optStyle = "bg-[#0A0E14] border-slate-800 opacity-60 text-slate-400";
                               }
                             }
 
@@ -761,14 +761,14 @@ export default function LearningView({
                                 key={opt.id}
                                 disabled={showExplanation}
                                 onClick={() => setSelectedOptionId(opt.id)}
-                                className={`p-4 rounded-2xl border text-xs sm:text-sm font-bold text-left transition-all flex items-center justify-between cursor-pointer ${optStyle}`}
+                                className={`p-4 rounded-xl border text-xs sm:text-sm font-bold text-left transition-all flex items-center justify-between cursor-pointer ${optStyle}`}
                               >
                                 <div className="flex items-center space-x-3 pr-2">
-                                  <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center font-mono font-black text-xs shrink-0 text-slate-300">
+                                  <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center font-mono font-semibold text-xs shrink-0 text-slate-300">
                                     {opt.id.toUpperCase()}
                                   </span>
                                   <div>
-                                    <span dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                    <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(opt.text) }} />
                                   </div>
                                 </div>
                                 <div className="shrink-0">
@@ -791,9 +791,9 @@ export default function LearningView({
                                   setQuizScore(prev => prev + 1);
                                 }
                               }}
-                              className={`px-5 py-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                              className={`px-5 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                                 selectedOptionId 
-                                  ? 'bg-teal-500 text-slate-950 shadow-md font-black' 
+                                  ? 'bg-blue-600 text-white shadow-md font-semibold' 
                                   : 'bg-slate-800 text-slate-500 border border-slate-800 cursor-not-allowed'
                               }`}
                             >
@@ -810,42 +810,42 @@ export default function LearningView({
                                   setCompletedQuiz(true);
                                 }
                               }}
-                              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-md cursor-pointer"
                             >
-                              {currentQuizQuestionIdx + 1 < displayedQuestions.length ? 'Next Question →' : 'Finish Quiz 🏁'}
+                              {currentQuizQuestionIdx + 1 < displayedQuestions.length ? 'Next Question →' : 'Finish Quiz'}
                             </button>
                           )}
                         </div>
 
                         {/* Real-time explanation */}
                         {showExplanation && (
-                          <div className="p-4.5 bg-[#0F172A] border border-slate-800 rounded-2xl animate-slideUp space-y-2.5">
+                          <div className="p-4.5 bg-[#0A0E14] border border-slate-800 rounded-xl animate-slideUp space-y-2.5">
                             <div className="flex items-center space-x-2">
                               <HelpCircle className="w-4 h-4 text-amber-400" />
-                              <h5 className="font-extrabold text-white text-xs uppercase tracking-wider">
+                              <h5 className="font-semibold text-white text-xs uppercase tracking-wider">
                                 Explanation & Workings:
                               </h5>
                             </div>
                             <p className="text-xs text-slate-300 leading-relaxed font-medium"
-                              dangerouslySetInnerHTML={{ __html: currentQuestion.explanation }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQuestion.explanation) }}
                             />
                           </div>
                         )}
                       </div>
                     ) : (
                       // Quiz completed reward console
-                      <div className="p-8 text-center bg-[#0F172A] border border-slate-800 rounded-3xl space-y-4 max-w-md mx-auto animate-fadeIn">
-                        <div className="text-5xl">🏆</div>
+                      <div className="p-8 text-center bg-[#0A0E14] border border-slate-800 rounded-xl space-y-4 max-w-md mx-auto">
+                        <Award className="w-12 h-12 text-amber-400 mx-auto" />
                         <div className="space-y-1">
-                          <h4 className="font-black text-white text-lg">Quiz Completed successfully!</h4>
+                          <h4 className="font-semibold text-white text-lg">Quiz Completed successfully!</h4>
                           <p className="text-xs text-slate-400">
                             Excellent recall session for Grade {selectedGrade} {selectedSubject} Unit {selectedChapterNum}
                           </p>
                         </div>
 
-                        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
                           <span className="text-xs text-slate-400 font-bold">Your Score:</span>
-                          <span className="font-mono text-lg font-black text-white bg-[#0F172A] border border-slate-800 px-3 py-1 rounded-xl">
+                          <span className="font-mono text-lg font-semibold text-white bg-[#0A0E14] border border-slate-800 px-3 py-1 rounded-xl">
                             {quizScore} / {displayedQuestions.length} ({Math.round((quizScore / displayedQuestions.length) * 100)}%)
                           </span>
                         </div>
@@ -853,7 +853,7 @@ export default function LearningView({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={resetQuizState}
-                            className="flex-1 py-3 bg-[#131E32] hover:bg-[#1E293B] border border-slate-800 text-slate-300 font-extrabold text-xs rounded-xl cursor-pointer"
+                            className="flex-1 py-3 bg-[#0F1218] hover:bg-[#141920] border border-slate-800 text-slate-300 font-semibold text-xs rounded-xl cursor-pointer"
                           >
                             Retry Quiz
                           </button>
@@ -862,7 +862,7 @@ export default function LearningView({
                               `Please explain the core concepts of Grade ${selectedGrade} ${selectedSubject} Chapter ${selectedChapterNum} so I can prepare better for my next quiz.`,
                               selectedSubject
                             )}
-                            className="flex-1 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-md cursor-pointer"
+                            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-md cursor-pointer"
                           >
                             Ask AI Explainer
                           </button>
@@ -874,24 +874,24 @@ export default function LearningView({
 
                 {/* B. FLASHCARDS INTERACTION PANEL */}
                 {recallMode === 'flashcards' && (
-                  <div className="bg-[#1E293B] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+                  <div className="bg-[#141920] border border-slate-800 rounded-xl p-6 sm:p-8 shadow-xl space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
                       <div>
-                        <h4 className="font-extrabold text-base text-white flex items-center gap-2">
+                        <h4 className="font-semibold text-base text-white flex items-center gap-2">
                           <Layers className="w-5 h-5 text-amber-400" />
-                          <span>{'Spaced Repetition Flashcards'}</span>
+                          <span>Spaced Repetition Flashcards</span>
                         </h4>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {'Practice active recall and spaced repetition for core concepts in this chapter.'}
+                          Practice active recall and spaced repetition for core concepts in this chapter.
                         </p>
                       </div>
-                      <span className="text-[10px] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-0.5 rounded-full font-black uppercase">
+                      <span className="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-0.5 rounded-full font-semibold uppercase">
                         {chapterFlashcards.length} Cards Available
                       </span>
                     </div>
 
                     {chapterFlashcards.length === 0 ? (
-                      <div className="p-12 text-center bg-[#0F172A] border border-slate-800 rounded-3xl text-slate-400 text-xs">
+                      <div className="p-12 text-center bg-[#0A0E14] border border-slate-800 rounded-xl text-slate-400 text-xs">
                         No flashcards available for this specific unit yet.
                       </div>
                     ) : (
@@ -899,10 +899,10 @@ export default function LearningView({
                         {/* Flippable card deck container */}
                         <div
                           onClick={() => setIsFlashcardFlipped(!isFlashcardFlipped)}
-                          className="relative min-h-[280px] sm:min-h-[320px] bg-[#0F172A] border border-slate-800 hover:border-slate-700/80 rounded-3xl p-6 sm:p-10 shadow-2xl cursor-pointer flex flex-col justify-between transition-all transform hover:scale-[1.01] group select-none overflow-hidden"
+                          className="relative min-h-[280px] sm:min-h-[320px] bg-[#0A0E14] border border-slate-800 hover:border-slate-700/80 rounded-xl p-6 sm:p-10 shadow-2xl cursor-pointer flex flex-col justify-between transition-all transform hover:scale-[1.01] group select-none overflow-hidden"
                         >
                           <div className="flex justify-between items-center text-xs">
-                            <span className="px-3 py-1 bg-slate-800/80 rounded-lg font-bold text-teal-400">
+                            <span className="px-3 py-1 bg-slate-800/80 rounded-lg font-bold text-blue-400">
                               {selectedSubject} • Chapter {selectedChapterNum}
                             </span>
                             <span className="text-slate-400 font-bold">
@@ -912,11 +912,11 @@ export default function LearningView({
 
                           {/* Card text */}
                           <div className="my-auto text-center space-y-4 px-4 py-6">
-                            <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest block animate-pulse">
+                            <span className="text-xs uppercase font-semibold text-slate-500 tracking-widest block">
                               {isFlashcardFlipped ? ('Back (Answer / Explanation)') : ('Front (Question / Concept)')}
                             </span>
 
-                            <h3 className="text-lg sm:text-xl font-black text-white leading-relaxed">
+                            <h3 className="text-lg sm:text-xl font-semibold text-white leading-relaxed">
                               {isFlashcardFlipped 
                                 ? chapterFlashcards[flashcardIndex].back 
                                 : chapterFlashcards[flashcardIndex].front
@@ -924,21 +924,21 @@ export default function LearningView({
                             </h3>
 
                             {isFlashcardFlipped && chapterFlashcards[flashcardIndex].formula && (
-                              <div className="inline-block mt-3 px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-xl font-mono text-xs sm:text-sm text-indigo-300 font-black">
+                              <div className="inline-block mt-3 px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-xl font-mono text-xs sm:text-sm text-indigo-300 font-semibold">
                                 {chapterFlashcards[flashcardIndex].formula}
                               </div>
                             )}
                           </div>
 
-                          <div className="text-center text-[11px] text-slate-500 font-bold flex items-center justify-center space-x-1.5 pt-4 border-t border-slate-800/50">
+                          <div className="text-center text-xs text-slate-500 font-bold flex items-center justify-center space-x-1.5 pt-4 border-t border-slate-800/50">
                             <RotateCcw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500 text-slate-400" />
-                            <span>{'Click anywhere on card to flip'}</span>
+                            <span>Click anywhere on card to flip</span>
                           </div>
                         </div>
 
                         {/* Grading quality selection */}
-                        <div className="bg-[#0F172A] border border-slate-800 p-5 rounded-2xl space-y-3">
-                          <p className="text-center text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                        <div className="bg-[#0A0E14] border border-slate-800 p-5 rounded-xl space-y-3">
+                          <p className="text-center text-xs uppercase font-semibold text-slate-400 tracking-wider">
                             How well did you recall this answer?
                           </p>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -949,7 +949,7 @@ export default function LearningView({
                               }}
                               className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 font-bold text-xs transition-all cursor-pointer"
                             >
-                              🔴 Hard (Review)
+                              Hard (Review)
                             </button>
                             <button
                               onClick={() => {
@@ -958,7 +958,7 @@ export default function LearningView({
                               }}
                               className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-amber-950/40 border border-slate-800 hover:border-amber-500/40 text-slate-400 hover:text-amber-300 font-bold text-xs transition-all cursor-pointer"
                             >
-                              🟡 Good (Practice)
+                              Good (Practice)
                             </button>
                             <button
                               onClick={() => {
@@ -967,16 +967,16 @@ export default function LearningView({
                               }}
                               className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-sky-950/40 border border-slate-800 hover:border-sky-500/40 text-slate-400 hover:text-sky-300 font-bold text-xs transition-all cursor-pointer"
                             >
-                              🔵 Easy (Mastered)
+                              Easy (Mastered)
                             </button>
                             <button
                               onClick={() => {
                                 setIsFlashcardFlipped(false);
                                 setFlashcardIndex((flashcardIndex + 1) % chapterFlashcards.length);
                               }}
-                              className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-500/10 to-emerald-500/10 hover:from-teal-500/20 hover:to-emerald-500/20 border border-teal-500/30 text-teal-300 font-black text-xs transition-all flex items-center justify-center space-x-1 cursor-pointer"
+                              className="py-2.5 px-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-blue-300 font-semibold text-xs transition-all flex items-center justify-center space-x-1 cursor-pointer"
                             >
-                              <Check className="w-3.5 h-3.5 text-teal-400 font-black" />
+                              <Check className="w-3.5 h-3.5 text-blue-400 font-semibold" />
                               <span>Mastered Unit</span>
                             </button>
                           </div>
@@ -990,7 +990,7 @@ export default function LearningView({
                               setIsFlashcardFlipped(false);
                             }}
                             disabled={flashcardIndex === 0}
-                            className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800/50 text-slate-300 font-bold text-xs rounded-xl disabled:opacity-40 flex items-center space-x-1 border border-slate-800/80 cursor-pointer"
+                            className="px-4 py-2 bg-[#0A0E14] hover:bg-slate-800/50 text-slate-300 font-bold text-xs rounded-xl disabled:opacity-40 flex items-center space-x-1 border border-slate-800/80 cursor-pointer"
                           >
                             <ChevronLeft className="w-3.5 h-3.5" />
                             <span>Prev</span>
@@ -1000,7 +1000,7 @@ export default function LearningView({
                               setFlashcardIndex((flashcardIndex + 1) % chapterFlashcards.length);
                               setIsFlashcardFlipped(false);
                             }}
-                            className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800/50 text-slate-300 font-bold text-xs rounded-xl flex items-center space-x-1 border border-slate-800/80 cursor-pointer"
+                            className="px-4 py-2 bg-[#0A0E14] hover:bg-slate-800/50 text-slate-300 font-bold text-xs rounded-xl flex items-center space-x-1 border border-slate-800/80 cursor-pointer"
                           >
                             <span>Next</span>
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -1016,7 +1016,7 @@ export default function LearningView({
 
           </div>
         ) : (
-          <div className="bg-[#1E293B] border border-slate-800 rounded-3xl p-8 text-center text-slate-400">
+          <div className="bg-[#141920] border border-slate-800 rounded-xl p-8 text-center text-slate-400">
             Select a subject and chapter to load lessons and worksheets.
           </div>
         )}
@@ -1038,28 +1038,28 @@ export default function LearningView({
                 <Minimize2 className="w-4 h-4" />
               </button>
               <div className="text-left">
-                <span className="text-[10px] uppercase font-mono font-black text-purple-400 tracking-wider flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                <span className="text-xs uppercase font-mono font-semibold text-purple-400 tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                   FULLSCREEN STUDY MODE
                 </span>
-                <h2 className="text-sm font-black text-white leading-tight">
+                <h2 className="text-sm font-semibold text-white leading-tight">
                   {selectedChapter ? selectedChapter.chapterName : `Chapter ${selectedChapterNum}`}
                 </h2>
               </div>
             </div>
 
             {/* Timer widget in center */}
-            <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-[#161D2F] border border-slate-800/80 rounded-2xl">
+            <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-[#161D2F] border border-slate-800/80 rounded-xl">
               <div className="flex items-center space-x-2">
-                <Clock className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-                <span className="font-mono text-sm font-black text-slate-200 tracking-tight">
+                <Clock className="w-3.5 h-3.5 text-purple-400" />
+                <span className="font-mono text-sm font-semibold text-slate-200 tracking-tight">
                   {formatElapsedTime(zenTimeElapsed)}
                 </span>
               </div>
               <div className="w-px h-3.5 bg-slate-800" />
               <button
                 onClick={() => setIsTimerPaused(!isTimerPaused)}
-                className={`text-[10px] font-black uppercase px-2 py-0.5 rounded transition-all cursor-pointer ${
+                className={`text-xs font-semibold uppercase px-2 py-0.5 rounded transition-all cursor-pointer ${
                   isTimerPaused 
                     ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' 
                     : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
@@ -1069,7 +1069,7 @@ export default function LearningView({
               </button>
               <button
                 onClick={() => setZenTimeElapsed(0)}
-                className="text-[10px] font-black uppercase text-slate-500 hover:text-rose-400 cursor-pointer"
+                className="text-xs font-semibold uppercase text-slate-500 hover:text-rose-400 cursor-pointer"
                 title="Reset elapsed timer"
               >
                 Reset
@@ -1079,11 +1079,11 @@ export default function LearningView({
             {/* Right side controls */}
             <div className="flex items-center space-x-2.5">
               {/* Font Sizer */}
-              <div className="hidden sm:flex bg-[#0F172A] p-0.5 rounded-xl border border-slate-800 items-center">
+              <div className="hidden sm:flex bg-[#0A0E14] p-0.5 rounded-xl border border-slate-800 items-center">
                 <button
                   onClick={() => setNoteFontSize('sm')}
-                  className={`w-7 h-7 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
-                    noteFontSize === 'sm' ? 'bg-slate-800 text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+                  className={`w-7 h-7 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
+                    noteFontSize === 'sm' ? 'bg-slate-800 text-blue-400 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   A-
@@ -1091,7 +1091,7 @@ export default function LearningView({
                 <button
                   onClick={() => setNoteFontSize('base')}
                   className={`w-7 h-7 text-xs font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
-                    noteFontSize === 'base' ? 'bg-slate-800 text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+                    noteFontSize === 'base' ? 'bg-slate-800 text-blue-400 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   A
@@ -1099,7 +1099,7 @@ export default function LearningView({
                 <button
                   onClick={() => setNoteFontSize('lg')}
                   className={`w-7 h-7 text-sm font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
-                    noteFontSize === 'lg' ? 'bg-slate-800 text-teal-400 font-black' : 'text-slate-400 hover:text-white'
+                    noteFontSize === 'lg' ? 'bg-slate-800 text-blue-400 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   A+
@@ -1114,17 +1114,17 @@ export default function LearningView({
             <div className="flex-1 overflow-y-auto px-6 py-10 sm:py-16 scroll-smooth bg-[#080A12] selection:bg-purple-500/20">
               {/* Real timer for mobile */}
               <div className="md:hidden flex items-center justify-center mb-8">
-                <div className="flex items-center space-x-3 px-4 py-2 bg-[#161D2F] border border-slate-800/80 rounded-2xl shadow-lg">
+                <div className="flex items-center space-x-3 px-4 py-2 bg-[#161D2F] border border-slate-800/80 rounded-xl shadow-lg">
                   <div className="flex items-center space-x-2">
-                    <Clock className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-                    <span className="font-mono text-xs font-black text-slate-200 tracking-tight">
+                <Clock className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="font-mono text-xs font-semibold text-slate-200 tracking-tight">
                       {formatElapsedTime(zenTimeElapsed)}
                     </span>
                   </div>
                   <div className="w-px h-3.5 bg-slate-800" />
                   <button
                     onClick={() => setIsTimerPaused(!isTimerPaused)}
-                    className="text-[10px] font-black uppercase text-purple-400 cursor-pointer"
+                    className="text-xs font-semibold uppercase text-purple-400 cursor-pointer"
                   >
                     {isTimerPaused ? 'Resume' : 'Pause'}
                   </button>
@@ -1134,14 +1134,14 @@ export default function LearningView({
               <div className="max-w-2xl mx-auto space-y-12">
                 {/* Visual Accent/Intro Quote to focus them */}
                 <div className="text-center space-y-3.5 border-b border-slate-900 pb-10">
-                  <div className="inline-flex p-3 bg-purple-500/10 text-purple-300 rounded-2xl border border-purple-500/20 shadow-md">
+                  <div className="inline-flex p-3 bg-purple-500/10 text-purple-300 rounded-xl border border-purple-500/20 shadow-md">
                     <BookOpen className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-mono tracking-widest uppercase text-slate-500 font-extrabold">
+                    <p className="text-xs font-mono tracking-widest uppercase text-slate-500 font-semibold">
                       FULLSCREEN STUDY ROOM
                     </p>
-                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-relaxed mt-1">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight leading-relaxed mt-1">
                       {selectedChapter ? selectedChapter.chapterName : `Chapter ${selectedChapterNum}`}
                     </h1>
                   </div>
@@ -1150,45 +1150,63 @@ export default function LearningView({
                 {/* Main Text Content */}
                 <div className={`space-y-10 text-left ${getFontSizeClass()}`}>
                   {/* Overview */}
-                  <div className="space-y-3.5">
-                    <h3 className="text-[10px] font-mono font-black text-purple-400 uppercase tracking-widest pl-1">
-                      CHAPTER OVERVIEW
-                    </h3>
-                    <p className="text-slate-300 italic pl-5 border-l-2 border-purple-500/40 leading-relaxed text-sm sm:text-base">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-1 h-5 rounded-full bg-purple-500" />
+                      <h3 className="text-xs font-mono font-semibold text-purple-400 uppercase tracking-widest">
+                        Chapter Overview
+                      </h3>
+                    </div>
+                    <p className="text-slate-300 pl-4 border-l-2 border-purple-500/30 leading-relaxed text-sm sm:text-base">
                       {studyMaterial.overview}
                     </p>
                   </div>
 
-                  {/* Syllabus points */}
+                  {/* Core Points */}
                   {studyMaterial.corePoints && studyMaterial.corePoints.length > 0 && (
-                    <div className="space-y-4 bg-[#121726]/40 border border-slate-800/80 p-6 sm:p-7 rounded-2xl shadow-xs">
-                      <h4 className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">
-                        CORE STUDY PATHWAYS
-                      </h4>
-                      <ul className="space-y-3.5">
-                        {studyMaterial.corePoints.map((pt: string, i: number) => (
-                          <li key={i} className="flex items-start text-xs sm:text-sm text-slate-300 leading-relaxed">
-                            <span className="text-purple-400 mr-3 mt-1.5 text-xs">◆</span>
-                            <span>{pt}</span>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-1 h-5 rounded-full bg-emerald-500" />
+                        <h4 className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-widest">
+                          Core Syllabus Focus Points
+                        </h4>
+                      </div>
+                      <div className="bg-[#121726]/40 border border-slate-800/60 p-6 rounded-xl">
+                        <ul className="space-y-3">
+                          {studyMaterial.corePoints.map((pt: string, i: number) => (
+                            <li key={i} className="flex items-start text-xs sm:text-sm text-slate-300 leading-relaxed">
+                              <Target className="w-3.5 h-3.5 text-emerald-400 mr-2.5 mt-0.5 shrink-0" />
+                              <span>{pt}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   )}
 
                   {/* Vocabulary Terms */}
                   {studyMaterial.materials && studyMaterial.materials.length > 0 && (
-                    <div className="space-y-4 pt-8 border-t border-slate-900/80">
-                      <h4 className="text-[10px] font-mono font-black text-purple-400 uppercase tracking-widest pl-1">
-                        ESSENTIAL VOCABULARY
-                      </h4>
-                      <div className="grid grid-cols-1 gap-4">
-                        {studyMaterial.materials.map((m: { name: string; description: string }, idx: number) => (
-                          <div key={idx} className="bg-[#121726]/20 border border-slate-900 p-5 rounded-2xl hover:border-slate-800/80 transition-colors">
-                            <span className="font-mono text-xs font-extrabold text-teal-300 bg-teal-500/5 border border-teal-500/10 px-2.5 py-1 rounded-lg w-fit block mb-2">
-                              {m.name}
-                            </span>
-                            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    <div className="space-y-4 pt-6 border-t border-slate-900/60">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-1 h-5 rounded-full bg-blue-500" />
+                        <h4 className="text-xs font-mono font-semibold text-blue-400 uppercase tracking-widest">
+                          Key Terms & Formulas
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        {studyMaterial.materials.map((m: { name: string; description: string; formula?: string }, idx: number) => (
+                          <div key={idx} className="bg-[#121726]/30 border border-slate-900/60 p-4 rounded-xl hover:border-slate-800/60 transition-colors">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="font-mono text-xs font-semibold text-blue-300 bg-blue-500/5 border border-blue-500/10 px-2 py-0.5 rounded-md">
+                                {m.name}
+                              </span>
+                              {m.formula && (
+                                <span className="font-mono text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-md">
+                                  {m.formula}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 leading-relaxed">
                               {m.description}
                             </p>
                           </div>
@@ -1199,49 +1217,51 @@ export default function LearningView({
 
                   {/* Subtopics */}
                   {studyMaterial.subtopics && studyMaterial.subtopics.length > 0 && (
-                    <div className="space-y-8 pt-10 border-t border-slate-900/80">
-                      <h4 className="text-[10px] font-mono font-black text-purple-400 uppercase tracking-widest pl-1">
-                        DETAILED LESSON MODULES
-                      </h4>
-                      <div className="space-y-6">
+                    <div className="space-y-6 pt-6 border-t border-slate-900/60">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-1 h-5 rounded-full bg-purple-500" />
+                        <h4 className="text-xs font-mono font-semibold text-purple-400 uppercase tracking-widest">
+                          Detailed Breakdown
+                        </h4>
+                      </div>
+                      <div className="space-y-5">
                         {studyMaterial.subtopics.map((sub: { title: string; content: string; examInsight: string; imageUrl?: string; imageCaption?: string }, idx: number) => (
-                          <div key={idx} className="bg-[#0D1220]/60 border border-slate-900 rounded-3xl p-6 sm:p-8 space-y-4">
-                            <div className="flex items-center space-x-2.5 border-b border-slate-900/80 pb-3 mb-2">
-                              <div className="w-6 h-6 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-mono text-xs font-black shrink-0">
+                          <div key={idx} className="bg-[#0D1220]/50 border border-slate-900/60 rounded-xl p-6 sm:p-7 space-y-4">
+                            <div className="flex items-center space-x-2.5 border-b border-slate-900/60 pb-3 mb-2">
+                              <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-mono text-xs font-semibold shrink-0">
                                 {selectedChapterNum}.{idx + 1}
                               </div>
-                              <h4 className="text-sm sm:text-base font-black text-slate-100">
+                              <h4 className="text-sm sm:text-base font-semibold text-slate-100">
                                 {sub.title}
                               </h4>
                             </div>
                             <div className="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-4">
-                              <div className="prose prose-invert prose-sm max-w-none whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sub.content || '' }} />
-
                               {sub.imageUrl && (
-                                <div className="my-5 overflow-hidden rounded-3xl border border-slate-900 bg-[#070B16] flex flex-col items-center p-4">
-                                  <img 
-                                    src={sub.imageUrl} 
-                                    alt={sub.imageCaption || sub.title} 
+                                <div className="my-4 overflow-hidden rounded-xl border border-slate-900 bg-[#070B16] flex flex-col items-center p-4">
+                                  <img
+                                    src={sub.imageUrl}
+                                    alt={sub.imageCaption || sub.title}
                                     referrerPolicy="no-referrer"
-                                    className="max-h-96 w-auto object-contain rounded-2xl"
+                                    className="max-h-96 w-auto object-contain rounded-xl"
                                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                   />
                                   {sub.imageCaption && (
-                                    <p className="text-xs text-slate-400 mt-2.5 italic font-medium text-center">
+                                    <p className="text-xs text-slate-500 mt-2.5 italic font-medium text-center">
                                       {sub.imageCaption}
                                     </p>
                                   )}
                                 </div>
                               )}
+                              <div className="prose prose-invert prose-sm max-w-none whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(sub.content || '') }} />
 
                               {sub.examInsight && (
-                                <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-300/90 flex items-start space-x-3 mt-4">
+                                <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-start space-x-3 mt-4">
                                   <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                                   <div className="space-y-1">
-                                    <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-amber-400">
-                                      MATRIC EXAM TRAP
+                                    <span className="text-xs font-mono uppercase tracking-wider font-semibold text-amber-400">
+                                      Exam Tip
                                     </span>
-                                    <p className="text-xs leading-relaxed font-sans text-amber-300/80">
+                                    <p className="text-xs leading-relaxed text-amber-300/80">
                                       {sub.examInsight}
                                     </p>
                                   </div>
@@ -1258,7 +1278,7 @@ export default function LearningView({
                 {/* Visual completion card */}
                 <div className="pt-12 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between gap-6 font-sans">
                   <div className="text-left space-y-1">
-                    <h5 className="text-sm font-black text-white">
+                    <h5 className="text-sm font-semibold text-white">
                       Done with this unit study?
                     </h5>
                     <p className="text-xs text-slate-500">
@@ -1268,13 +1288,13 @@ export default function LearningView({
                   <div className="flex gap-3 w-full sm:w-auto">
                     <button
                       onClick={toggleMarkStudied}
-                      className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer hover:scale-[1.01] active:scale-95"
+                      className="flex-1 sm:flex-initial px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer hover:scale-[1.01] active:scale-95"
                     >
                       ✓ Log Completed
                     </button>
                     <button
                       onClick={() => setIsZenMode(false)}
-                      className="flex-1 sm:flex-initial px-6 py-3 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer active:scale-95"
+                      className="flex-1 sm:flex-initial px-6 py-3 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer active:scale-95"
                     >
                       Exit Fullscreen
                     </button>

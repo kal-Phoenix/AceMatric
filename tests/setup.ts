@@ -229,6 +229,7 @@ function snakeToCamel(obj: any): any {
 // Mock the db module
 vi.mock('../server/db', () => ({
   supabase: mockSupabase,
+  supabaseAdmin: mockSupabase,
   getSupabase: () => mockSupabase,
   formatSupabaseError: (err: any) => err?.message || 'Database error',
   camelToSnake,

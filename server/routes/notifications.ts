@@ -1,10 +1,23 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { supabase, formatSupabaseError } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth, requireAdmin } from '../middleware';
 import { validateBody, createNotificationSchema } from '../validation';
 
 const router = Router();
+
+function stripHtml(text: string): string {
+  return String(text || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isSafeActionUrl(url: string): boolean {
+  if (/^https?:\/\//i.test(url)) return true;
+  if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('\\')) return true;
+  return /^[a-z0-9_-]+$/i.test(url);
+}
 
 export interface ServerNotification {
   id: string;
@@ -113,14 +126,20 @@ router.post('/create', requireAdmin, validateBody(createNotificationSchema), asy
   try {
     const { title, message, type, actionUrl, userEmail } = req.body;
 
+    const safeTitle = stripHtml(title).slice(0, 200);
+    const safeMessage = stripHtml(message).slice(0, 2000);
+    if (!safeTitle || !safeMessage) return res.status(400).json({ error: 'Title and message are required.' });
+
+    const safeActionUrl = actionUrl ? isSafeActionUrl(String(actionUrl)) ? String(actionUrl).slice(0, 200) : null : null;
+
     const newNotif = {
       id: crypto.randomUUID(),
-      title,
-      message,
+      title: safeTitle,
+      message: safeMessage,
       type: type || 'info',
       is_read: false,
       created_at: new Date().toISOString(),
-      action_url: actionUrl || null,
+      action_url: safeActionUrl,
       user_email: (userEmail || 'all').trim().toLowerCase(),
     };
 
@@ -137,7 +156,7 @@ router.post('/create', requireAdmin, validateBody(createNotificationSchema), asy
       type: newNotif.type as ServerNotification['type'],
       isRead: false,
       createdAt: newNotif.created_at,
-      actionUrl: actionUrl,
+      actionUrl: safeActionUrl || undefined,
       userEmail: newNotif.user_email,
     };
 

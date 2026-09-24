@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabase, formatSupabaseError } from '../db';
+import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth } from '../middleware';
 import { validateBody, trackEventSchema } from '../validation';
 import rateLimit from 'express-rate-limit';

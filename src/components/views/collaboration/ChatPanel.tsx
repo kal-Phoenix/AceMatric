@@ -55,7 +55,7 @@ export default function ChatPanel({
           />
           <button
             type="submit"
-            className="absolute right-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-black transition-all duration-200 active:scale-95 cursor-pointer flex items-center gap-1 hover:shadow-md hover:shadow-indigo-500/15"
+            className="absolute right-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-black transition-all duration-200 active:scale-95 cursor-pointer flex items-center gap-1"
           >
             Send
           </button>

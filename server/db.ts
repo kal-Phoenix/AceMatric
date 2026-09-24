@@ -1,55 +1,70 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-let _supabaseService: SupabaseClient | null = null;
 let _supabaseAnon: SupabaseClient | null = null;
+let _supabaseAdmin: SupabaseClient | null = null;
 
 /**
- * Service-role client — bypasses RLS. Use only for admin operations
- * that require unrestricted access (e.g. user management, storage ops).
- */
-export function getSupabase(): SupabaseClient {
-  if (_supabaseService) return _supabaseService;
-
-  const url = (process.env.SUPABASE_URL || '').trim();
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
-
-  if (!url || !key || url.includes('your-project')) {
-    console.error('[db] FATAL: Missing or invalid Supabase credentials. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env');
-    process.exit(1);
-  }
-
-  _supabaseService = createClient(url, key);
-  console.log('[db] Supabase service-role client initialized:', url);
-  return _supabaseService;
-}
-
-/**
- * Anon-key client — respects Row Level Security policies.
- * Use for regular data operations where RLS should apply.
+ * Anon-key client. After migration 018 revokes privileges for the anon and
+ * authenticated roles, this client is intentionally inert — the server is the
+ * only privileged client and uses the service-role client below.
  */
 export function getSupabaseAnon(): SupabaseClient {
   if (_supabaseAnon) return _supabaseAnon;
 
   const url = (process.env.SUPABASE_URL || '').trim();
-  const key = (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  const key = (process.env.SUPABASE_ANON_KEY || '').trim();
 
   if (!url || !key || url.includes('your-project')) {
-    console.error('[db] FATAL: Missing or invalid Supabase credentials.');
+    console.error('[db] FATAL: Missing SUPABASE_URL or SUPABASE_ANON_KEY');
     process.exit(1);
   }
 
   _supabaseAnon = createClient(url, key);
+  console.log('[db] Supabase anon client initialized (privileges revoked by RLS hardening)');
   return _supabaseAnon;
 }
 
-// Convenience alias — lazy-evaluated so dotenv has time to load
+/**
+ * Service-role client — the single server-side client used by every route.
+ * Row Level Security is enabled on all tables and the anon/authenticated roles
+ * are revoked (migration 018), so the app key can no longer read or write data
+ * even if it leaks. All authorization is enforced in the server code.
+ */
+export function getSupabaseAdmin(): SupabaseClient {
+  if (_supabaseAdmin) return _supabaseAdmin;
+
+  const url = (process.env.SUPABASE_URL || '').trim();
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+  if (!url || !key || url.includes('your-project')) {
+    console.error('[db] FATAL: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    process.exit(1);
+  }
+
+  _supabaseAdmin = createClient(url, key);
+  console.log('[db] Supabase admin client initialized (RLS bypassed)');
+  return _supabaseAdmin;
+}
+
+// Legacy export retained for compatibility — do not use for user-facing logic.
+// All routes import supabaseAdmin (or getSupabaseAdmin()) instead.
 export const supabase = new Proxy({} as SupabaseClient, {
   get(_target, prop) {
-    return (getSupabase() as any)[prop];
+    return (getSupabaseAnon() as any)[prop];
   }
 });
 
-// ── Key Mapping ──────────────────────────────────────────────────────────────
+// Admin client proxy — for routes that need to bypass RLS.
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabaseAdmin() as any)[prop];
+  }
+});
+
+// Legacy alias — use getSupabaseAdmin() instead
+export function getSupabase(): SupabaseClient {
+  return getSupabaseAdmin();
+}
 
 export function camelToSnake(obj: any): any {
   if (Array.isArray(obj)) return obj.map(camelToSnake);
@@ -70,8 +85,6 @@ export function snakeToCamel(obj: any): any {
   }
   return result;
 }
-
-// ── Error Formatting ─────────────────────────────────────────────────────────
 
 export function formatSupabaseError(error: any): string {
   if (!error) return 'An unknown database error occurred.';
@@ -96,11 +109,9 @@ export function formatSupabaseError(error: any): string {
   return 'A database error occurred. Please try again.';
 }
 
-// ── Connection Health ────────────────────────────────────────────────────────
-
 export async function testSupabaseConnection(): Promise<boolean> {
   try {
-    const { error } = await supabase.from('student_profiles').select('email').limit(1);
+    const { error } = await supabaseAdmin.from('student_profiles').select('email').limit(1);
     if (!error) {
       console.log('[db] Supabase connection healthy');
       return true;
@@ -111,60 +122,4 @@ export async function testSupabaseConnection(): Promise<boolean> {
     console.error('[db] Supabase connection failed');
     return false;
   }
-}
-
-// ── Notes Content Helpers ────────────────────────────────────────────────────
-// Notes content can be either:
-//   - A plain string (legacy, backward-compatible)
-//   - A JSON object: { blocks: [{ type: 'text', text: '...' }, { type: 'image', url: '...', alt: '...' }] }
-
-export interface NoteTextBlock {
-  type: 'text';
-  text: string;
-}
-
-export interface NoteImageBlock {
-  type: 'image';
-  url: string;
-  alt?: string;
-}
-
-export type NoteBlock = NoteTextBlock | NoteImageBlock;
-
-export interface NoteContent {
-  blocks: NoteBlock[];
-}
-
-/** Normalize any note content format into a NoteContent object */
-export function normalizeNoteContent(content: any): NoteContent {
-  if (!content) return { blocks: [] };
-
-  if (typeof content === 'string') {
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed && Array.isArray(parsed.blocks)) return parsed;
-    } catch {
-      // Plain text string
-    }
-    return content.trim()
-      ? { blocks: [{ type: 'text', text: content }] }
-      : { blocks: [] };
-  }
-
-  if (Array.isArray(content.blocks)) return content;
-  if (Array.isArray(content)) return { blocks: content };
-  return { blocks: [] };
-}
-
-/** Extract plain text from NoteContent (for search, export, etc.) */
-export function extractPlainText(content: NoteContent): string {
-  return content.blocks
-    .filter((b): b is NoteTextBlock => b.type === 'text')
-    .map(b => b.text)
-    .join('\n');
-}
-
-/** Serialize NoteContent to a string for storage */
-export function serializeNoteContent(content: NoteContent): string {
-  return JSON.stringify(content);
 }

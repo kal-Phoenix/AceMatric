@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin } from '../middleware';
+import { requireAuth, requireAdmin, isAdminUser } from '../middleware';
 import { logAudit } from '../audit';
-import { getSupabase } from '../db';
+import { getSupabaseAdmin as getSupabase } from '../db';
 import {
   upsertPastExam,
   getPastExam,
@@ -19,7 +19,7 @@ function safeJsonParse<T>(value: any, fallback: T): T {
 }
 
 // GET /api/past-exam-manage/public - student-facing: list published past exams
-router.get('/public', async (req, res) => {
+router.get('/public', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabase();
     const { subject, yearEC } = req.query;
@@ -100,7 +100,8 @@ router.get('/stats', requireAdmin, async (_req, res) => {
 // GET /api/past-exam-manage/:id
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const statusFilter = req.user!.role === 'admin' ? undefined : 'published';
+    const isAdmin = await isAdminUser(req.user!.email);
+    const statusFilter = isAdmin ? undefined : 'published';
     const item = await getPastExam(req.params.id, statusFilter);
     if (!item) return res.status(404).json({ error: 'Past exam not found' });
     res.json(item);
