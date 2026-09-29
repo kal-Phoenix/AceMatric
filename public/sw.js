@@ -37,8 +37,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
+  // Skip non-GET requests and authentication/OAuth redirect routes
   if (request.method !== 'GET') return;
+  if (url.pathname.startsWith('/api/auth/')) return;
 
   // API requests — network only (with offline fallback)
   if (url.pathname.startsWith('/api/')) {

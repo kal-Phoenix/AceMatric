@@ -33,6 +33,7 @@ import ChapterSelector from './learning/ChapterSelector';
 import StudyNotes from './learning/StudyNotes';
 import FormulaSheet from './learning/FormulaSheet';
 import { sanitizeHtml } from '../../lib/sanitize';
+import { getTopicVideo } from '../../data/topicVideos';
 
 interface LearningViewProps {
   stream: Stream;
@@ -320,6 +321,7 @@ export default function LearningView({
   // Fetch chapter content from Supabase (lazy-generated + cached)
   useEffect(() => {
     if (!selectedChapter) return;
+    window.scrollTo({ top: 0, behavior: 'instant' });
     setContentLoading(true);
     setStudyMaterial(null);
     db.getChapterContent(selectedGrade, selectedSubject, selectedChapter.chapterNumber)
@@ -638,11 +640,6 @@ export default function LearningView({
                 {studyMaterial.materials && studyMaterial.materials.length > 0 && (
                   <FormulaSheet materials={studyMaterial.materials} />
                 )}
-                <VideoPlayer
-                  videoId={studyMaterial.youtubeVideoId}
-                  title={`${selectedSubject} - ${selectedChapter.chapterName}`}
-                  duration={studyMaterial.videoDuration}
-                />
                 {chapters.find(ch => ch.chapterNumber === selectedChapterNum + 1) && (
                   <div className="flex justify-end">
                     <button
@@ -1184,6 +1181,57 @@ export default function LearningView({
                     </div>
                   )}
 
+                  {/* Consolidated Exam Preparation Tips & Insights */}
+                  {(() => {
+                    const collectedTips: Array<{ source?: string; tip: string }> = [];
+                    if (studyMaterial.examTips && studyMaterial.examTips.trim()) {
+                      collectedTips.push({
+                        source: 'General Strategy',
+                        tip: studyMaterial.examTips,
+                      });
+                    }
+                    if (studyMaterial.subtopics) {
+                      studyMaterial.subtopics.forEach((sub: { title: string; examInsight: string }, idx: number) => {
+                        if (sub.examInsight && sub.examInsight.trim()) {
+                          collectedTips.push({
+                            source: sub.title ? `${selectedChapterNum}.${idx + 1} ${sub.title}` : `Topic ${idx + 1}`,
+                            tip: sub.examInsight,
+                          });
+                        }
+                      });
+                    }
+
+                    if (collectedTips.length === 0) return null;
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-1 h-5 rounded-full bg-amber-500" />
+                          <h4 className="text-xs font-mono font-semibold text-amber-400 uppercase tracking-widest">
+                            Exam Preparation Tips & Insights
+                          </h4>
+                        </div>
+                        <div className="bg-amber-500/5 border border-amber-500/20 p-6 rounded-xl">
+                          <ul className="space-y-3.5">
+                            {collectedTips.map((item, i) => (
+                              <li key={i} className="flex items-start text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                <Lightbulb className="w-4 h-4 text-amber-400 mr-2.5 mt-0.5 shrink-0" />
+                                <div className="space-y-0.5">
+                                  {item.source && (
+                                    <span className="inline-block text-[10px] font-mono uppercase tracking-wider font-semibold text-amber-400 mr-2 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                      {item.source}
+                                    </span>
+                                  )}
+                                  <span className="text-amber-100/90">{item.tip}</span>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Vocabulary Terms */}
                   {studyMaterial.materials && studyMaterial.materials.length > 0 && (
                     <div className="space-y-4 pt-6 border-t border-slate-900/60">
@@ -1253,20 +1301,6 @@ export default function LearningView({
                                 </div>
                               )}
                               <div className="prose prose-invert prose-sm max-w-none whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(sub.content || '') }} />
-
-                              {sub.examInsight && (
-                                <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-start space-x-3 mt-4">
-                                  <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                                  <div className="space-y-1">
-                                    <span className="text-xs font-mono uppercase tracking-wider font-semibold text-amber-400">
-                                      Exam Tip
-                                    </span>
-                                    <p className="text-xs leading-relaxed text-amber-300/80">
-                                      {sub.examInsight}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </div>
                         ))}
@@ -1274,6 +1308,32 @@ export default function LearningView({
                     </div>
                   )}
                 </div>
+
+                {/* Chapter Video Masterclass & Breakdown */}
+                {(() => {
+                  const fallbackVideo = getTopicVideo(selectedSubject, selectedGrade, selectedChapterNum, selectedChapter?.chapterName);
+                  const videoId = studyMaterial.youtubeVideoId || fallbackVideo.videoId;
+                  const title = studyMaterial.title || `${selectedSubject} - ${selectedChapter?.chapterName || `Chapter ${selectedChapterNum}`}`;
+                  const duration = studyMaterial.videoDuration || fallbackVideo.duration;
+
+                  if (!videoId) return null;
+
+                  return (
+                    <div className="space-y-4 pt-6 border-t border-slate-900/80 text-left">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-1 h-5 rounded-full bg-red-500" />
+                        <h4 className="text-xs font-mono font-semibold text-slate-300 uppercase tracking-widest">
+                          Chapter Video Masterclass & Breakdown
+                        </h4>
+                      </div>
+                      <VideoPlayer
+                        videoId={videoId}
+                        title={title}
+                        duration={duration}
+                      />
+                    </div>
+                  );
+                })()}
 
                 {/* Visual completion card */}
                 <div className="pt-12 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between gap-6 font-sans">

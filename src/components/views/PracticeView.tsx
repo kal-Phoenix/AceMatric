@@ -304,11 +304,18 @@ export default function PracticeView({
 
   // Matching pool for configuration
   const matchingPool = useMemo(() => {
+    const baseList = selectedSubject === 'All'
+      ? allQuestions
+      : allQuestions.filter(q => {
+          const searchSubj = selectedSubject === 'Mathematics' ? 'Maths' : selectedSubject;
+          return q.subject === searchSubj || q.subject === selectedSubject;
+        });
+
     // 1. Find exact real matches
-    let exactRealMatches = streamQuestions.filter(q => {
+    let exactRealMatches = baseList.filter(q => {
       if (selectedSubject !== 'All') {
         const searchSubject = selectedSubject === 'Mathematics' ? 'Maths' : selectedSubject;
-        if (q.subject !== searchSubject) return false;
+        if (q.subject !== searchSubject && q.subject !== selectedSubject) return false;
       }
       
       // Filter by grade if selected (extract grade from chapter string like "Grade 12 - Chapter 1: ...")
@@ -335,7 +342,7 @@ export default function PracticeView({
     });
 
     return exactRealMatches;
-  }, [streamQuestions, selectedSubject, selectedGrade, selectedChapter, selectedDifficulty]);
+  }, [allQuestions, selectedSubject, selectedGrade, selectedChapter, selectedDifficulty]);
 
   // Live Timer Countdown Effect
   useEffect(() => {

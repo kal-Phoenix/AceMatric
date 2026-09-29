@@ -207,12 +207,6 @@ export const collaborationLimiter = rateLimit(rateLimitOpts({
   message: { error: 'Too many room requests. Please try again later.' },
 }));
 
-export const paymentLimiter = rateLimit(rateLimitOpts({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: { error: 'Too many payment requests. Please try again later.' },
-}));
-
 export const uploadLimiter = rateLimit(rateLimitOpts({
   windowMs: 60 * 60 * 1000,
   max: 20,

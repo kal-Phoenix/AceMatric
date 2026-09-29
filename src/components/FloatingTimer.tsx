@@ -177,7 +177,7 @@ export default function FloatingTimer() {
     return (
       <div
         className="fixed z-50 select-none touch-none"
-        style={{ right: 16, bottom: 96, transform: `translate(${pos.x}px, ${pos.y}px)` }}
+        style={{ right: 16, bottom: 80, transform: `translate(${pos.x}px, ${pos.y}px)` }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -203,7 +203,7 @@ export default function FloatingTimer() {
   return (
     <div
       className="fixed z-50 select-none touch-none"
-      style={{ right: 16, bottom: 96, transform: `translate(${pos.x}px, ${pos.y}px)` }}
+      style={{ right: 16, bottom: 80, transform: `translate(${pos.x}px, ${pos.y}px)` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -212,7 +212,7 @@ export default function FloatingTimer() {
       <div className="flex flex-col items-end gap-3">
         {/* Expanded Panel */}
         {isOpen && (
-          <div className="w-72 bg-[#0F1218] border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-[min(288px,calc(100vw-32px))] bg-[#0F1218] border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
             {/* Draggable Header */}
             <div className="flex items-center justify-between p-3 bg-slate-900/60 border-b border-slate-700/50 cursor-grab active:cursor-grabbing">
               <div className="flex items-center gap-2">
@@ -418,7 +418,7 @@ export default function FloatingTimer() {
         <button
           onClick={handleToggle}
           onDoubleClick={handleMinimize}
-          className={`w-14 h-14 rounded-full bg-amber-500 text-white shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:shadow-xl`}
+          className={`w-11 h-11 rounded-full bg-amber-500/90 hover:bg-amber-500 text-white shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-all hover:shadow-xl border border-amber-400/30`}
           title="Study Timer — drag to move, double-click to minimize"
         >
           {isRunning ? (

@@ -77,43 +77,7 @@ export default function ProfileView({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [auditReport, setAuditReport] = useState<string>(() => {
-    return userProfile?.proStudyAudit || '';
-  });
-  const [isAuditing, setIsAuditing] = useState(false);
 
-  const handleRunAudit = async () => {
-    setIsAuditing(true);
-    try {
-      const token = getAccessToken();
-      const response = await fetch('/api/ai/pro-audit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          name, school, region, targetScore, dailyGoalHours,
-          preparationLevel: userProfile?.preparationLevel || 'Medium',
-          studyStyle: userProfile?.studyStyle || 'Visual / Active Recall',
-          weakSubjects: userProfile?.weakSubjects || ['Physics', 'Mathematics'],
-          totalMinutesStudied: analyticsData.totalMinsCombined,
-          studiedChaptersCount: studiedChapters.length,
-        }),
-      });
-      const data = await response.json();
-      if (data.audit) {
-        setAuditReport(data.audit);
-        if (userProfile?.email) {
-          db.saveStudentProfile({ ...userProfile, proStudyAudit: data.audit } as any).catch(() => {});
-        }
-      }
-    } catch (err) {
-      console.error('Audit failed:', err);
-    } finally {
-      setIsAuditing(false);
-    }
-  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -708,66 +672,7 @@ export default function ProfileView({
             </div>
           </div>
 
-          {/* Pro Audit */}
-          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-800/60">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 bg-blue-400/10 border border-blue-400/30 rounded text-xs font-semibold uppercase tracking-widest text-blue-400">
-                    Diagnostic
-                  </span>
-                </div>
-                <h3 className="font-semibold text-sm text-white">Study Audit & Strategy</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Personalized diagnostic of your study habits and target score plan</p>
-              </div>
-              <button
-                type="button"
-                disabled={isAuditing}
-                onClick={handleRunAudit}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 shadow-sm disabled:opacity-50 shrink-0"
-              >
-                {isAuditing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Generate Audit
-                  </>
-                )}
-              </button>
-            </div>
 
-            {auditReport ? (
-              <div className="mt-4 bg-slate-900/40 border border-slate-800/60 rounded-xl p-4 text-slate-300 leading-relaxed space-y-3 max-h-96 overflow-y-auto">
-                {auditReport.split('\n\n').map((paragraph, pIdx) => {
-                  if (paragraph.startsWith('###')) {
-                    return <h3 key={pIdx} className="text-sm font-semibold text-white mt-3 border-b border-slate-800 pb-1">{paragraph.replace('###', '').trim()}</h3>;
-                  }
-                  if (paragraph.startsWith('####')) {
-                    return <h4 key={pIdx} className="text-xs font-semibold text-blue-300 mt-2">{paragraph.replace('####', '').trim()}</h4>;
-                  }
-                  if (paragraph.startsWith('-') || paragraph.startsWith('*')) {
-                    return (
-                      <ul key={pIdx} className="list-disc pl-5 space-y-1 text-xs">
-                        {paragraph.split('\n').map((line, lIdx) => (
-                          <li key={lIdx}>{line.replace(/^[-*]\s*/, '')}</li>
-                        ))}
-                      </ul>
-                    );
-                  }
-                  return <p key={pIdx} className="text-xs leading-relaxed text-slate-300">{paragraph}</p>;
-                })}
-              </div>
-            ) : (
-              <div className="mt-4 py-8 text-center bg-slate-900/30 border border-slate-800/60 border-dashed rounded-xl">
-                <Sparkles className="w-6 h-6 text-slate-600 mx-auto mb-2" />
-                <p className="text-xs text-slate-500">Click "Generate Audit" to analyze your study plan</p>
-              </div>
-            )}
-          </div>
 
           {/* Session History */}
           <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5">

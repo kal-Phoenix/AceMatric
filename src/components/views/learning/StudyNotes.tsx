@@ -10,6 +10,8 @@ import { ChapterStudyMaterial } from '../../../types';
 import { useState } from 'react';
 import { ChapterInfo } from '../../../data/curriculum';
 import { sanitizeHtml } from '../../../lib/sanitize';
+import VideoPlayer from './VideoPlayer';
+import { getTopicVideo } from '../../../data/topicVideos';
 
 interface StudyNotesProps {
   studyMaterial: ChapterStudyMaterial;
@@ -110,17 +112,6 @@ export default function StudyNotes({
                     {/* Content */}
                     <div className="text-xs sm:text-sm text-slate-300 leading-relaxed text-left prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(sub.content || '') }} />
 
-                    {/* Exam Insight */}
-                    {sub.examInsight && (
-                      <div className="mt-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 exam-tip-container flex items-start space-x-2.5 clear-both">
-                        <Lightbulb className="w-4 h-4 text-amber-400 exam-tip-icon shrink-0 mt-0.5" />
-                        <div className="space-y-1 text-left">
-                          <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-amber-400 exam-tip-label">Exam Tip</span>
-                          <p className="text-xs leading-relaxed text-amber-300/80 exam-tip-text text-left">{sub.examInsight}</p>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Practice Problems */}
                     {sub.practiceProblems && sub.practiceProblems.length > 0 && (
                       <PracticeProblemsBlock problems={sub.practiceProblems} chapterNum={selectedChapterNum} subtopicNum={idx + 1} />
@@ -131,27 +122,108 @@ export default function StudyNotes({
             </div>
           )}
 
-          {/* Core Syllabus Points */}
-          {studyMaterial.corePoints && studyMaterial.corePoints.length > 0 && (
-            <div className="space-y-4 pt-2 text-left">
-              <div className="flex items-center gap-2.5">
-                <div className="w-1 h-5 rounded-full bg-emerald-500" />
-                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Core Syllabus Focus Points
-                </h5>
+          {/* Core Syllabus Points & Consolidated Exam Tips Container */}
+          <div className="space-y-6 pt-2 text-left">
+            {/* Core Syllabus Points */}
+            {studyMaterial.corePoints && studyMaterial.corePoints.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-5 rounded-full bg-emerald-500" />
+                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Core Syllabus Focus Points
+                  </h5>
+                </div>
+                <div className="bg-[#1F2937]/40 border border-slate-800/40 p-5 rounded-2xl">
+                  <ul className="space-y-3">
+                    {studyMaterial.corePoints.map((pt, i) => (
+                      <li key={i} className="flex items-start text-xs sm:text-sm text-slate-300">
+                        <Target className="w-3.5 h-3.5 text-emerald-400 mr-2.5 mt-0.5 shrink-0" />
+                        <span>{pt}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div className="bg-[#1F2937]/40 border border-slate-800/40 p-5 rounded-2xl">
-                <ul className="space-y-3">
-                  {studyMaterial.corePoints.map((pt, i) => (
-                    <li key={i} className="flex items-start text-xs sm:text-sm text-slate-300">
-                      <Target className="w-3.5 h-3.5 text-emerald-400 mr-2.5 mt-0.5 shrink-0" />
-                      <span>{pt}</span>
-                    </li>
-                  ))}
-                </ul>
+            )}
+
+            {/* Consolidated Exam Tips & Insights */}
+            {(() => {
+              const collectedExamTips: Array<{ source?: string; tip: string }> = [];
+              if (studyMaterial.examTips && studyMaterial.examTips.trim()) {
+                collectedExamTips.push({
+                  source: 'General Exam Strategy',
+                  tip: studyMaterial.examTips,
+                });
+              }
+              if (studyMaterial.subtopics) {
+                studyMaterial.subtopics.forEach((sub, idx) => {
+                  if (sub.examInsight && sub.examInsight.trim()) {
+                    collectedExamTips.push({
+                      source: sub.title ? `${selectedChapterNum}.${idx + 1} ${sub.title}` : `Topic ${idx + 1}`,
+                      tip: sub.examInsight,
+                    });
+                  }
+                });
+              }
+
+              if (collectedExamTips.length === 0) return null;
+
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-1 h-5 rounded-full bg-amber-500" />
+                    <h5 className="text-xs font-bold text-amber-400/90 uppercase tracking-wider">
+                      Exam Preparation Tips & Key Insights
+                    </h5>
+                  </div>
+                  <div className="bg-amber-500/5 border border-amber-500/20 p-5 rounded-2xl">
+                    <ul className="space-y-3.5">
+                      {collectedExamTips.map((item, i) => (
+                        <li key={i} className="flex items-start text-xs sm:text-sm text-slate-300 leading-relaxed">
+                          <Lightbulb className="w-4 h-4 text-amber-400 mr-2.5 mt-0.5 shrink-0" />
+                          <div className="space-y-0.5">
+                            {item.source && (
+                              <span className="inline-block text-[10px] font-mono uppercase tracking-wider font-semibold text-amber-400 mr-2 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                {item.source}
+                              </span>
+                            )}
+                            <span className="text-amber-100/90">{item.tip}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* End-of-Chapter Related Video Lesson Masterclass */}
+          {(() => {
+            const fallbackVideo = getTopicVideo(selectedSubject, selectedGrade, selectedChapterNum, selectedChapter?.chapterName);
+            const dbVideoId = studyMaterial.youtubeVideoId && studyMaterial.youtubeVideoId !== 'placeholder' && studyMaterial.youtubeVideoId !== 'dQw4w9WgXcQ' ? studyMaterial.youtubeVideoId : null;
+            const videoId = dbVideoId || fallbackVideo.videoId;
+            const title = `${selectedSubject} - ${selectedChapter?.chapterName || `Chapter ${selectedChapterNum}`}`;
+            const duration = (studyMaterial.videoDuration && studyMaterial.videoDuration !== 'N/A' && studyMaterial.videoDuration !== 'TBD' && studyMaterial.videoDuration !== '0:00') ? studyMaterial.videoDuration : fallbackVideo.duration;
+
+            if (!videoId) return null;
+
+            return (
+              <div className="space-y-4 pt-6 border-t border-slate-800/80 text-left">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-5 rounded-full bg-red-500" />
+                  <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Chapter Video Masterclass & Breakdown
+                  </h5>
+                </div>
+                <VideoPlayer
+                  videoId={videoId}
+                  title={title}
+                  duration={duration}
+                />
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>

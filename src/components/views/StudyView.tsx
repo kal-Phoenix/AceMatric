@@ -1,32 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Timer, 
   BookOpen, 
   Bot, 
-  Layers, 
-  Play, 
-  Pause, 
-  RotateCcw, 
   Sparkles, 
   GraduationCap, 
-  CheckCircle2, 
-  Target, 
   Clock, 
   Flame,
-  Volume2,
-  VolumeX,
-  Download,
-  Printer,
-  FileText,
-  Check,
-  Plus,
-  Trash2,
-  X,
-  Square,
-  CheckSquare,
   Grid,
   BarChart2,
-  TrendingUp,
   Activity,
   Award
 } from 'lucide-react';
@@ -74,18 +55,6 @@ export default function StudyView({
   showToast: globalShowToast
 }: StudyViewProps) {
   
-
-  // --- STUDY TIMER (POMODORO) STATE ---
-  const [focusMode, setFocusMode] = useState<'pomodoro' | 'shortBreak' | 'longBreak'>('pomodoro');
-  const [timeRemaining, setTimeRemaining] = useState<number>(1500); // 25 mins
-  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
-  const [completedPomodorosToday, setCompletedPomodorosToday] = useState<number>(3);
-  const [totalFocusSecondsToday, setTotalFocusSecondsToday] = useState<number>(8100); // 2h 15m
-  const [selectedGrade, setSelectedGrade] = useState<number>(12);
-  const [selectedSubject, setSelectedSubject] = useState<string>('Physics');
-  const [selectedChapter, setSelectedChapter] = useState<any>(null);
-  const [secondsStudiedInSession, setSecondsStudiedInSession] = useState<number>(0);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   // --- FLOATING NOTIFICATION SYSTEM (TOAST) ---
   const [localToast, setLocalToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' } | null>(null);
@@ -169,90 +138,13 @@ export default function StudyView({
     };
   }, [sessionHistory, subjectsList]);
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const chaptersList = useMemo(() => {
-    const curStreamKey = stream === 'Natural Science' ? 'Natural' : 'Social';
-    const streamData = ETHIOPIAN_CURRICULUM.find(s => s.stream === curStreamKey);
-    if (!streamData) return [];
-    
-    let searchSubject = selectedSubject;
-    if (searchSubject === 'Mathematics') searchSubject = 'Maths';
-    
-    const subjectData = streamData.subjects.find(
-      sub => sub.subject.toLowerCase() === searchSubject.toLowerCase() && sub.grade === selectedGrade
-    );
-    return subjectData ? subjectData.chapters : [];
-  }, [stream, selectedSubject, selectedGrade]);
-
-  useEffect(() => {
-    if (chaptersList.length > 0) {
-      setSelectedChapter(chaptersList[0]);
-    } else {
-      setSelectedChapter(null);
-    }
-  }, [chaptersList]);
-
-  const switchTimerMode = (mode: 'pomodoro' | 'shortBreak' | 'longBreak') => {
-    setIsTimerRunning(false);
-    setFocusMode(mode);
-    if (mode === 'pomodoro') setTimeRemaining(1500);
-    if (mode === 'shortBreak') setTimeRemaining(300);
-    if (mode === 'longBreak') setTimeRemaining(900);
-  };
-
-  useEffect(() => {
-    let interval: any = null;
-    if (isTimerRunning && timeRemaining > 0) {
-      interval = setInterval(() => {
-        setTimeRemaining(prev => prev - 1);
-        if (focusMode === 'pomodoro') {
-          setTotalFocusSecondsToday(prev => prev + 1);
-          setSecondsStudiedInSession(prev => prev + 1);
-        }
-      }, 1000);
-    } else if (timeRemaining === 0 && isTimerRunning) {
-      setIsTimerRunning(false);
-      if (focusMode === 'pomodoro') {
-        setCompletedPomodorosToday(prev => prev + 1);
-        
-        // Log to curriculum
-        const minutesStudied = Math.max(1, Math.round(secondsStudiedInSession / 60)) || 25;
-        const chapterLabel = selectedChapter ? `Unit ${selectedChapter.chapterNumber}: ${selectedChapter.chapterName}` : 'General Review';
-        if (onCompleteStudy) {
-          onCompleteStudy(selectedSubject, chapterLabel, minutesStudied);
-        }
-        
-        // Mark chapter as studied
-        if (selectedChapter) {
-          const chapterKey = `${selectedGrade}-${selectedSubject}-${selectedChapter.chapterNumber}`;
-          db.toggleStudiedChapter(chapterKey).then(setStudiedChapters);
-        }
-        
-        setSecondsStudiedInSession(0);
-        showToast('Study Block Completed & Logged to Curriculum! Take a 5-minute break.', 'success');
-        switchTimerMode('shortBreak');
-      } else {
-        showToast("Break is over! Let's get back to active focus.", 'success');
-        switchTimerMode('pomodoro');
-      }
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, timeRemaining, focusMode, selectedSubject, selectedChapter, selectedGrade, secondsStudiedInSession, studiedChapters]);
-
   const subTabs = [
-    { id: 'learning', label: 'Study Notes', icon: <BookOpen className="w-4 h-4 text-indigo-400" /> },
-    { id: 'curriculum-grid', label: 'Syllabus Map', icon: <Grid className="w-4 h-4 text-rose-400" /> },
-    { id: 'explainer', label: 'AI Tutor', icon: <Bot className="w-4 h-4 text-emerald-400" /> },
-    { id: 'analytics', label: 'Pro Analytics', icon: <BarChart2 className="w-4 h-4 text-amber-400" /> },
+    { id: 'learning', label: 'Notes', fullLabel: 'Study Notes', icon: <BookOpen className="w-4 h-4 text-indigo-400" /> },
+    { id: 'curriculum-grid', label: 'Syllabus', fullLabel: 'Syllabus Map', icon: <Grid className="w-4 h-4 text-rose-400" /> },
+    { id: 'explainer', label: 'AI Tutor', fullLabel: 'AI Tutor', icon: <Bot className="w-4 h-4 text-emerald-400" /> },
+    { id: 'analytics', label: 'Analytics', fullLabel: 'Pro Analytics', icon: <BarChart2 className="w-4 h-4 text-amber-400" /> },
   ];
 
-  const dailyGoalSeconds = 14400; // 4 hours
-  const progressPercent = Math.min(100, Math.round((totalFocusSecondsToday / dailyGoalSeconds) * 100));
 
   return (
           <div className="space-y-6">
@@ -282,21 +174,21 @@ export default function StudyView({
       </div>
 
       {/* 2. SUB-NAVIGATION TAB SWITCHER */}
-      <div className="flex bg-[#0F1218] p-1.5 rounded-xl border border-slate-800/80 shadow-md overflow-x-auto">
+      <div className="flex bg-[#0F1218] p-1 rounded-xl border border-slate-800/80 shadow-md">
         {subTabs.map((tab) => {
           const isActive = activeSubTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onSubTabChange(tab.id)}
-              className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer select-none ${
+              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 sm:py-3 px-1 sm:px-4 rounded-xl text-[10px] sm:text-xs font-bold transition-all cursor-pointer select-none ${
                 isActive
                   ? 'bg-white/10 text-white border border-white/10 shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
               {tab.icon}
-              <span className="truncate">{tab.label}</span>
+              <span className="leading-none">{tab.label}</span>
             </button>
           );
         })}
@@ -305,338 +197,6 @@ export default function StudyView({
       {/* 3. SUB-TAB CONTENT ARENA */}
       <div className="min-h-[500px]">
         
-        {/* --- TAB 1: STUDY TIMER (POMODORO FOCUS SUITE) --- */}
-        {activeSubTab === 'timer' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Main Timer Gauge (8 Columns) */}
-            <div className="lg:col-span-8 bg-[#141920] border border-slate-800 rounded-xl p-6 sm:p-10 shadow-xs relative overflow-hidden flex flex-col justify-between">
-              <div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-base text-white tracking-tight flex items-center gap-1.5 flex-wrap">
-                        <span>Pomodoro Focus Session</span>
-                        {selectedChapter && (
-                          <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold rounded-md">
-                            G{selectedGrade} • {selectedSubject} Unit {selectedChapter.chapterNumber}
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {selectedChapter 
-                          ? `Studying: Unit ${selectedChapter.chapterNumber} - ${selectedChapter.chapterName}`
-                          : '25 mins deep work • 5 mins break • Build exam stamina'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setSoundEnabled(!soundEnabled);
-                      showToast(
-                        soundEnabled 
-                          ? 'Focus sound alerts disabled'
-                          : 'Focus sound alerts enabled',
-                        'info'
-                      );
-                    }}
-                    className="p-2 bg-[#0A0E14] hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors self-start sm:self-auto cursor-pointer"
-                    title={soundEnabled ? "Mute audio cues" : "Enable audio cues"}
-                  >
-                    {soundEnabled ? <Volume2 className="w-4 h-4 text-blue-400" /> : <VolumeX className="w-4 h-4" />}
-                  </button>
-                </div>
-
-                {/* Mode Selectors */}
-                <div className="flex justify-center mt-8">
-                  <div className="flex p-1 bg-[#0A0E14] rounded-xl border border-slate-800">
-                    <button
-                      onClick={() => {
-                        switchTimerMode('pomodoro');
-                        showToast('25-minute Pomodoro focus mode selected', 'info');
-                      }}
-                      className={`px-4 sm:px-6 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        focusMode === 'pomodoro'
-                          ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Focus (25m)
-                    </button>
-                    <button
-                      onClick={() => {
-                        switchTimerMode('shortBreak');
-                        showToast('5-minute short break selected', 'info');
-                      }}
-                      className={`px-4 sm:px-6 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        focusMode === 'shortBreak'
-                          ? 'bg-amber-500 text-white shadow-sm font-semibold'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Break (5m)
-                    </button>
-                    <button
-                      onClick={() => {
-                        switchTimerMode('longBreak');
-                        showToast('15-minute long break selected', 'info');
-                      }}
-                      className={`px-4 sm:px-6 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        focusMode === 'longBreak'
-                          ? 'bg-indigo-600 text-white shadow-sm font-semibold'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Rest (15m)
-                    </button>
-                  </div>
-                </div>
-
-                {/* SVG Circular Countdown and Huge Time Display */}
-                <div className="flex flex-col items-center justify-center my-10 relative">
-                  <div className="relative w-60 h-60 flex items-center justify-center">
-                    {/* SVG Progress Circle */}
-                    <svg className="w-full h-full transform -rotate-90">
-                      {/* Background circle */}
-                      <circle
-                        cx="120"
-                        cy="120"
-                        r="90"
-                        className="stroke-slate-800"
-                        strokeWidth="8"
-                        fill="transparent"
-                      />
-                      {/* Foreground progress circle */}
-                      <circle
-                        cx="120"
-                        cy="120"
-                        r="90"
-                        className={`transition-all duration-300 ease-out ${
-                          focusMode === 'pomodoro' 
-                            ? 'stroke-blue-400' 
-                            : focusMode === 'shortBreak' 
-                              ? 'stroke-amber-400' 
-                              : 'stroke-indigo-400'
-                        }`}
-                        strokeWidth="8"
-                        strokeDasharray={2 * Math.PI * 90}
-                        strokeDashoffset={
-                          2 * Math.PI * 90 - 
-                          (timeRemaining / (focusMode === 'pomodoro' ? 1500 : focusMode === 'shortBreak' ? 300 : 900)) * 2 * Math.PI * 90
-                        }
-                        strokeLinecap="round"
-                        fill="transparent"
-                      />
-                    </svg>
-                    
-                    {/* Centered text */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-4xl sm:text-5xl font-mono font-semibold text-white select-none tracking-tighter drop-shadow-md">
-                        {formatTime(timeRemaining)}
-                      </span>
-                      <span className={`text-xs font-bold uppercase tracking-wider mt-1 ${
-                        focusMode === 'pomodoro' 
-                          ? 'text-blue-400' 
-                          : focusMode === 'shortBreak' 
-                            ? 'text-amber-400' 
-                            : 'text-indigo-400'
-                      }`}>
-                        {focusMode === 'pomodoro' ? 'Focus' : 'Break'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 flex items-center justify-center space-x-2 text-xs font-semibold">
-                    <span className={`w-2.5 h-2.5 rounded-full ${isTimerRunning ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`} />
-                    <span className={isTimerRunning ? 'text-emerald-400' : 'text-slate-400'}>
-                      {isTimerRunning 
-                        ? (focusMode === 'pomodoro' ? 'Deep Focus Session Active...' : 'Recharging Break Active...')
-                        : 'Ready to Start Session'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Play/Pause Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 border-t border-slate-800/80">
-                {!isTimerRunning ? (
-                  <button
-                    onClick={() => {
-                      setIsTimerRunning(true);
-                      showToast('Focus timer started! Dive deep!', 'success');
-                    }}
-                    className="w-full sm:w-auto px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
-                  >
-                    <Play className="w-5 h-5 fill-current" />
-                    <span>Start Focus Timer</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setIsTimerRunning(false);
-                      showToast('Focus timer paused', 'warning');
-                    }}
-                    className="w-full sm:w-auto px-10 py-4 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
-                  >
-                    <Pause className="w-5 h-5 fill-current" />
-                    <span>Pause Timer</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => {
-                    const elapsed = secondsStudiedInSession;
-                    switchTimerMode(focusMode);
-                    setSecondsStudiedInSession(0);
-                    showToast('Timer reset successfully', 'info');
-                  }}
-                  className="w-full sm:w-auto px-6 py-4 bg-[#0A0E14] hover:bg-slate-800 text-slate-300 font-bold text-sm rounded-xl border border-slate-800 transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
-                  title="Reset countdown"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Reset</span>
-                </button>
-
-                {secondsStudiedInSession >= 10 && (
-                  <button
-                    onClick={() => {
-                      const mins = Math.max(1, Math.round(secondsStudiedInSession / 60));
-                      const chapterLabel = selectedChapter ? `Unit ${selectedChapter.chapterNumber}: ${selectedChapter.chapterName}` : 'General Review';
-                      if (onCompleteStudy) {
-                        onCompleteStudy(selectedSubject, chapterLabel, mins);
-                      }
-                      
-                      if (selectedChapter) {
-                        const chapterKey = `${selectedGrade}-${selectedSubject}-${selectedChapter.chapterNumber}`;
-                        db.toggleStudiedChapter(chapterKey).then(setStudiedChapters);
-                      }
-                      
-                      setIsTimerRunning(false);
-                      setSecondsStudiedInSession(0);
-                      setTimeRemaining(1500); // Reset countdown
-                      showToast(`Successfully logged ${mins}m study to curriculum!`, 'success');
-                    }}
-                    className="w-full sm:w-auto px-6 py-4 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold text-sm rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
-                    title="Log current focus time"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-blue-400" />
-                    <span>Log {Math.max(1, Math.round(secondsStudiedInSession / 60))}m</span>
-                  </button>
-                )}
-              </div>
-
-            </div>
-
-            {/* Side Configuration & Goal Planner (4 Columns) */}
-            <div className="lg:col-span-4 space-y-6">
-              
-              {/* Pro Curriculum-Aligned Study Target Selector */}
-              <div className="bg-[#141920] border border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-white font-bold text-sm">
-                    <Target className="w-4 h-4 text-blue-400" />
-                    <span>Curriculum Focus Target</span>
-                  </div>
-                  <span className="text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 font-semibold uppercase px-1.5 py-0.5 rounded-md">
-                    Pro Linked
-                  </span>
-                </div>
-
-                {/* Grade Segmented Control */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Target Grade</label>
-                  <div className="grid grid-cols-4 gap-1 p-1 bg-[#0A0E14] border border-slate-800 rounded-xl">
-                    {[9, 10, 11, 12].map((g) => (
-                      <button
-                        key={g}
-                        onClick={() => setSelectedGrade(g)}
-                        className={`py-1.5 rounded-lg text-xs font-bold text-center transition-all cursor-pointer ${
-                          selectedGrade === g
-                            ? 'bg-blue-600 text-white font-semibold'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        G{g}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Subject Selector */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subject</label>
-                  <select
-                    value={selectedSubject}
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                    className="w-full bg-[#0A0E14] border border-slate-800 rounded-xl p-3 text-xs text-white font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                  >
-                    {subjectsList.map((subj) => (
-                      <option key={subj} value={subj}>{subj}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Chapter Selector */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Curriculum Unit</label>
-                  {chaptersList.length > 0 ? (
-                    <select
-                      value={selectedChapter ? JSON.stringify(selectedChapter) : ''}
-                      onChange={(e) => {
-                        try {
-                          setSelectedChapter(JSON.parse(e.target.value));
-                        } catch (err) {}
-                      }}
-                      className="w-full bg-[#0A0E14] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                    >
-                      {chaptersList.map((ch) => (
-                        <option key={ch.chapterNumber} value={JSON.stringify(ch)}>
-                          Unit {ch.chapterNumber}: {ch.chapterName}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="p-3 bg-[#0A0E14] border border-slate-800 rounded-xl text-xs text-slate-500 italic">
-                      No units found for G{selectedGrade} {selectedSubject}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-
-
-              {/* Quick Daily Progress Summary */}
-              <div className="bg-slate-800/50 border border-blue-500/20 rounded-xl p-6 shadow-xs space-y-4">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                  <span>Daily 4-Hour Focus Target</span>
-                  <span className="text-blue-400 font-mono">{progressPercent}%</span>
-                </div>
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                  <div 
-                    className="bg-blue-600 h-full rounded-full transition-all duration-700" 
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                  <span>{completedPomodorosToday} Pomodoros done</span>
-                  <button 
-                    onClick={() => onSubTabChange('learning')}
-                    className="text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Open Curriculum</span>
-                    <span>→</span>
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
         {/* --- TAB 2: CURRICULUM (SYLLABUS MAP) --- */}
         {activeSubTab === 'learning' && (
           <div className="pt-2">
@@ -849,24 +409,6 @@ export default function StudyView({
                     </p>
                   </div>
                 </div>
-
-                {analyticsData.sortedSubjects.length > 0 && (
-                  <button
-                    onClick={() => {
-                      // Recommend target subject
-                      const topSubj = analyticsData.sortedSubjects[0].subject;
-                      const recommendations = subjectsList.filter(s => s !== topSubj);
-                      if (recommendations.length > 0) {
-                        const target = recommendations[Math.floor(Math.random() * recommendations.length)];
-                        setSelectedSubject(target);
-                        showToast(`Focus target automatically set to ${target}! Use the floating timer to start.`, 'info');
-                      }
-                    }}
-                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-md transition-all text-center cursor-pointer active:scale-95 flex items-center justify-center space-x-2"
-                  >
-                    <span>Apply Recommended Balance & Study</span>
-                  </button>
-                )}
               </div>
 
             </div>
@@ -900,8 +442,38 @@ export default function StudyView({
                 </div>
               </div>
 
-              {/* List table */}
-              <div className="overflow-x-auto">
+              {/* List table - cards on mobile, table on sm+ */}
+              <div className="block sm:hidden space-y-2">
+                {sessionHistory
+                  .filter(h => analyticsFilter === 'all' || h.type === analyticsFilter)
+                  .map((h) => {
+                    const isStudy = h.type === 'study';
+                    const isPrac = h.type === 'practice';
+                    const xpValue = isStudy ? 50 : isPrac ? 40 : 120;
+                    return (
+                      <div key={h.id} className="bg-[#0A0E14] border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white font-bold text-xs">{h.subject}</p>
+                          {h.chapter && <p className="text-slate-500 text-xs mt-0.5 truncate">{h.chapter}</p>}
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                              isStudy ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400' : isPrac ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400' : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                            }`}>{h.type}</span>
+                            <span className="text-slate-500 text-[10px] font-mono">{h.date}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-white font-mono font-bold text-sm">{h.durationMinutes}m</p>
+                          <p className="text-amber-300 font-mono text-xs font-semibold">+{xpValue} XP</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {sessionHistory.filter(h => analyticsFilter === 'all' || h.type === analyticsFilter).length === 0 && (
+                  <div className="py-10 text-center text-slate-500 italic text-xs">No session entries found.</div>
+                )}
+              </div>
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full min-w-[600px] text-left text-xs font-sans text-slate-300">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider font-semibold text-xs pb-3">

@@ -174,6 +174,10 @@ export const conceptExplainerSchema = z.object({
   prompt: z.string().min(1).max(2000),
   subject: z.string().max(100).optional(),
   language: z.enum(['en', 'am']).optional(),
+  history: z.array(z.object({
+    role: z.string(),
+    text: z.string(),
+  })).optional(),
 });
 
 export const studyPlanSchema = z.object({
@@ -194,19 +198,6 @@ export const studyPlanSchema = z.object({
 export const askTutorSchema = z.object({
   question: z.string().min(1).max(2000),
   subject: z.string().max(100).optional(),
-});
-
-export const proAuditSchema = z.object({
-  name: z.string().optional(),
-  school: z.string().optional(),
-  region: z.string().optional(),
-  preparationLevel: z.string().optional(),
-  studyStyle: z.string().optional(),
-  weakSubjects: z.array(z.string()).optional(),
-  targetScore: z.number().optional(),
-  dailyGoalHours: z.number().optional(),
-  totalMinutesStudied: z.number().optional(),
-  studiedChaptersCount: z.number().optional(),
 });
 
 // Middleware factory: validates req.body against a Zod schema

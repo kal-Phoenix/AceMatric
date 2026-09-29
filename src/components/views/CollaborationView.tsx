@@ -7,7 +7,8 @@ import {
   Headphones,
   VolumeX,
   ChevronLeft,
-  CheckSquare
+  CheckSquare,
+  Trash2
 } from 'lucide-react';
 import { Subject } from '../../types';
 import { db } from '../../lib/supabase';
@@ -82,9 +83,11 @@ export default function CollaborationView({
   const studyStatusRef = useRef(studyStatusText);
   studyStatusRef.current = studyStatusText;
 
-  // Video refs for webcam streaming
+  // Video refs & WebRTC peer connections for live peer video/audio
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const [peerStreams, setPeerStreams] = useState<Record<string, MediaStream>>({});
 
   // Quiz drill states
   const [activeQuiz, setActiveQuiz] = useState<any | null>(null);
@@ -306,6 +309,27 @@ export default function CollaborationView({
               showToast(`${data.notification.title}: ${data.notification.message}`, 'success');
               break;
             }
+
+            case 'webrtc_offer': {
+              if (data.targetEmail === userProfile?.email) {
+                handleReceiveWebRTCOffer(data.fromEmail, data.sdp);
+              }
+              break;
+            }
+
+            case 'webrtc_answer': {
+              if (data.targetEmail === userProfile?.email) {
+                handleReceiveWebRTCAnswer(data.fromEmail, data.sdp);
+              }
+              break;
+            }
+
+            case 'webrtc_ice': {
+              if (data.targetEmail === userProfile?.email) {
+                handleReceiveWebRTCIce(data.fromEmail, data.candidate);
+              }
+              break;
+            }
           }
         } catch (err) {
           console.error('WS client parser error:', err);
@@ -367,7 +391,7 @@ export default function CollaborationView({
     scrollToBottom();
   }, [messages, activeRoom]);
 
-  // Helper to disable video camera tracks
+  // Helper to disable video camera tracks & close peer connections
   const disableCameraTracks = () => {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -376,7 +400,114 @@ export default function CollaborationView({
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
+    peerConnectionsRef.current.forEach(pc => pc.close());
+    peerConnectionsRef.current.clear();
+    setPeerStreams({});
     setIsLocalVideoOn(false);
+  };
+
+  // WebRTC Peer Connection Helpers for real Focusmate peer-to-peer video streaming
+  const createPeerConnection = (targetEmail: string): RTCPeerConnection => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    });
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        pc.addTrack(track, localStreamRef.current!);
+      });
+    }
+
+    pc.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        setPeerStreams(prev => ({
+          ...prev,
+          [targetEmail]: event.streams[0]
+        }));
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: 'webrtc_ice',
+          targetEmail,
+          candidate: event.candidate
+        }));
+      }
+    };
+
+    peerConnectionsRef.current.set(targetEmail, pc);
+    return pc;
+  };
+
+  const handleReceiveWebRTCOffer = async (fromEmail: string, sdp: RTCSessionDescriptionInit) => {
+    try {
+      let pc = peerConnectionsRef.current.get(fromEmail);
+      if (!pc) {
+        pc = createPeerConnection(fromEmail);
+      }
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: 'webrtc_answer',
+          targetEmail: fromEmail,
+          sdp: answer
+        }));
+      }
+    } catch (err) {
+      console.warn('[WebRTC Offer Error]:', err);
+    }
+  };
+
+  const handleReceiveWebRTCAnswer = async (fromEmail: string, sdp: RTCSessionDescriptionInit) => {
+    try {
+      const pc = peerConnectionsRef.current.get(fromEmail);
+      if (pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      }
+    } catch (err) {
+      console.warn('[WebRTC Answer Error]:', err);
+    }
+  };
+
+  const handleReceiveWebRTCIce = async (fromEmail: string, candidate: RTCIceCandidateInit) => {
+    try {
+      const pc = peerConnectionsRef.current.get(fromEmail);
+      if (pc) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    } catch (err) {
+      console.warn('[WebRTC ICE Error]:', err);
+    }
+  };
+
+  const initiateWebRTCConnections = async (stream: MediaStream) => {
+    for (const member of roomMembers) {
+      if (member.email.toLowerCase() !== (userProfile?.email || '').toLowerCase()) {
+        try {
+          const pc = createPeerConnection(member.email);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'webrtc_offer',
+              targetEmail: member.email,
+              sdp: offer
+            }));
+          }
+        } catch (err) {
+          console.warn('[WebRTC Initiate Error]:', err);
+        }
+      }
+    }
   };
 
   // Keep local stream bound to video element when rendered or updated
@@ -432,6 +563,30 @@ export default function CollaborationView({
     setActiveVoiceChannel(null);
     setRoomMembers([]);
     setMessages([]);
+  };
+
+  // Delete study group (Creator or Admin)
+  const handleDeleteRoom = async (roomId: string) => {
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/collaboration/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      if (res.ok) {
+        showToast('Study group deleted successfully.', 'success');
+        if (activeRoom === roomId) {
+          handleLeaveRoom();
+        }
+        await fetchRooms();
+      } else {
+        const errData = await res.json();
+        showToast(errData.error || 'Failed to delete study group.', 'warning');
+      }
+    } catch (err) {
+      console.error('[Delete Room Error]:', err);
+      showToast('Network error while deleting study group.', 'warning');
+    }
   };
 
   // Request to Join student-made group
@@ -508,8 +663,8 @@ export default function CollaborationView({
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 480, height: 360, facingMode: 'user' },
-          audio: false // audio is processed by voice huddle channels
+          video: true,
+          audio: false
         });
         localStreamRef.current = stream;
         setIsLocalVideoOn(true);
@@ -522,13 +677,15 @@ export default function CollaborationView({
           }
         }, 100);
 
-        // Sync with websocket server
+        // Sync with websocket server & initiate WebRTC peer connections
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({
             type: 'update_member_state',
             videoEnabled: true
           }));
         }
+
+        initiateWebRTCConnections(stream);
       } catch (err) {
         console.warn('[Webcam Access Error]:', err);
         showToast('Could not access camera device or permissions denied.', 'warning');
@@ -786,6 +943,34 @@ export default function CollaborationView({
     });
   }, [roomMembers, userProfile, activeRoomDetail, isLocalVideoOn, isMuted, isDeafened, studyStatusText]);
 
+  // Auto-negotiate WebRTC offer when members enable camera
+  useEffect(() => {
+    if (!isLocalVideoOn || !localStreamRef.current) return;
+    const myEmail = (userProfile?.email || '').toLowerCase();
+    
+    roomMembers.forEach(member => {
+      const memberEmail = member.email.toLowerCase();
+      if (memberEmail !== myEmail && member.videoEnabled) {
+        if (!peerConnectionsRef.current.has(memberEmail)) {
+          try {
+            const pc = createPeerConnection(memberEmail);
+            pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
+              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({
+                  type: 'webrtc_offer',
+                  targetEmail: memberEmail,
+                  sdp: pc.localDescription
+                }));
+              }
+            }).catch(err => console.warn('[Auto WebRTC Offer Error]:', err));
+          } catch (err) {
+            console.warn('[Auto WebRTC PC Error]:', err);
+          }
+        }
+      }
+    });
+  }, [roomMembers, isLocalVideoOn]);
+
   // Format timer
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -794,7 +979,7 @@ export default function CollaborationView({
   };
 
   return (
-    <div className="w-full flex h-[680px] max-h-[85vh] md:h-[720px] md:max-h-[80vh] bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-sm relative text-slate-200 font-sans">
+    <div className="w-full flex flex-col md:flex-row min-h-screen md:min-h-0 md:h-[720px] md:max-h-[80vh] bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-sm relative text-slate-200 font-sans">
       
       {!activeRoomDetail ? (
         /* ================= LOBBY & DIRECTORY VIEW ================= */
@@ -812,6 +997,7 @@ export default function CollaborationView({
           handleRequestJoin={handleRequestJoin}
           handleApproveRequest={handleApproveRequest}
           handleDeclineRequest={handleDeclineRequest}
+          handleDeleteRoom={handleDeleteRoom}
           isCreatingRoom={isCreatingRoom}
           setIsCreatingRoom={setIsCreatingRoom}
           newRoomName={newRoomName}
@@ -827,7 +1013,7 @@ export default function CollaborationView({
         <div className="flex-1 flex flex-col min-h-0 bg-slate-950/60">
           
           {/* Top Session Hub Header */}
-          <div className="h-14 border-b border-slate-850 px-4 flex items-center justify-between shrink-0 bg-slate-900 z-10 shadow-sm relative">
+          <div className="min-h-[3.5rem] border-b border-slate-850 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 bg-slate-900 z-10 shadow-sm relative">
             {/* Horizontal Pomodoro Progress bar track */}
             <div className="absolute bottom-0 left-0 h-[2px] bg-slate-850 w-full">
               <div 
@@ -841,34 +1027,49 @@ export default function CollaborationView({
             </div>
 
             {/* Left Back Info */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={handleLeaveRoom}
-                className="p-1.5 rounded-full bg-slate-950/80 border border-slate-800/80 text-slate-450 hover:text-rose-400 hover:bg-rose-950/30 hover:border-rose-500/30 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm"
+                className="p-1.5 rounded-full bg-slate-950/80 border border-slate-800/80 text-slate-450 hover:text-white hover:bg-slate-800 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm"
                 title="Leave Session"
                 aria-label="Leave session"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-semibold text-white tracking-wide truncate max-w-[150px] sm:max-w-xs">{activeRoomDetail.name}</h3>
+
+              {(activeRoomDetail.creatorEmail.trim().toLowerCase() === (userProfile?.email || '').trim().toLowerCase() || userProfile?.role === 'admin') && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Are you sure you want to delete this study room "${activeRoomDetail.name}"?`)) {
+                      handleDeleteRoom(activeRoomDetail.id);
+                    }
+                  }}
+                  className="p-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:text-white hover:bg-rose-600 transition-all duration-200 cursor-pointer active:scale-90 shadow-sm"
+                  title="Delete Study Group"
+                  aria-label="Delete study group"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h3 className="text-xs font-semibold text-white tracking-wide truncate max-w-[120px] sm:max-w-xs">{activeRoomDetail.name}</h3>
                   <span className="px-1.5 py-0.5 rounded bg-slate-950 text-xs font-bold text-indigo-400 border border-slate-850 uppercase shrink-0">
                     {activeRoomDetail.subject}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-xs font-mono font-bold shrink-0">
-                    {coStudyingPartners.length}/10 Studying
+                  <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 text-xs font-mono font-bold shrink-0">
+                    {coStudyingPartners.length}/10
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                  <span className="text-xs text-slate-450 font-semibold">Focusmate Mode Active • Video Match Enabled</span>
+                  <span className="text-xs text-slate-450 font-semibold">Focusmate Mode • Live</span>
                 </div>
               </div>
             </div>
 
             {/* Right: Integrated Pomodoro Timer & Voice Huddle Panel */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0 ml-auto">
               
               <RoomTimer
                 timerState={timerState}
@@ -917,7 +1118,7 @@ export default function CollaborationView({
           </div>
 
           {/* Core Screen Split */}
-          <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+          <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
             
             <WhiteboardCanvas
               coStudyingPartners={coStudyingPartners}
@@ -928,13 +1129,14 @@ export default function CollaborationView({
               isDeafened={isDeafened}
               handleToggleDeafen={handleToggleDeafen}
               localVideoRef={localVideoRef}
+              peerStreams={peerStreams}
               studyStatusText={studyStatusText}
               setStudyStatusText={setStudyStatusText}
               activeRoomDetail={activeRoomDetail}
             />
 
             {/* COLUMN 2 (40%): LIVE HUDDLE SIDEBAR (Chat, Shared Notes, Quiz) */}
-            <div className="md:w-2/5 min-h-0 flex flex-col bg-slate-950/20">
+            <div className="w-full md:w-2/5 h-[45vh] md:h-auto min-h-0 flex flex-col bg-slate-950/20">
               
               {/* Tab Toggles for utility area */}
               <div className="p-2 border-b border-slate-850 bg-slate-900 shrink-0 flex gap-2">

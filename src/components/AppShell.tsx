@@ -463,46 +463,53 @@ export default function AppShell({
       </header>
 
       {/* 3. MOBILE BOTTOM NAVIGATION BAR */}
-      <nav className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0A0E14]/95 backdrop-blur-lg border-t border-slate-800/60 py-2 px-2 flex items-center justify-around">
+      <nav className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0A0E14]/98 backdrop-blur-lg border-t border-slate-800/60 flex items-stretch justify-around" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {navItems.slice(0, 5).map((item) => {
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-all ${
+              className={`flex flex-col items-center justify-center py-2.5 px-1 min-w-0 flex-1 transition-all relative ${
                 isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
-              <div className={isActive ? 'text-blue-400' : 'text-slate-500'}>{item.icon}</div>
-              <span className="text-xs mt-1 tracking-tight truncate max-w-[64px]">{item.label}</span>
-              {isActive && <div className="w-1 h-1 rounded-full bg-blue-400 mt-0.5" />}
+              {isActive && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-blue-400" />}
+              <div className={`mb-1 ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>{item.icon}</div>
+              <span className="text-[10px] leading-none font-medium">{item.label}</span>
             </button>
           );
         })}
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-lg text-slate-500 hover:text-slate-300"
+          className="flex flex-col items-center justify-center py-2.5 px-1 flex-1 text-slate-500 hover:text-slate-300 transition-all"
         >
-          <Menu className="w-4 h-4" />
-          <span className="text-xs mt-1">More</span>
+          <Menu className="w-4 h-4 mb-1" />
+          <span className="text-[10px] leading-none font-medium">More</span>
         </button>
       </nav>
 
       {/* Mobile More Drawer Sheet */}
       {isMobileMenuOpen && (
-        <div className="xl:hidden fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-3">
-          <div className="bg-[#0F1218] border border-slate-700/60 w-full max-w-lg rounded-2xl p-5 space-y-5 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-              <div className="font-semibold text-sm text-white">
-                Menu
-              </div>
+        <div className="xl:hidden fixed inset-0 z-50 bg-black/70 flex items-end justify-center" onClick={() => setIsMobileMenuOpen(false)}>
+          <div
+            className="bg-[#0F1218] border border-slate-700/60 w-full max-w-lg rounded-t-2xl overflow-hidden"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-slate-700" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800/60">
+              <div className="font-semibold text-sm text-white">Navigation</div>
               <div className="flex items-center gap-2">
                 {onToggleTheme && (
                   <button
                     onClick={onToggleTheme}
                     className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs px-2.5 transition-colors cursor-pointer"
-                    title={theme === 'light' ? 'Switch to Dark mode' : 'Switch to Light mode'}
                   >
                     {theme === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
                     <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
@@ -514,58 +521,63 @@ export default function AppShell({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            {/* Nav list — single column, full labels */}
+            <div className="px-4 py-3 space-y-1 max-h-[55vh] overflow-y-auto">
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => { onTabChange(item.id); setIsMobileMenuOpen(false); }}
-                  className={`p-3 rounded-xl border text-left flex items-center space-x-3 transition-all ${
-                    activeTab === item.id ? 'bg-blue-500/10 border-blue-500/20 text-white font-medium' : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800'
+                  className={`w-full p-3.5 rounded-xl flex items-center gap-3.5 transition-all text-left ${
+                    activeTab === item.id
+                      ? 'bg-blue-500/10 border border-blue-500/20 text-white'
+                      : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
                   }`}
                 >
-                  {item.icon}
-                  <span className="text-xs truncate">{item.fullLabel || item.label}</span>
+                  <span className={activeTab === item.id ? 'text-blue-400' : 'text-slate-500'}>{item.icon}</span>
+                  <span className="text-sm font-medium">{item.fullLabel || item.label}</span>
+                  {activeTab === item.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
                 </button>
               ))}
             </div>
 
+            {/* User section */}
             {user && (
-              <div
-                onClick={() => { onTabChange('profile'); setIsMobileMenuOpen(false); }}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 cursor-pointer hover:bg-slate-800 transition-all"
-              >
-                <div className="flex items-center space-x-3 min-w-0">
-                  {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                    <img src={user.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-lg bg-slate-700 flex items-center justify-center font-medium text-slate-300 shrink-0">
-                      {user?.name?.[0] || 'S'}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{user?.name}</div>
-                    <div className="text-xs text-slate-500 truncate">{user?.email}</div>
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="p-2 text-slate-400 hover:text-slate-300 cursor-pointer shrink-0 transition-colors"
-                  title="Log out"
-                  aria-label="Log out"
+              <div className="px-4 pb-3 pt-1 border-t border-slate-800/60 mt-1">
+                <div
+                  onClick={() => { onTabChange('profile'); setIsMobileMenuOpen(false); }}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 cursor-pointer hover:bg-slate-800 transition-all"
                 >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+                  <div className="flex items-center space-x-3 min-w-0">
+                    {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                      <img src={user.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-slate-700 flex items-center justify-center font-semibold text-slate-200 shrink-0 text-sm">
+                        {user?.name?.[0] || 'S'}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-white truncate">{user?.name}</div>
+                      <div className="text-xs text-slate-500 truncate">{user?.email}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onLogout(); setIsMobileMenuOpen(false); }}
+                    className="p-2 text-slate-400 hover:text-rose-400 cursor-pointer shrink-0 transition-colors"
+                    title="Log out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
 
-            {!isPremium && (
-              <button onClick={() => { setIsMobileMenuOpen(false); onOpenUpgrade(); }} className="w-full py-3 bg-slate-800/60 hover:bg-slate-800 text-white font-medium rounded-xl text-xs cursor-pointer">
-                Upgrade
-              </button>
+                {!isPremium && (
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); onOpenUpgrade(); }}
+                    className="w-full mt-2 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm cursor-pointer transition-all"
+                  >
+                    Upgrade to Pro
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

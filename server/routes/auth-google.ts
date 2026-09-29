@@ -7,11 +7,11 @@ import { createDefaultProfile } from '../../shared/profileDefaults';
 
 const router = Router();
 
-function getGoogleClient(): OAuth2Client {
+function getGoogleClient(redirectUri?: string): OAuth2Client {
   return new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/google/callback`
+    redirectUri || process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/google/callback`
   );
 }
 
@@ -23,17 +23,30 @@ function isSafeRedirectPath(path: string): boolean {
   return true;
 }
 
+function isGoogleConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+function getRedirectUri(req: any): string {
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.get('host');
+  return `${protocol}://${host}/api/auth/google/callback`;
+}
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function setRefreshTokenCookie(res: any, token: string): void {
+function setRefreshTokenCookie(res: any, token: string, req?: any): void {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isSecure = isProduction && Boolean(req?.secure || req?.headers?.['x-forwarded-proto'] === 'https');
   res.cookie('acematric_refresh_token', token, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
+    secure: isSecure,
+    sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: '/api/auth',
+    path: '/',
   });
 }
 
@@ -53,8 +66,13 @@ async function storeRefreshToken(userEmail: string, token: string): Promise<stri
 // GET /api/auth/google — redirect to Google OAuth consent screen
 router.get('/', (req, res) => {
   try {
-    const client = getGoogleClient();
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+    if (!isGoogleConfigured()) {
+      console.error('[auth-google] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set');
+      return res.redirect('/?error=google_auth_config');
+    }
+
+    const redirectUri = getRedirectUri(req);
+    const client = getGoogleClient(redirectUri);
 
     const url = client.generateAuthUrl({
       access_type: 'offline',
@@ -73,17 +91,16 @@ router.get('/', (req, res) => {
 
 // GET /api/auth/google/callback — handle OAuth callback
 router.get('/callback', async (req, res) => {
-  const frontendBase = process.env.APP_URL || 'http://localhost:3000';
   const returnTo = (req.query.state as string) || '/';
 
   try {
     const { code, error: googleError } = req.query;
     if (googleError || !code) {
-      return res.redirect(`${frontendBase}${returnTo}?error=google_cancelled`);
+      return res.redirect(`${returnTo}?error=google_cancelled`);
     }
 
-    const client = getGoogleClient();
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${frontendBase}/api/auth/google/callback`;
+    const redirectUri = getRedirectUri(req);
+    const client = getGoogleClient(redirectUri);
 
     const { tokens } = await client.getToken({
       code: code as string,
@@ -97,7 +114,7 @@ router.get('/callback', async (req, res) => {
 
     const payload = ticket.getPayload();
     if (!payload || !payload.email) {
-      return res.redirect(`${frontendBase}${returnTo}?error=google_no_email`);
+      return res.redirect(`${returnTo}?error=google_no_email`);
     }
 
     const email = normalizeEmail(payload.email);
@@ -137,7 +154,7 @@ router.get('/callback', async (req, res) => {
 
       if (insertError) {
         console.error('[auth-google] Failed to create user:', insertError);
-        return res.redirect(`${frontendBase}${returnTo}?error=google_signup_failed`);
+        return res.redirect(`${returnTo}?error=google_signup_failed`);
       }
 
       // Create profile
@@ -150,7 +167,7 @@ router.get('/callback', async (req, res) => {
       if (profileError) {
         console.error('[auth-google] Failed to create profile:', profileError);
         await supabase.from('users_auth').delete().eq('email', email);
-        return res.redirect(`${frontendBase}${returnTo}?error=google_profile_failed`);
+        return res.redirect(`${returnTo}?error=google_profile_failed`);
       }
 
       // Send welcome email (best effort)
@@ -181,46 +198,30 @@ router.get('/callback', async (req, res) => {
     const refreshToken = generateRefreshToken();
     const stored = await storeRefreshToken(email, refreshToken);
     if (!stored) {
-      return res.redirect(`${frontendBase}${returnTo}?error=google_session_failed`);
+      return res.redirect(`${returnTo}?error=google_session_failed`);
     }
-    setRefreshTokenCookie(res, refreshToken);
+    setRefreshTokenCookie(res, refreshToken, req);
 
-    // Set auth token as httpOnly cookie to prevent XSS token theft
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isSecure = isProduction && Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https');
+
     res.cookie('auth_token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 60000, // 1 minute
+      httpOnly: false, // allow frontend to read if needed
+      secure: isSecure,
+      sameSite: 'lax',
+      maxAge: 300000, // 5 minutes
       path: '/',
     });
 
-    // Store user data in short-lived httpOnly cookie instead of URL params
-    const profileData = profile ? snakeToCamel(profile) : createDefaultProfile({ email, name: userName, role: userRole, avatarUrl });
-    const userData = {
-      isNewUser,
-      name: userName,
-      email,
-      stream: (profileData as any).stream || 'Natural Science',
-      targetScore: String((profileData as any).targetScore || 520),
-      role: userRole,
-    };
-    res.cookie('google_user_data', JSON.stringify(userData), {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 60000, // 1 minute — just long enough for the frontend to read it
-      path: '/',
-    });
-
-    // Only pass non-sensitive data in URL
     const params = new URLSearchParams({
+      token,
       isNewUser: String(isNewUser),
     });
 
-    res.redirect(`${frontendBase}/auth/callback?${params.toString()}`);
+    res.redirect(`/auth/callback?${params.toString()}`);
   } catch (err: any) {
     console.error('[auth-google] Callback error:', err);
-    res.redirect(`${frontendBase}${returnTo}?error=google_auth_failed`);
+    res.redirect(`${returnTo}?error=google_auth_failed`);
   }
 });
 

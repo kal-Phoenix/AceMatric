@@ -9,7 +9,7 @@ import { testSupabaseConnection } from './db';
 import { redis } from './redis';
 import authRoutes from './routes/auth';
 import googleAuthRoutes from './routes/auth-google';
-import appleAuthRoutes from './routes/auth-apple';
+import oauthConfigRoutes from './routes/auth-oauth';
 import profileRoutes from './routes/profile';
 import contactRoutes from './routes/contact';
 import notificationRoutes from './routes/notifications';
@@ -44,7 +44,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: isDev ? ["'self'", "'unsafe-inline'"] : ["'self'"],
+      scriptSrc: isDev
+        ? ["'self'", "'unsafe-inline'"]
+        : ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "https:"],
@@ -56,12 +58,21 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,https://acematric.com,https://www.acematric.com')
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:4000,http://127.0.0.1:3000,http://127.0.0.1:4000,https://acematric.com,https://www.acematric.com,https://acematric.fly.dev')
   .split(',')
   .map(o => o.trim())
   .filter(o => isDev || !o.startsWith('http://localhost'));
+if (process.env.APP_URL && !ALLOWED_ORIGINS.includes(process.env.APP_URL)) {
+  ALLOWED_ORIGINS.push(process.env.APP_URL);
+}
 app.use(cors({
-  origin: ALLOWED_ORIGINS,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (/\.fly\.dev$/.test(origin)) return callback(null, true);
+    if (isDev && /^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -74,7 +85,7 @@ app.use('/api', globalLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/google', googleAuthRoutes);
-app.use('/api/auth/apple', appleAuthRoutes);
+app.use('/api/auth/oauth', oauthConfigRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/notifications', notificationRoutes);

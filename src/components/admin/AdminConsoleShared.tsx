@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ChevronDown, ChevronUp, Save, ChevronLeft, type LucideIcon } from 'lucide-react';
 
 export type AdminTab = 'dashboard' | 'analytics' | 'users' | 'payments' | 'content';
-export type ContentSubTab = 'study-notes' | 'past-exams' | 'practice' | 'mock-exams';
+export type ContentSubTab = 'study-notes' | 'past-exams' | 'quizzes' | 'practice' | 'mock-exams';
 
 export interface ContentEntry {
   subject: string;
@@ -73,13 +73,6 @@ export const NATURAL_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology
 export const SOCIAL_SUBJECTS = ['Mathematics', 'Geography', 'History', 'Economics', 'English', 'SAT'];
 export const GRADES = [9, 10, 11, 12];
 export const STREAMS = ['Natural Science', 'Social Science'] as const;
-
-export const SUB_TABS: { id: ContentSubTab; label: string }[] = [
-  { id: 'study-notes', label: 'Study Notes' },
-  { id: 'past-exams', label: 'Past Exams' },
-  { id: 'practice', label: 'Practice' },
-  { id: 'mock-exams', label: 'Mock Exams' },
-];
 
 export const SUBJECT_COLORS: Record<string, { bg: string; border: string; text: string; dot: string }> = {
   'Biology':          { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-400' },

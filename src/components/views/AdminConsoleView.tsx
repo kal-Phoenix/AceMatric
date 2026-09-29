@@ -9,12 +9,13 @@ import {
   Filter, Download, Sparkles
 } from 'lucide-react';
 import { db } from '../../lib/supabase';
+import { getAccessToken } from '../../lib/authToken';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
 import {
   StatsCardRow, GradeSelector, SubjectFilterPills, StreamSelector,
   CollapsibleSubjectGroup, LoadingSpinner, ToastMessage, EmptyState,
   EditorHeader, getSubjectColor, useGradeCounts, useSubjectCounts,
-  useSortedSubjects, useGroupedBySubject, SUBJECTS, GRADES, SUB_TABS,
+  useSortedSubjects, useGroupedBySubject, SUBJECTS, GRADES,
   StatusPillToggle, YearBadge, DifficultyBadge, SectionHeader, NATURAL_SUBJECTS, SOCIAL_SUBJECTS,
 } from '../admin/AdminConsoleShared';
 import type { ContentEntry, ContentStats, MessageState, AdminTab, ContentSubTab } from '../admin/AdminConsoleShared';
@@ -156,7 +157,7 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
         })}
       </div>
 
-      {activeTab === 'dashboard' && <DashboardTab />}
+      {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'users' && <UsersTab currentAdminEmail={currentAdminEmail} />}
       {activeTab === 'payments' && <PaymentsTab />}
@@ -260,7 +261,7 @@ function AnalyticsTab() {
 
 /* ── Dashboard Tab ─────────────────────────────────────────────────────── */
 
-function DashboardTab() {
+function DashboardTab({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -319,15 +320,20 @@ function DashboardTab() {
       {/* Quick actions strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
-          { label: 'Content Library', icon: BookOpen,   color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
-          { label: 'Review Payments', icon: CreditCard, color: 'text-amber-400',  bg: 'bg-amber-500/10 border-amber-500/20'   },
-          { label: 'Analytics',       icon: BarChart3,  color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-          { label: 'User Directory',  icon: Users,      color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/20'     },
-        ].map(({ label, icon: Icon, color, bg }) => (
-          <div key={label} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${bg}`}>
+          { tab: 'content'   as const, label: 'Content Library', icon: BookOpen,   color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20 hover:border-violet-500/40' },
+          { tab: 'payments'  as const, label: 'Review Payments', icon: CreditCard, color: 'text-amber-400',  bg: 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40'   },
+          { tab: 'analytics' as const, label: 'Analytics',       icon: BarChart3,  color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20 hover:border-indigo-500/40' },
+          { tab: 'users'     as const, label: 'User Directory',  icon: Users,      color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/40'     },
+        ].map(({ tab, label, icon: Icon, color, bg }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onNavigate?.(tab)}
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${bg} transition-all cursor-pointer`}
+          >
             <Icon className={`w-3.5 h-3.5 ${color} shrink-0`} />
             <span className={`text-[10px] font-semibold ${color}`}>{label}</span>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -709,6 +715,7 @@ function ContentManageTab() {
   const CONTENT_TABS = [
     { id: 'study-notes' as const, label: 'Study Notes', icon: BookOpen,     accent: 'bg-blue-500/15 text-blue-300 border-blue-500/30'    },
     { id: 'past-exams'  as const, label: 'Past Exams',  icon: FileText,     accent: 'bg-blue-500/15 text-blue-300 border-blue-500/30'    },
+    { id: 'quizzes'     as const, label: 'Quizzes',     icon: ClipboardList, accent: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
     { id: 'practice'    as const, label: 'Practice',    icon: HelpCircle,   accent: 'bg-violet-500/15 text-violet-300 border-violet-500/30' },
     { id: 'mock-exams'  as const, label: 'Mock Exams',  icon: Trophy,       accent: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
   ];
@@ -735,6 +742,7 @@ function ContentManageTab() {
 
       {subTab === 'study-notes' && <StudyNotesSubTab />}
       {subTab === 'past-exams'  && <PastExamsSubTab />}
+      {subTab === 'quizzes'     && <QuizzesSubTab />}
       {subTab === 'practice'    && <PracticeQuestionsSubTab />}
       {subTab === 'mock-exams'  && <MockExamsSubTab />}
     </div>
@@ -1243,7 +1251,7 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
                 onChange({ title: 'Generating...' } as any);
                 const res = await fetch('/api/content-generate/save', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}` },
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken() || ''}` },
                   body: JSON.stringify({ grade: entry.grade, subject: entry.subject, chapterNumber: entry.chapterNumber, status: 'draft' }),
                 });
                 const data = await res.json();
@@ -2794,7 +2802,3 @@ function MockExamsSubTab() {
     </div>
   );
 }
-
-/* ── Curated Notes Sub-Tab ────────────────────────────────────────────── */
-
-

@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Award, GraduationCap, ChevronRight } from 'lucide-react';
 import { Stream, Language } from '../../types';
 import PasswordStrength from '../../components/PasswordStrength';
@@ -24,6 +24,16 @@ const MATRIC_QUOTES = [
   { text: "Consistency always triumphs over late-night cramming. Start your 4-week plan early.", author: "MoE Academic Excellence Review" },
   { text: "Understanding summaries before practice tests increases accuracy by 40%.", author: "AceMatric Coaching Panel" }
 ];
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  google_auth_config: 'Google sign-in is not configured on this server yet. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then restart.',
+  google_cancelled: 'Google sign-in was cancelled.',
+  google_no_email: 'Google did not share an email address. Pick an address with an email permission and try again.',
+  google_signup_failed: 'Could not create your account. Please try again.',
+  google_profile_failed: 'Could not finish setting up your account. Please try again.',
+  google_session_failed: 'Could not start your session. Please try again.',
+  google_auth_failed: 'Google sign-in failed. Please try again.',
+};
 
 export default function AuthScreenView({ language = 'en', onLanguageChange, onAuthComplete }: AuthScreenViewProps) {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -55,58 +65,41 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
 
   const isAm = language === 'am';
 
-  // Load Apple JS SDK
+  const [oauth, setOauth] = useState<{ googleEnabled: boolean } | null>(null);
+
+  // Surface OAuth failures that arrive as /?error=... and strip the query so a
+  // refresh doesn't re-show the message.
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-    script.async = true;
-    document.head.appendChild(script);
-    return () => { document.head.removeChild(script); };
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('error');
+    if (code) {
+      setErrorMsg(OAUTH_ERROR_MESSAGES[code] || 'Sign-in failed. Please try again.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // Which social providers are actually configured on this server?
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/oauth/config')
+      .then((r) => r.json())
+      .then((cfg) => {
+        if (cancelled) return;
+        setOauth({
+          googleEnabled: Boolean(cfg?.google?.enabled),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setOauth({ googleEnabled: false });
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const handleNextQuote = () => {
     setQuoteIndex((prev) => (prev + 1) % MATRIC_QUOTES.length);
   };
 
-  const handleAppleSignIn = async () => {
-    try {
-      // @ts-ignore — Apple JS SDK loaded dynamically
-      if (window.AppleID) {
-        // @ts-ignore
-        const response = await window.AppleID.auth.signIn();
-        if (response?.authorization?.id_token) {
-          setIsLoading(true);
-          const fullName = response.user?.name
-            ? `${response.user.name.firstName || ''} ${response.user.name.lastName || ''}`.trim()
-            : undefined;
-          const res = await fetch('/api/auth/apple', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken: response.authorization.id_token, fullName }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Apple sign-in failed');
-          if (data.token) setAccessToken(data.token);
-          onAuthComplete({
-            name: data.profile.name,
-            email: data.profile.email,
-            stream: data.profile.stream,
-            targetScore: data.profile.targetScore || 520,
-            isNewUser: data.isNewUser,
-            role: data.profile.role,
-          });
-        }
-      } else {
-        setErrorMsg('Apple Sign-In is loading. Please try again.');
-      }
-    } catch (err: any) {
-      if (err?.error !== 'popup_closed_by_user') {
-        setErrorMsg(err.message || 'Apple Sign-In failed. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   const handleForgotSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -532,7 +525,13 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                 <div className="space-y-3 mb-6">
                   <button
                     type="button"
-                    onClick={() => { window.location.href = '/api/auth/google'; }}
+                    onClick={() => {
+                      if (oauth && !oauth.googleEnabled) {
+                        setErrorMsg(OAUTH_ERROR_MESSAGES.google_auth_config);
+                        return;
+                      }
+                      window.location.href = '/api/auth/google';
+                    }}
                     className="w-full py-3 bg-slate-800/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-3 cursor-pointer active:scale-[0.98]"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -544,16 +543,7 @@ export default function AuthScreenView({ language = 'en', onLanguageChange, onAu
                     <span>Continue with Google</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleAppleSignIn}
-                    className="w-full py-3 bg-slate-800/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center space-x-3 cursor-pointer active:scale-[0.98]"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-                    </svg>
-                    <span>Continue with Apple</span>
-                  </button>
+
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">

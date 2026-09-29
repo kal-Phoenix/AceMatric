@@ -318,19 +318,30 @@ function ensureRoomSubscription(roomId: string) {
 
 // --- WebSocket server ---
 
-const ALLOWED_WS_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
-  .split(',')
-  .map(o => o.trim().replace(/\/$/, ''));
+const PORT = parseInt(process.env.PORT || '4000', 10);
+const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
-const DEV_ORIGINS = ['http://127.0.0.1:3000', 'http://localhost:3000'];
+// Build allowed origins list: env var + APP_URL + common dev origins
+const ALLOWED_WS_ORIGINS = [
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim().replace(/\/$/, '')).filter(Boolean),
+  APP_URL,
+].filter(Boolean);
+
+const DEV_ORIGINS = [
+  `http://localhost:${PORT}`,
+  `http://127.0.0.1:${PORT}`,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
 
 function isOriginAllowed(origin: string | undefined): boolean {
-  if (!origin) return false;
+  if (!origin) return true; // allow same-origin (no origin header)
   const normalized = origin.replace(/\/$/, '');
-  // Only include dev origins in non-production environments
   const isProd = process.env.NODE_ENV === 'production';
   const allAllowed = isProd
-    ? ALLOWED_WS_ORIGINS
+    ? [...new Set([...ALLOWED_WS_ORIGINS])]
     : [...new Set([...ALLOWED_WS_ORIGINS, ...DEV_ORIGINS])];
   return allAllowed.some(allowed => normalized === allowed || normalized === allowed + '/');
 }
@@ -740,6 +751,22 @@ export function setupWebSocket(server: Server) {
               goals: state.goals,
               sharedNotes: state.sharedNotes,
               timerState: state.timerState,
+            });
+            break;
+          }
+
+          case 'webrtc_offer':
+          case 'webrtc_answer':
+          case 'webrtc_ice': {
+            if (!currentRoom) return;
+            const { targetEmail, sdp, candidate } = data;
+            if (!targetEmail) return;
+            broadcastToRoom(currentRoom, {
+              type: data.type,
+              fromEmail: currentEmail,
+              targetEmail,
+              sdp,
+              candidate
             });
             break;
           }

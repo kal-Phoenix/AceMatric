@@ -9,7 +9,8 @@ import {
   Check,
   X,
   Laptop,
-  CheckSquare
+  CheckSquare,
+  Trash2
 } from 'lucide-react';
 import { RoomInfo } from './interfaces';
 
@@ -27,6 +28,7 @@ interface RoomListProps {
   handleRequestJoin: (roomId: string) => void;
   handleApproveRequest: (roomId: string, studentEmail: string) => void;
   handleDeclineRequest: (roomId: string, studentEmail: string) => void;
+  handleDeleteRoom: (roomId: string) => void;
   isCreatingRoom: boolean;
   setIsCreatingRoom: (v: boolean) => void;
   newRoomName: string;
@@ -52,6 +54,7 @@ export default function RoomList({
   handleRequestJoin,
   handleApproveRequest,
   handleDeclineRequest,
+  handleDeleteRoom,
   isCreatingRoom,
   setIsCreatingRoom,
   newRoomName,
@@ -62,6 +65,8 @@ export default function RoomList({
   setNewRoomDesc,
   handleCreateRoom
 }: RoomListProps) {
+  const isAdmin = userProfile?.role === 'admin';
+
   return (
     <>
       <div className="flex-1 flex flex-col min-h-0 bg-slate-950/40 animate-in fade-in duration-200">
@@ -192,6 +197,7 @@ export default function RoomList({
               const isApproved = isCreator || (room.allowedEmails && room.allowedEmails.some(email => email.trim().toLowerCase() === (userProfile?.email || '').trim().toLowerCase()));
               const hasRequested = room.joinRequests && room.joinRequests.some(req => req.email.trim().toLowerCase() === (userProfile?.email || '').trim().toLowerCase());
               const isFull = room.activeCount >= 10;
+              const canDelete = isCreator || isAdmin;
 
               return (
                 <div
@@ -240,6 +246,22 @@ export default function RoomList({
                           <span>{room.activeCount}/10 MEMBERS</span>
                           {isFull && <span className="ml-1 text-xs tracking-wide text-rose-500 uppercase font-black">(FULL)</span>}
                         </span>
+
+                        {canDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Are you sure you want to delete the study group "${room.name}"?`)) {
+                                handleDeleteRoom(room.id);
+                              }
+                            }}
+                            className="p-1 rounded-md bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 transition-all cursor-pointer"
+                            title="Delete Study Room"
+                            aria-label={`Delete study room ${room.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                     <h3 className="text-sm font-bold text-white mt-3 group-hover:text-indigo-400 transition-colors truncate">

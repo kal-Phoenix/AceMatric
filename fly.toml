@@ -6,7 +6,7 @@ primary_region = 'iad'
 [env]
   PORT = '3000'
   NODE_ENV = 'production'
-  ALLOWED_ORIGINS = 'https://acematric.com,https://www.acematric.com'
+  ALLOWED_ORIGINS = 'https://acematric.fly.dev,https://acematric.com,https://www.acematric.com'
 
 [http_service]
   internal_port = 3000

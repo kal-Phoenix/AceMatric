@@ -157,15 +157,24 @@ OUTPUT FORMAT: You must return valid JSON with this exact structure:
   "subtopics": [
     {
       "title": "Subtopic Title",
-      "content": "HTML content with <p>, <strong>, <em>, <ul>, <ol>, <li> tags. 2-3 paragraphs of substantive educational content.",
-      "examInsight": "One specific exam tip or common mistake for this subtopic"
+      "content": "HTML content with <p>, <strong>, <em>, <ul>, <ol>, <li> tags. At least 3-4 substantive paragraphs explaining the core concepts in detail with definitions, governing equations, real-world context, and step-by-step worked examples.",
+      "examInsight": "One specific exam tip, calculation shortcut, or common trap to avoid in the Matric exam",
+      "practiceProblems": [
+        {
+          "question": "A focused, multiple-choice practice problem testing the concept covered in this subtopic.",
+          "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+          "answer": "A",
+          "solution": "<p><strong>Step 1:</strong> Identify the given values and formula.<br/><strong>Step 2:</strong> Substitute the values.<br/><strong>Step 3:</strong> Calculate the final answer.<br/><strong>Correct Answer: A</strong></p>"
+        }
+      ]
     }
   ]
 }
 
 Generate 4-8 subtopics per chapter, depending on chapter complexity.
-Each subtopic content should be 150-300 words of actual educational content.
-Include 3-8 materials (key terms/formulas) per chapter.
+Each subtopic content must be 200-450 words of rigorous educational content with step-by-step explanations.
+Each subtopic MUST include 2-3 realistic practice problems with options A, B, C, D and step-by-step worked solutions.
+Include 4-8 materials (key terms, formulas, SI units) per chapter.
 Include 5-7 core points per chapter.
 
 Return ONLY the JSON object. No markdown, no explanation before or after.`;

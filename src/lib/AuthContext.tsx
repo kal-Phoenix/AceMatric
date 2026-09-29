@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { db } from './supabase';
-import { getAccessToken, setAccessToken, restoreTokenFromCookie } from './authToken';
+import { setAccessToken, restoreTokenFromCookie } from './authToken';
+import { consumeOAuthNewUserFlag } from '../components/AuthCallback';
 import { logger } from './logger';
 
 type AppStage = 'landing' | 'auth' | 'onboarding' | 'main';
@@ -29,9 +30,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    // OAuth failures land on /?error=... — surface them on the auth screen
+    // instead of silently showing the landing page.
+    const oauthError = new URLSearchParams(window.location.search).get('error');
+
     async function restoreSession() {
-      const token = await restoreTokenFromCookie();
-      if (!token || cancelled) return;
+      const { getAccessToken } = await import('./authToken');
+      let token = getAccessToken();
+      if (!token) {
+        token = await restoreTokenFromCookie();
+      }
+      if (cancelled) return;
+
+      if (!token) {
+        if (oauthError) setAppStageState('auth');
+        return;
+      }
 
       try {
         const verifyRes = await db.verifyToken();
@@ -44,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile) {
           const profileWithRole = { ...profile, role: asStudentRole(verifyRes.user.role || 'student') };
           setUser(profileWithRole);
-          setAppStageState('main');
+          setAppStageState(consumeOAuthNewUserFlag() ? 'onboarding' : 'main');
         } else {
           setUser({
             email,
@@ -71,8 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     restoreSession();
 
+    const handleAuthChange = () => {
+      restoreSession();
+    };
+    window.addEventListener('acematric_auth_change', handleAuthChange);
+
     return () => {
       cancelled = true;
+      window.removeEventListener('acematric_auth_change', handleAuthChange);
     };
   }, []);
 

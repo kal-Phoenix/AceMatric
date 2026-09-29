@@ -1,6 +1,26 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { setAccessToken } from '../lib/authToken';
+import { setAccessToken, restoreTokenFromCookie } from '../lib/authToken';
+
+const OAUTH_NEW_USER_KEY = 'acematric_oauth_new_user';
+
+export function markOAuthNewUser() {
+  try {
+    sessionStorage.setItem(OAUTH_NEW_USER_KEY, '1');
+  } catch {
+    // sessionStorage unavailable — onboarding will be skipped
+  }
+}
+
+export function consumeOAuthNewUserFlag(): boolean {
+  try {
+    const value = sessionStorage.getItem(OAUTH_NEW_USER_KEY);
+    if (value) sessionStorage.removeItem(OAUTH_NEW_USER_KEY);
+    return value === '1';
+  } catch {
+    return false;
+  }
+}
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
@@ -8,26 +28,28 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const error = searchParams.get('error');
-
     if (error) {
-      navigate(`/?error=${error}`, { replace: true });
+      navigate(`/?error=${encodeURIComponent(error)}`, { replace: true });
       return;
     }
 
-    // Read auth token from cookie set by the server during OAuth callback
-    const token = document.cookie
-      .split('; ')
-      .find((c) => c.startsWith('auth_token='))
-      ?.split('=')[1];
+    if (searchParams.get('isNewUser') === 'true') {
+      markOAuthNewUser();
+    }
 
+    const token = searchParams.get('token');
     if (token) {
       setAccessToken(token);
-      // Clear the cookie now that we have the token in memory
-      document.cookie = 'auth_token=; path=/; max-age=0';
+      // Dispatch custom event so AuthProvider immediately re-verifies session
+      window.dispatchEvent(new Event('acematric_auth_change'));
       navigate('/', { replace: true });
-    } else {
-      navigate('/', { replace: true });
+      return;
     }
+
+    restoreTokenFromCookie().finally(() => {
+      window.dispatchEvent(new Event('acematric_auth_change'));
+      navigate('/', { replace: true });
+    });
   }, [searchParams, navigate]);
 
   return (

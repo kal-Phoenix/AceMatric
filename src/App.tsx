@@ -16,12 +16,13 @@ import { Stream, Language, Subject, SessionHistoryEntry, UserProfile } from './t
 import { db } from './lib/supabase';
 import { useAuth } from './lib/AuthContext';
 import { useTheme } from './lib/ThemeContext';
-import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
 import AppShell from './components/AppShell';
+import MobileShell from './components/MobileShell';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useToast, useLiveNotifications } from './hooks';
 import { useNavigationState, TAB_ROUTES } from './hooks/useNavigationState';
+import { useIsMobile } from './hooks/useIsMobile';
 import type { TabId } from './hooks/useNavigationState';
 import { createDefaultProfile } from '../shared/profileDefaults';
 import { logger } from './lib/logger';
@@ -62,6 +63,7 @@ function MainApp() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   const initialTab = (Object.keys(TAB_ROUTES).find(k => TAB_ROUTES[k] === location.pathname) || 'dashboard') as TabId;
   const nav = useNavigationState(initialTab);
@@ -70,9 +72,6 @@ function MainApp() {
   const [language, setLanguage] = useState<Language>('en');
 
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryEntry[]>([]);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
-
   const [usedQuestionsCount, setUsedQuestionsCount] = useState<number>(() => {
     const today = new Date().toDateString();
     if (user?.dailyProgressDate === today) {
@@ -240,11 +239,11 @@ function MainApp() {
     { id: 'study', label: 'Study Hub', fullLabel: 'AI Study & Prep Hub', icon: <GraduationCap className="w-4 h-4 text-blue-400" /> },
     { id: 'practice', label: 'Practice', fullLabel: 'Interactive Practice Arena', icon: <Target className="w-4 h-4" /> },
     { id: 'simulator', label: 'Past Exams', fullLabel: 'Past Exam Papers', icon: <Clock className="w-4 h-4" /> },
-    { id: 'leaderboard', label: 'Leaderboard', fullLabel: 'National Matric Leaderboard', icon: <Trophy className="w-4 h-4 text-amber-400" /> },
+    { id: 'leaderboard', label: 'Ranks', fullLabel: 'National Matric Leaderboard', icon: <Trophy className="w-4 h-4 text-amber-400" /> },
     { id: 'collaboration', label: 'Study Rooms', fullLabel: 'Real-time Collaborative Rooms', icon: <Users className="w-4 h-4 text-indigo-400" /> },
     { id: 'upgrade', label: 'Pro Upgrade', fullLabel: 'CBE / Telebirr Pro Upgrade', icon: <Zap className="w-4 h-4 text-emerald-400 animate-pulse" /> },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', fullLabel: 'Admin Console', icon: <Award className="w-4 h-4 text-blue-400 font-bold" /> }] : []),
-    { id: 'contact', label: 'Contact', fullLabel: 'Help & Support', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
+    { id: 'contact', label: 'Help', fullLabel: 'Help & Support', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
   ], [isAdmin]);
 
   if (appStage === 'landing') {
@@ -322,9 +321,11 @@ function MainApp() {
     );
   }
 
+  const ShellComponent = isMobile ? MobileShell : AppShell;
+
   return (
     <>
-      <AppShell
+      <ShellComponent
         navItems={navItems}
         activeTab={nav.state.activeTab}
         onTabChange={handleTabChange}
@@ -455,24 +456,7 @@ function MainApp() {
         </ErrorBoundary>
 
         <Footer language={language} onLanguageChange={setLanguage} onNavigate={handleTabChange} />
-      </AppShell>
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={(userData) => {
-          if (userData.isNewUser) {
-            const newUser = createDefaultProfile({ email: userData.email, name: userData.name, stream: userData.stream, role: userData.role as 'student' | 'admin' });
-            handleUpdateUserProfile(newUser as UserProfile);
-            setAppStage('onboarding');
-          } else {
-            handleUpdateUserProfile(userData as UserProfile);
-            setAppStage('main');
-          }
-        }}
-        language={language}
-        initialMode={authMode}
-      />
+      </ShellComponent>
 
       {toast && <Toast toast={toast} onDismiss={dismissToast} />}
     </>

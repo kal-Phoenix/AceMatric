@@ -25,20 +25,28 @@ function isValidEmail(email: string): boolean {
 }
 
 function setRefreshTokenCookie(res: any, token: string): void {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('acematric_refresh_token', token, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
+    secure: isProduction,
+    sameSite: 'lax',
     maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
-    path: '/api/auth',
+    path: '/',
   });
 }
 
 function clearRefreshTokenCookie(res: any): void {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie('acematric_refresh_token', {
     httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
+    secure: isProduction,
+    sameSite: 'lax',
+    path: '/',
+  });
+  res.clearCookie('acematric_refresh_token', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
     path: '/api/auth',
   });
 }

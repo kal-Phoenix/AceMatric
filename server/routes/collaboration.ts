@@ -336,4 +336,54 @@ router.post('/rooms/:id/reject-request', requireAuth, validateBody(approveReject
   }
 });
 
+// DELETE /api/collaboration/rooms/:id
+router.delete('/rooms/:id', requireAuth, collaborationLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userEmail = req.user!.email.trim().toLowerCase();
+    const userRole = req.user!.role;
+
+    const { data: room, error: fetchError } = await supabase
+      .from('study_rooms')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !room) {
+      return res.status(404).json({ error: 'Study group not found.' });
+    }
+
+    const creatorEmail = (room.creator_email || '').trim().toLowerCase();
+    const isAdmin = userRole === 'admin';
+
+    if (userEmail !== creatorEmail && !isAdmin) {
+      return res.status(403).json({ error: 'Only the room creator or an admin can delete this study group.' });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('study_rooms')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('[collaboration] Room delete error:', deleteError);
+      return res.status(500).json({ error: 'Failed to delete room from database.' });
+    }
+
+    if (redisAvailable && redis) {
+      try {
+        await redis.del(KEYS.roomMembers(id));
+      } catch (err) {
+        console.warn('[collaboration] Redis room deletion cleanup error:', err);
+      }
+    }
+
+    res.json({ success: true, message: 'Study group deleted successfully.' });
+  } catch (err: any) {
+    console.error('[collaboration] Delete room error:', err);
+    res.status(500).json({ error: 'An error occurred while deleting the room.' });
+  }
+});
+
 export default router;
+

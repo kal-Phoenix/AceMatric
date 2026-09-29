@@ -22,7 +22,7 @@ import {
   AdminAnalyticsResponse,
 } from '../types';
 
-import { getAccessToken, setAccessToken } from './authToken';
+import { getAccessToken, setAccessToken, refreshSession } from './authToken';
 import { logger } from './logger';
 
 function authHeaders(): Record<string, string> {
@@ -35,42 +35,19 @@ function clearAuthState(): void {
   window.dispatchEvent(new Event('auth:unauthorized'));
 }
 
-let refreshPromise: Promise<string | null> | null = null;
-let refreshCooldown: ReturnType<typeof setTimeout> | null = null;
-
+// Refresh tokens rotate server-side, so a second refresh right after the first
+// gets the revoked token and logs the user out. The fetch interceptor in
+// authToken.ts already refreshes on every 401 — join that single-flight request
+// instead of issuing our own.
 async function attemptTokenRefresh(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise;
-
-  refreshPromise = (async () => {
-    try {
-      const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (data.success && data.token) {
-        setAccessToken(data.token);
-        return data.token;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  })();
-
-  try {
-    return await refreshPromise;
-  } finally {
-    // Keep the promise cached briefly to prevent concurrent refresh attempts
-    refreshCooldown = setTimeout(() => {
-      refreshPromise = null;
-      refreshCooldown = null;
-    }, 1000);
-  }
+  return refreshSession();
 }
 
 async function api<T = unknown>(path: string, options?: RequestInit, retries = 1): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
+      const sentToken = getAccessToken();
       const res = await fetch(path, {
         ...options,
         headers: {
@@ -85,7 +62,10 @@ async function api<T = unknown>(path: string, options?: RequestInit, retries = 1
         const body = await res.json().catch(() => ({}));
 
         if (body.code === 'TOKEN_EXPIRED' && attempt === 0) {
-          const newToken = await attemptTokenRefresh();
+          // The fetch interceptor may already have refreshed for this 401.
+          // Never rotate twice — the second call would send the revoked cookie.
+          const newToken =
+            getAccessToken() !== sentToken ? getAccessToken() : await attemptTokenRefresh();
           if (newToken) {
             const retryRes = await fetch(path, {
               ...options,
