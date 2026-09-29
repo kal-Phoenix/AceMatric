@@ -17,289 +17,6 @@ import { getAccessToken } from '../../lib/authToken';
 import { AceSpadeIcon } from '../ui/BrandLogo';
 import { sanitizeHtml } from '../../lib/sanitize';
 
-interface Milestone {
-  id: string;
-  unit: number;
-  unitTitle: string;
-  title: string;
-  subtitle: string;
-  icon: string;
-  actionType: 'study' | 'practice' | 'simulator' | 'leaderboard' | 'upgrade';
-  xp: number;
-  color: string;
-  ringColor: string;
-  isWeak?: boolean;
-}
-
-const SUBJECT_TOPICS: Record<string, { title: string; icon: string }[]> = {
-  Physics: [
-    { title: 'Vectors and 2D Motion', icon: 'compass' },
-    { title: 'Dynamics & Newton\'s Laws', icon: 'target' },
-    { title: 'Work, Energy & Power', icon: 'zap' },
-    { title: 'Electrostatics & Circuits', icon: 'brain' },
-    { title: 'Electromagnetism', icon: 'layers' },
-    { title: 'Atomic and Nuclear Physics', icon: 'sparkles' },
-  ],
-  Chemistry: [
-    { title: 'Atomic Structure & Bonding', icon: 'brain' },
-    { title: 'Chemical Equilibrium', icon: 'layers' },
-    { title: 'Acid-Base & Salts Solutions', icon: 'compass' },
-    { title: 'Electrochemistry & Reactions', icon: 'zap' },
-    { title: 'Organic Chemistry & Polymers', icon: 'sparkles' },
-    { title: 'Industrial Chemistry in Ethiopia', icon: 'target' },
-  ],
-  Biology: [
-    { title: 'Cell Biology & Biomolecules', icon: 'layers' },
-    { title: 'Enzymes and Cellular Respiration', icon: 'zap' },
-    { title: 'Genetics & Molecular Inheritance', icon: 'brain' },
-    { title: 'Human Physiology & Health', icon: 'target' },
-    { title: 'Ecology & Natural Resources', icon: 'compass' },
-    { title: 'Microbiology & Diseases', icon: 'sparkles' },
-  ],
-  Mathematics: [
-    { title: 'Relations, Functions & Matrices', icon: 'layers' },
-    { title: 'Sequences and Series', icon: 'compass' },
-    { title: 'Limits and Continuity', icon: 'target' },
-    { title: 'Differential Calculus', icon: 'brain' },
-    { title: 'Integral Calculus', icon: 'zap' },
-    { title: 'Probability and Statistics', icon: 'sparkles' },
-  ],
-  History: [
-    { title: 'Ancient & Medieval Ethiopia', icon: 'compass' },
-    { title: 'Modern Ethiopian History (1855-1991)', icon: 'layers' },
-    { title: 'World Wars & Global Alliances', icon: 'target' },
-    { title: 'Decolonization of Africa', icon: 'sparkles' },
-  ],
-  Geography: [
-    { title: 'Map Reading & GIS', icon: 'compass' },
-    { title: 'Physical Geography of Ethiopia', icon: 'layers' },
-    { title: 'Climatology and Climate Change', icon: 'brain' },
-    { title: 'Economic Geography & Resources', icon: 'zap' },
-  ],
-  Economics: [
-    { title: 'Microeconomics: Demand & Supply', icon: 'target' },
-    { title: 'National Income Accounting', icon: 'layers' },
-    { title: 'Ethiopian Economic Sectors', icon: 'compass' },
-    { title: 'Monetary & Fiscal Policies', icon: 'zap' },
-  ],
-  English: [
-    { title: 'Advanced Grammar & Tenses', icon: 'brain' },
-    { title: 'Vocabulary & Context Clues', icon: 'compass' },
-    { title: 'Reading Comprehension Drills', icon: 'target' },
-    { title: 'Sentence Structures & Word Orders', icon: 'layers' },
-  ],
-  'SAT': [
-    { title: 'Quantitative Reasoning', icon: 'zap' },
-    { title: 'Verbal Analogies & Logic', icon: 'brain' },
-    { title: 'Spatial Reasoning & Patterns', icon: 'compass' },
-    { title: 'Analytical Problem Solving', icon: 'target' },
-  ]
-};
-
-export function getTopicsForGrade(subject: string, grade: number): { title: string; icon: string }[] {
-  const searchSubject = subject === 'Mathematics' ? 'Maths' : subject;
-  
-  // Find in Natural stream
-  let subObj = ETHIOPIAN_CURRICULUM.find(s => s.stream === 'Natural')?.subjects.find(
-    s => s.subject.toLowerCase() === searchSubject.toLowerCase() && s.grade === grade
-  );
-  
-  // Find in Social stream if not found
-  if (!subObj) {
-    subObj = ETHIOPIAN_CURRICULUM.find(s => s.stream === 'Social')?.subjects.find(
-      s => s.subject.toLowerCase() === searchSubject.toLowerCase() && s.grade === grade
-    );
-  }
-
-  if (subObj) {
-    return subObj.chapters.map((ch, idx) => {
-      // Assign custom icons based on chapter number or index
-      const icons = ['compass', 'target', 'zap', 'brain', 'layers', 'sparkles', 'globe', 'coins'];
-      const icon = icons[idx % icons.length];
-      return {
-        title: ch.chapterName,
-        icon: icon
-      };
-    });
-  }
-
-  // Fallback to static SUBJECT_TOPICS
-  return SUBJECT_TOPICS[subject] || [];
-}
-
-export function generateDynamicRoadmap(
-  stream: string,
-  weakSubjects: string[] = [],
-  studyStyle: string = 'Practice / Quiz',
-  targetScore: number = 600,
-  grade: number = 12
-): Milestone[] {
-  const subjects = stream === 'Natural Science'
-    ? ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'SAT']
-    : ['Mathematics', 'History', 'Geography', 'Economics', 'English', 'SAT'];
-
-  const milestones: Milestone[] = [];
-  let idCounter = 1;
-
-  // Stagger all chapters across the subjects to construct a unified learning path
-  // Max chapters is 6 (Mathematics, Physics, Chemistry, Biology have 6 chapters each)
-  const learningTopics: { subject: string; title: string; icon: string; isWeak: boolean; topicIdx: number }[] = [];
-  
-  for (let topicIdx = 0; topicIdx < 6; topicIdx++) {
-    subjects.forEach(sub => {
-      const topics = getTopicsForGrade(sub, grade);
-      if (topics[topicIdx]) {
-        learningTopics.push({
-          subject: sub,
-          title: topics[topicIdx].title,
-          icon: topics[topicIdx].icon,
-          isWeak: weakSubjects.includes(sub),
-          topicIdx
-        });
-      }
-    });
-  }
-
-  // Generate learning milestones for Unit 1, Unit 2, Unit 3
-  learningTopics.forEach((topic) => {
-    // Map topics to Unit 1, 2, or 3 based on their chapter depth
-    let unitNumber = 1;
-    let unitTitle = '';
-    let unitTitleAm = '';
-
-    if (topic.topicIdx <= 1) {
-      unitNumber = 1;
-      unitTitle = 'Unit 1: Foundations & Core Weakness Drills';
-    } else if (topic.topicIdx <= 3) {
-      unitNumber = 2;
-      unitTitle = 'Unit 2: Progress & Intermediate Problem Solving';
-    } else {
-      unitNumber = 3;
-      unitTitle = 'Unit 3: Advanced Applications & High-Yield Speed Tests';
-    }
-
-    let actionType: 'study' | 'practice' | 'simulator' | 'leaderboard' | 'upgrade' = 'study';
-    // Alternate action types nicely for dynamic style
-    if (topic.topicIdx % 2 === 0) {
-      actionType = topic.isWeak ? 'practice' : 'study';
-    } else {
-      actionType = 'practice';
-    }
-
-    let color = 'from-indigo-500 to-blue-600';
-    let ringColor = 'border-indigo-500';
-    if (topic.isWeak) {
-      color = 'from-blue-600 to-indigo-600';
-      ringColor = 'border-blue-500';
-    } else if (unitNumber === 2) {
-      color = 'bg-white/10';
-      ringColor = 'border-emerald-500';
-    } else if (unitNumber === 3) {
-      color = 'from-purple-500 to-fuchsia-600';
-      ringColor = 'border-purple-500';
-    }
-
-    let subtitle = '';
-    let subtitleAm = '';
-
-    const isAmStyle = studyStyle === 'Visual / Video';
-    const isPrStyle = studyStyle === 'Practice / Quiz';
-    const isRdStyle = studyStyle === 'Reading & Summaries';
-
-    if (topic.isWeak) {
-      if (isAmStyle) {
-        subtitle = `Reinforce your weak area in ${topic.subject}. Watch video deep-dives on "${topic.title}" and inspect core formula derivations.`;
-      } else if (isPrStyle) {
-        subtitle = `Defeat your weak spot in ${topic.subject}. Tackle 15 high-yield multiple-choice drills on "${topic.title}".`;
-      } else if (isRdStyle) {
-        subtitle = `Lock in core definitions in ${topic.subject}. Review interactive study notes and formula summary cards for "${topic.title}".`;
-      } else {
-        subtitle = `Review challenging aspects of "${topic.title}" (${topic.subject}) with interactive step-by-step guidance.`;
-      }
-    } else {
-      if (isAmStyle) {
-        subtitle = `Review conceptual video walk-throughs for "${topic.title}" in ${topic.subject}.`;
-      } else if (isPrStyle) {
-        subtitle = `Run a timed micro-quiz on "${topic.title}" (${topic.subject}) to secure study retention.`;
-      } else if (isRdStyle) {
-        subtitle = `Read summary boxes, physical constants, and key vocabulary for "${topic.title}".`;
-      } else {
-        subtitle = `Analyze shortcuts and key exam pitfalls for "${topic.title}" in ${topic.subject}.`;
-      }
-    }
-
-    const xpReward = Math.round((topic.isWeak ? 160 : 120) * (targetScore / 600));
-
-    milestones.push({
-      id: `m${idCounter++}`,
-      unit: unitNumber,
-      unitTitle,
-      title: `${topic.subject}: ${topic.title}`,
-      subtitle,
-      icon: topic.icon,
-      actionType,
-      xp: xpReward,
-      color,
-      ringColor
-    });
-  });
-
-  // Now generate Unit 4 Full Course Syllabus Simulators for each subject
-  subjects.forEach(sub => {
-    const isWeakSub = weakSubjects.includes(sub);
-    const xpReward = Math.round((isWeakSub ? 250 : 200) * (targetScore / 600));
-
-    milestones.push({
-      id: `m${idCounter++}`,
-      unit: 4,
-      unitTitle: 'Unit 4: Mock Board Simulator & Peak Performance Run',
-      title: `${sub}: Comprehensive Syllabus Simulator`,
-      subtitle: `Run a complete 50-question diagnostic exam simulator in ${sub} under strict time limitations to predict your entrance grade.`,
-      icon: 'award',
-      actionType: 'simulator',
-      xp: xpReward,
-      color: 'bg-white/10',
-      ringColor: 'border-cyan-500'
-    });
-  });
-
-  // Finally, the Grand Matric Victory Cup
-  milestones.push({
-    id: `m${idCounter}`,
-    unit: 4,
-    unitTitle: 'Unit 4: Mock Board Simulator & Peak Performance Run',
-    title: 'Grand Matric Victory Cup',
-    subtitle: `You completed all personalized topic modules & subject mock exams! Target score: ${targetScore}/600. Step out and claim your rank!`,
-    icon: 'trophy',
-    actionType: 'upgrade',
-    xp: 500,
-      color: 'from-blue-600 via-indigo-600 to-violet-600',
-    ringColor: 'border-blue-400'
-  });
-
-  return milestones;
-}
-
-const renderMilestoneIcon = (iconName: string, className = "w-6 h-6") => {
-  switch (iconName) {
-    case 'compass': return <Compass className={className} />;
-    case 'book': return <BookOpen className={className} />;
-    case 'layers': return <Layers className={className} />;
-    case 'sparkles': return <Sparkles className={className} />;
-    case 'target': return <Target className={className} />;
-    case 'clock': return <Clock className={className} />;
-    case 'brain': return <Brain className={className} />;
-    case 'trophy': return <Trophy className={className} />;
-    case 'graduation-cap': return <GraduationCap className={className} />;
-    case 'zap': return <Zap className={className} />;
-    case 'award': return <Award className={className} />;
-    case 'book-open': return <BookOpen className={className} />;
-    case 'coins': return <Coins className={className} />;
-    case 'globe': return <Globe className={className} />;
-    default: return <HelpCircle className={className} />;
-  }
-};
-
 interface DashboardViewProps {
   stream: Stream;
   language: Language;
@@ -339,14 +56,7 @@ export default function DashboardView({
 }: DashboardViewProps) {
   
 
-  const roadMilestones = useMemo(() => {
-    const s = user?.stream || stream || 'Natural Science';
-    const weak = user?.weakSubjects || [];
-    const style = user?.studyStyle || 'Practice / Quiz';
-    const score = user?.targetScore || targetPercentage || 600;
-    const gradeVal = user?.activeGrade || 12;
-    return generateDynamicRoadmap(s, weak, style, score, gradeVal);
-  }, [user, stream, targetPercentage]);
+
 
   // State for academic session history tracker
   const [activeHistoryFilter, setActiveHistoryFilter] = useState<string>('all');
@@ -378,40 +88,54 @@ export default function DashboardView({
   // Modal Control for Daily Challenge
   const [showChallengeModal, setShowChallengeModal] = useState(false);
 
-  // Roadmap States
-  const [completedMilestones, setCompletedMilestones] = useState<string[]>(() => {
-    if (user?.completedMilestones?.length > 0) return user.completedMilestones;
-    return ['m1', 'm2'];
+  // Study Plan States
+  const [activePlanTab, setActivePlanTab] = useState<'schedule' | 'custom'>(() => {
+    return user?.customRoadmap ? 'custom' : 'schedule';
   });
-
-  const [activeRoadmapTab, setActiveRoadmapTab] = useState<'grid' | 'syllabus'>('grid');
-  const [isRoadmapExpanded, setIsRoadmapExpanded] = useState(false);
-  const [activeUnitTab, setActiveUnitTab] = useState<number>(1);
-  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
-
-  const currentActiveUnit = useMemo(() => {
-    const nextIncomplete = roadMilestones.find(m => !completedMilestones.includes(m.id));
-    return nextIncomplete ? nextIncomplete.unit : 1;
-  }, [roadMilestones, completedMilestones]);
+  const [isPlanExpanded, setIsPlanExpanded] = useState(true);
+  const [customRoadmap, setCustomRoadmap] = useState<string>(user?.customRoadmap || '');
 
   useEffect(() => {
-    setActiveUnitTab(currentActiveUnit);
-  }, [currentActiveUnit]);
-
-  const handleToggleMilestone = (milestone: Milestone) => {
-    const isCompleted = completedMilestones.includes(milestone.id);
-    let newCompleted: string[];
-
-    if (isCompleted) {
-      newCompleted = completedMilestones.filter(id => id !== milestone.id);
-    } else {
-      newCompleted = [...completedMilestones, milestone.id];
+    if (user?.customRoadmap) {
+      setCustomRoadmap(user.customRoadmap);
     }
+  }, [user?.customRoadmap]);
 
-    setCompletedMilestones(newCompleted);
-    db.updateGamification(0, newCompleted).catch(() => {});
-    if (user?.email) {
-      db.saveStudentProfile({ ...user, completedMilestones: newCompleted }).catch(() => {});
+  const handleGenerateAIPlan = async () => {
+    setIsGeneratingPlan(true);
+    setStudyPlanError('');
+    try {
+      const token = getAccessToken();
+      const res = await fetch('/api/ai/study-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          targetScore: user?.targetScore || targetPercentage || 520,
+          currentHours: user?.dailyGoalHours || user?.dailyHours || 4,
+          weakSubjects: user?.weakSubjects || [],
+          stream: user?.stream || stream,
+          language,
+          school: user?.school || '',
+          region: user?.region || 'Addis Ababa',
+        }),
+      });
+      const data = await res.json();
+      if (data.plan) {
+        setCustomRoadmap(data.plan);
+        setActivePlanTab('custom');
+        if (user && onProfileUpdate) {
+          onProfileUpdate({ ...user, customRoadmap: data.plan });
+        }
+      } else {
+        throw new Error('Could not generate plan');
+      }
+    } catch {
+      setStudyPlanError('Unable to generate AI plan right now. Showing structured schedule.');
+    } finally {
+      setIsGeneratingPlan(false);
     }
   };
 
@@ -1316,62 +1040,107 @@ export default function DashboardView({
         )}
       </div>
 
-      {/* 5. YOUR GAMIFIED STUDY ROADMAP SECTION */}
+      {/* 5. YOUR PERSONALIZED STUDY PLAN */}
       <div className="bg-[#141920] border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400">
-              <Sparkles className="w-4 h-4" />
+            <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-base sm:text-lg text-white tracking-tight">
-                  Your Personalized Roadmap
+                  Your Personalized Study Plan
                 </h3>
-                <span className="bg-slate-950 text-indigo-400 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-slate-800 uppercase tracking-wider shrink-0">
-                  {completedMilestones.length}/{roadMilestones.length} Done
+                <span className="bg-blue-500/10 text-blue-400 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-blue-500/20 uppercase tracking-wider shrink-0">
+                  {user?.stream || stream}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                A 16-topic path built around your weaker subjects and study habits.
+              <p className="text-xs text-slate-400 mt-1">
+                Custom study structure based on your stream, {user?.targetScore || 520}/600 target, and focus subjects.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {isRoadmapExpanded && (
-              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            {customRoadmap && (
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
                 <button
-                  onClick={() => setActiveRoadmapTab('grid')}
-                  className={`py-1 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    activeRoadmapTab === 'grid' 
-                      ? 'bg-indigo-600 text-white shadow-md' 
+                  type="button"
+                  onClick={() => setActivePlanTab('custom')}
+                  className={`py-1.5 px-3 rounded-lg font-semibold transition-all cursor-pointer ${
+                    activePlanTab === 'custom'
+                      ? 'bg-blue-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  Tracker
+                  AI Study Roadmap
                 </button>
                 <button
-                  onClick={() => setActiveRoadmapTab('syllabus')}
-                  className={`py-1 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    activeRoadmapTab === 'syllabus' 
-                      ? 'bg-indigo-600 text-white shadow-md' 
+                  type="button"
+                  onClick={() => setActivePlanTab('schedule')}
+                  className={`py-1.5 px-3 rounded-lg font-semibold transition-all cursor-pointer ${
+                    activePlanTab === 'schedule'
+                      ? 'bg-blue-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  Study Plan
+                  Weekly Schedule
                 </button>
               </div>
             )}
 
+            {!customRoadmap && (
+              <button
+                type="button"
+                onClick={handleGenerateAIPlan}
+                disabled={isGeneratingPlan}
+                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-md"
+              >
+                {isGeneratingPlan ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Generate AI Plan</span>
+                  </>
+                )}
+              </button>
+            )}
+
             <button
-              onClick={() => setIsRoadmapExpanded(!isRoadmapExpanded)}
+              onClick={() => setIsPlanExpanded(!isPlanExpanded)}
               className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
-              title={isRoadmapExpanded ? 'Collapse' : 'Expand'}
-              aria-label={isRoadmapExpanded ? 'Collapse roadmap' : 'Expand roadmap'}
+              title={isPlanExpanded ? 'Collapse' : 'Expand'}
+              aria-label={isPlanExpanded ? 'Collapse study plan' : 'Expand study plan'}
             >
-              {isRoadmapExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              {isPlanExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </button>
+          </div>
+        </div>
+
+        {/* Diagnostic Metadata Pill Row — shows where data comes from */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="p-3 bg-slate-900/60 border border-slate-800/80 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Stream</span>
+            <span className="text-xs font-semibold text-white mt-0.5 block truncate">{user?.stream || stream}</span>
+          </div>
+          <div className="p-3 bg-slate-900/60 border border-slate-800/80 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Target Score</span>
+            <span className="text-xs font-semibold text-blue-400 mt-0.5 block font-mono">{user?.targetScore || 520} / 600</span>
+          </div>
+          <div className="p-3 bg-slate-900/60 border border-slate-800/80 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Daily Study Goal</span>
+            <span className="text-xs font-semibold text-amber-400 mt-0.5 block font-mono">{user?.dailyGoalHours || user?.dailyHours || 4} hrs/day</span>
+          </div>
+          <div className="p-3 bg-slate-900/60 border border-slate-800/80 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Priority Weak Topics</span>
+            <span className="text-xs font-semibold text-emerald-400 mt-0.5 block truncate">
+              {user?.weakSubjects && user.weakSubjects.length > 0 ? user.weakSubjects.join(', ') : 'All balanced'}
+            </span>
           </div>
         </div>
 
@@ -1381,269 +1150,35 @@ export default function DashboardView({
           </div>
         )}
 
-        {!isRoadmapExpanded ? (
-          // ==========================================
-          // COLLAPSED COMPACT SUMMARY VIEW (PREMIUM)
-          // ==========================================
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-900/20 p-5 rounded-xl border border-slate-800/60 shadow-md relative overflow-hidden">
-            
-            {/* Left circular gauge panel (md:col-span-4) */}
-            <div className="md:col-span-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-800/50 pb-5 md:pb-0 md:pr-6">
-              <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  {/* Background Track */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    className="stroke-slate-950"
-                    strokeWidth="7"
-                    fill="transparent"
-                  />
-                  {/* Active glowing ring */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    className="stroke-indigo-500"
-                    strokeWidth="7"
-                    fill="transparent"
-                    strokeDasharray={2 * Math.PI * 40}
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - completedMilestones.length / roadMilestones.length)}
-                    strokeLinecap="round"
-                    style={{
-                      filter: 'drop-shadow(0 0 4px rgba(99, 102, 241, 0.45))'
-                    }}
-                  />
-                </svg>
-                <div className="absolute flex flex-col items-center justify-center text-center">
-                  <span className="text-xl font-semibold text-white tracking-tight">
-                    {Math.round((completedMilestones.length / roadMilestones.length) * 100)}%
-                  </span>
-                  <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    Curriculum
-                  </span>
-                </div>
-              </div>
-              <div className="mt-2 text-xs font-semibold text-indigo-400 tracking-wider uppercase text-center bg-indigo-500/5 px-2.5 py-0.5 rounded-full border border-indigo-500/10">
-                {`STAGE ${completedMilestones.length + 1} ACTIVE`}
-              </div>
-            </div>
-
-            {/* Right Next Milestone Spotlight panel (md:col-span-8) */}
-            {(() => {
-              const nextMilestone = roadMilestones.find(m => !completedMilestones.includes(m.id)) || roadMilestones[roadMilestones.length - 1];
-              if (!nextMilestone) return null;
-              return (
-                <div className="md:col-span-8 flex flex-col justify-between h-full space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold uppercase tracking-wider rounded-md">
-                        Up Next
-                      </span>
-                      {nextMilestone.isWeak && (
-                        <span className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider rounded-md">
-                          Priority weak topic
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="text-sm sm:text-base font-semibold text-slate-100 tracking-tight line-clamp-1">
-                        {nextMilestone.title}
-                      </h4>
-                      <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
-                        {nextMilestone.subtitle}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 pt-1">
+        {isPlanExpanded && (
+          <div className="space-y-5">
+            {activePlanTab === 'custom' && customRoadmap ? (
+              <div className="space-y-4">
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Study Roadmap generated for {user?.name || 'Student'}
+                    </span>
                     <button
-                      onClick={() => setSelectedMilestone(nextMilestone)}
-                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs cursor-pointer transition-all flex items-center gap-1.5 shadow-md active:scale-95"
+                      type="button"
+                      onClick={handleGenerateAIPlan}
+                      disabled={isGeneratingPlan}
+                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
                     >
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>Launch Target Step</span>
-                    </button>
-                    <button
-                      onClick={() => setIsRoadmapExpanded(true)}
-                      className="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white rounded-xl text-xs font-bold cursor-pointer transition-all border border-slate-800"
-                    >
-                      Browse Complete 16-Topic Roadmap
+                      <RefreshCw className={`w-3 h-3 ${isGeneratingPlan ? 'animate-spin' : ''}`} />
+                      <span>{isGeneratingPlan ? 'Regenerating...' : 'Regenerate'}</span>
                     </button>
                   </div>
-                </div>
-              );
-            })()}
-
-          </div>
-        ) : (
-          // ==========================================
-          // EXPANDED MULTI-UNIT STUDY TIMELINE
-          // ==========================================
-          <div className="space-y-6">
-            {activeRoadmapTab === 'grid' ? (
-              <div className="space-y-6">
-                {/* Horizontal Selector for the 4 Units */}
-                <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-850 flex items-center gap-1 overflow-x-auto scrollbar-none">
-                  {[1, 2, 3, 4].map(unitNum => {
-                    const unitMilestones = roadMilestones.filter(m => m.unit === unitNum);
-                    const doneInUnit = unitMilestones.filter(m => completedMilestones.includes(m.id)).length;
-                    const isUnitCompleted = doneInUnit === unitMilestones.length && unitMilestones.length > 0;
-                    const isActive = activeUnitTab === unitNum;
-
-                    return (
-                      <button
-                        key={unitNum}
-                        onClick={() => setActiveUnitTab(unitNum)}
-                        className={`flex-1 flex flex-col items-center py-2.5 sm:py-3 px-1 sm:px-4 rounded-xl text-center cursor-pointer transition-all ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-md font-semibold'
-                            : 'text-slate-400 hover:text-slate-200 font-bold hover:bg-slate-900/40'
-                        }`}
-                      >
-                        <div className="text-[10px] sm:text-xs uppercase tracking-wider opacity-85">
-                          {`U${unitNum}`}
-                        </div>
-                        <div className="hidden sm:block text-xs mt-0.5 truncate font-semibold">
-                          {unitNum === 1 && ('Foundations')}
-                          {unitNum === 2 && ('Mastery')}
-                          {unitNum === 3 && ('Speed')}
-                          {unitNum === 4 && ('Done')}
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-center gap-1">
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                            isActive ? 'bg-indigo-900/40 text-indigo-200' : 'bg-slate-900 text-slate-500'
-                          }`}>
-                            {doneInUnit}/{unitMilestones.length}
-                          </span>
-                          {isUnitCompleted && (
-                            <Check className="w-3 h-3 text-emerald-400 stroke-[3.5]" />
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Unit Description */}
-                <div className="p-4 bg-slate-900/30 rounded-xl border border-slate-800/60">
-                  <h4 className="text-xs sm:text-sm font-semibold text-slate-200 uppercase tracking-wide">
-                    {(() => {
-                      const firstMilestone = roadMilestones.find(m => m.unit === activeUnitTab);
-                      return firstMilestone ? firstMilestone.unitTitle : '';
-                    })()}
-                  </h4>
-                  <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
-                    {activeUnitTab === 1 && 'Intensive remedial drills tailored to patch subject-matter gaps first.'}
-                    {activeUnitTab === 2 && 'Expanding core conceptual foundations with high-yield challenges.'}
-                    {activeUnitTab === 3 && 'Advanced full-length subjects under simulated real-world conditions.'}
-                    {activeUnitTab === 4 && 'Final predictive assessment and peak mock run for university prep.'}
-                  </p>
-                </div>
-
-                {/* Clean Grid Tracker */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {roadMilestones
-                    .filter(m => m.unit === activeUnitTab)
-                    .map((m) => {
-                      const isCompleted = completedMilestones.includes(m.id);
-                      const mIdx = roadMilestones.indexOf(m);
-                      const isUnlocked = mIdx === 0 || completedMilestones.includes(roadMilestones[mIdx - 1].id);
-
-                      return (
-                        <div
-                          key={m.id}
-                          className={`group relative p-5 rounded-xl border transition-all duration-300 flex flex-col justify-between gap-4 ${
-                            isCompleted
-                              ? 'bg-emerald-950/10 border-emerald-500/20 text-slate-200'
-                              : isUnlocked
-                                ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-200 shadow-xl'
-                                : 'bg-slate-950/20 border-slate-950 text-slate-500 opacity-55'
-                          }`}
-                        >
-                          {/* Top row */}
-                          <div className="flex items-center justify-between">
-                            <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
-                              isCompleted 
-                                ? 'bg-emerald-500/10 text-emerald-400'
-                                : isUnlocked
-                                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                                  : 'bg-slate-900/40 text-slate-500'
-                            }`}>
-                              {m.title.split(':')[0]}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              {isCompleted ? (
-                                <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/10">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  Done
-                                </span>
-                              ) : !isUnlocked ? (
-                                <span className="text-xs font-semibold text-slate-600 bg-slate-950/40 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-900">
-                                  <Lock className="w-3 h-3" />
-                                  Locked
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          {/* Title and Subtitle */}
-                          <div className="space-y-1">
-                            <h5 className={`text-sm font-semibold line-clamp-1 group-hover:text-white transition-colors tracking-tight ${
-                              isUnlocked ? 'text-slate-100' : 'text-slate-500'
-                            }`}>
-                              {m.title.substring(m.title.indexOf(':') + 1).trim()}
-                            </h5>
-                            <p className={`text-[11px] line-clamp-2 leading-relaxed ${
-                              isUnlocked ? 'text-slate-400' : 'text-slate-600'
-                            }`}>
-                              {m.subtitle}
-                            </p>
-                          </div>
-
-                          {/* Action */}
-                          <div className="flex items-center justify-between border-t border-slate-800/40 pt-3 mt-1">
-                            <div className="flex items-center gap-1 text-xs text-slate-400 font-semibold uppercase tracking-wide">
-                              <span className="opacity-75">Action:</span>
-                              <span className="text-slate-200">
-                                {m.actionType === 'study' && ('Study Guide')}
-                                {m.actionType === 'practice' && ('Interactive MCQ')}
-                                {m.actionType === 'simulator' && ('Exam Sim')}
-                                {m.actionType === 'leaderboard' && ('Leaderboard')}
-                                {m.actionType === 'upgrade' && ('Trophy Victory')}
-                              </span>
-                            </div>
-
-                            {isUnlocked && (
-                              <button
-                                onClick={() => setSelectedMilestone(m)}
-                                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all flex items-center gap-1 shadow-md ${
-                                  isCompleted
-                                    ? 'bg-slate-950 text-slate-300 hover:bg-slate-900 border border-slate-800'
-                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95'
-                                }`}
-                              >
-                                {isCompleted ? (
-                                  <span>Review</span>
-                                ) : (
-                                  <>
-                                    <Play className="w-2.5 h-2.5 fill-white" />
-                                    <span>
-                                      {m.actionType === 'study' && ('Read Guide')}
-                                      {m.actionType === 'practice' && ('Solve MCQ')}
-                                      {m.actionType === 'simulator' && ('Start Simulation')}
-                                      {m.actionType === 'leaderboard' && ('View Ranking')}
-                                      {m.actionType === 'upgrade' && ('Claim Reward')}
-                                    </span>
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
+                  <div className="prose prose-invert prose-sm max-w-none space-y-2">
+                    {customRoadmap.split('\n').map((line, i) => {
+                      if (line.startsWith('## ')) return <h4 key={i} className="text-base font-semibold text-white mt-4 mb-1.5">{line.replace('## ', '')}</h4>;
+                      if (line.startsWith('### ')) return <h5 key={i} className="text-xs font-bold uppercase tracking-wider text-blue-400 mt-3 mb-1">{line.replace('### ', '')}</h5>;
+                      if (line.startsWith('**')) return <p key={i} className="text-xs text-slate-200 font-semibold" dangerouslySetInnerHTML={{ __html: sanitizeHtml(line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')) }} />;
+                      if (line.startsWith('- ')) return <li key={i} className="text-xs text-slate-300 ml-4 list-disc leading-relaxed">{line.replace('- ', '')}</li>;
+                      if (line.trim()) return <p key={i} className="text-xs text-slate-400 leading-relaxed">{line}</p>;
+                      return <br key={i} />;
                     })}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1658,185 +1193,55 @@ export default function DashboardView({
                   rest: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20',
                 };
                 return (
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-3 flex-wrap text-[11px] text-slate-400">
-                      {[['study','Study'],['practice','Practice'],['mock','Mock Exam'],['review','Review'],['rest','Rest']].map(([type, label]) => (
-                        <span key={type} className={`px-2 py-0.5 rounded-full border font-semibold ${typeColors[type]}`}>{label}</span>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 flex-wrap text-xs text-slate-400">
+                      {[['study','Study Notes'],['practice','Practice Drill'],['mock','Mock Exam'],['review','Review Session'],['rest','Rest']].map(([type, label]) => (
+                        <span key={type} className={`px-2.5 py-0.5 rounded-full border text-xs font-semibold ${typeColors[type]}`}>{label}</span>
                       ))}
                     </div>
-                    {plan.map((week) => (
-                      <div key={week.week} className={`rounded-xl border ${week.borderColor} ${week.bgColor} overflow-hidden`}>
-                        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                          <div>
-                            <span className={`text-xs font-black uppercase tracking-wider ${week.color}`}>{week.week}</span>
-                            <span className="text-xs text-slate-400 font-semibold ml-2">— {week.theme}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {plan.map((week) => (
+                        <div key={week.week} className={`rounded-xl border ${week.borderColor} ${week.bgColor} overflow-hidden flex flex-col justify-between`}>
+                          <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                            <span className={`text-xs font-bold uppercase tracking-wider ${week.color}`}>{week.week}</span>
+                            <span className="text-xs text-slate-400 font-semibold">{week.theme}</span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-white/5 text-[11px] text-slate-500 font-semibold uppercase">
+                                  <th className="text-left px-3 py-2 w-12">Day</th>
+                                  <th className="text-left px-3 py-2">Activity</th>
+                                  <th className="text-center px-2 py-2 w-16">Type</th>
+                                  <th className="text-right px-3 py-2 w-14">Time</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/[0.03]">
+                                {week.days.map((day) => (
+                                  <tr key={day.day} className="hover:bg-white/[0.02] transition-colors">
+                                    <td className="px-3 py-2 font-bold text-slate-300">{day.day}</td>
+                                    <td className="px-3 py-2 text-slate-200 leading-snug">{day.activity}</td>
+                                    <td className="px-2 py-2 text-center">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${typeColors[day.type]}`}>
+                                        {day.type}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-mono text-slate-400 font-semibold">{day.duration}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="border-b border-white/5">
-                                <th className="text-left px-4 py-2 text-slate-500 font-bold uppercase tracking-wider w-16">Day</th>
-                                <th className="text-left px-4 py-2 text-slate-500 font-bold uppercase tracking-wider">Study Activity</th>
-                                <th className="text-center px-4 py-2 text-slate-500 font-bold uppercase tracking-wider w-20">Type</th>
-                                <th className="text-right px-4 py-2 text-slate-500 font-bold uppercase tracking-wider w-16">Time</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/[0.03]">
-                              {week.days.map((day) => (
-                                <tr key={day.day} className="hover:bg-white/[0.02] transition-colors">
-                                  <td className="px-4 py-2.5 font-bold text-slate-300">{day.day}</td>
-                                  <td className="px-4 py-2.5 text-slate-200 leading-relaxed">{day.activity}</td>
-                                  <td className="px-4 py-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded-md border text-[10px] font-bold uppercase ${typeColors[day.type]}`}>
-                                      {day.type}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right font-mono text-slate-400 font-semibold">{day.duration}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))}
-                    <p className="text-[11px] text-slate-500 text-center pt-1">
-                      Plan adapts to your weak subjects and target score. Update your profile to regenerate.
-                    </p>
+                      ))}
+                    </div>
                   </div>
                 );
               })()
             )}
-
-            {/* Collapse button at bottom */}
-            <div className="pt-2 flex justify-center border-t border-slate-800/40">
-              <button
-                onClick={() => setIsRoadmapExpanded(false)}
-                className="py-2.5 px-5 bg-slate-900 hover:bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-md"
-              >
-                <ChevronUp className="w-4 h-4" />
-                <span>Collapse Roadmap View</span>
-              </button>
-            </div>
           </div>
         )}
       </div>
-
-      {/* Selected Milestone Interactive Overlay */}
-      <AnimatePresence>
-        {selectedMilestone && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-[#0F1218] border border-slate-800 w-full max-w-md rounded-xl p-6 relative overflow-hidden shadow-2xl space-y-5 text-left"
-            >
-              {/* Colored background glow */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                <span className="bg-indigo-500/10 text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
-                  {`Unit ${selectedMilestone.unit} • Milestone`}
-                </span>
-                <button
-                  onClick={() => setSelectedMilestone(null)}
-                  className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <span className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400">
-                    {renderMilestoneIcon(selectedMilestone.icon, "w-5 h-5")}
-                  </span>
-                  <span>{selectedMilestone.title}</span>
-                </h4>
-                <p className="text-xs text-slate-300 leading-relaxed pl-11">
-                  {selectedMilestone.subtitle}
-                </p>
-              </div>
-
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/60 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                    Reward
-                  </div>
-                  <div className="text-sm font-semibold text-amber-400 mt-0.5 flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 fill-amber-400" />
-                    <span>+{selectedMilestone.xp} XP Score</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                    Status
-                  </div>
-                  <div className="mt-0.5">
-                    {completedMilestones.includes(selectedMilestone.id) ? (
-                      <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-semibold">
-                        Completed
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold">
-                        In Progress
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setSelectedMilestone(null);
-                    if (selectedMilestone.actionType === 'study') {
-                      onTabChange('study');
-                    } else if (selectedMilestone.actionType === 'practice') {
-                      onTabChange('practice');
-                    } else if (selectedMilestone.actionType === 'simulator') {
-                      onTabChange('simulator');
-                    } else if (selectedMilestone.actionType === 'leaderboard') {
-                      onTabChange('leaderboard');
-                    } else if (selectedMilestone.actionType === 'upgrade') {
-                      onTabChange('upgrade');
-                    }
-                  }}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-md"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>
-                    {`Launch ${selectedMilestone.actionType.toUpperCase()} Goal`}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleToggleMilestone(selectedMilestone)}
-                  className={`w-full py-2.5 border rounded-xl text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-2 ${
-                    completedMilestones.includes(selectedMilestone.id)
-                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
-                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                  }`}
-                >
-                  {completedMilestones.includes(selectedMilestone.id) ? (
-                    <>
-                      <X className="w-3.5 h-3.5" />
-                      <span>Mark as Incomplete</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Mark as Completed</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
     </div>
   );
 }

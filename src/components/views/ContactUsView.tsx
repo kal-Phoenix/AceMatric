@@ -81,7 +81,7 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
             <p className="text-xs text-slate-400">Questions about payments, features, or your account? We are here to help.</p>
           </div>
           <a
-            href="https://t.me/acematric_et"
+            href="https://t.me/ad_min_support1"
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-blue-300 text-xs font-semibold hover:bg-slate-800 transition-colors flex items-center gap-2 shrink-0"
@@ -100,21 +100,31 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
             <h3 className="font-semibold text-sm text-white">Contact Channels</h3>
 
             {[
-              { icon: Phone, label: 'Phone', value: '+251 911 223344', sub: 'Mon-Sat, 8AM-9PM', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-              { icon: Mail, label: 'Email', value: 'support@acematric.edu.et', sub: 'Reply within 30 minutes', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+              { icon: Phone, label: 'Phone', value: '+251 988238675', sub: 'Mon-Sat, 8AM-9PM', color: 'text-blue-400', bg: 'bg-blue-500/10', href: 'tel:+251988238675' },
+              { icon: Mail, label: 'Email', value: 'acematric.support@gmail.com', sub: 'Reply within 30 minutes', color: 'text-emerald-400', bg: 'bg-emerald-500/10', href: 'mailto:acematric.support@gmail.com' },
               { icon: MapPin, label: 'Office', value: 'Bole Road, Mega Building 4F', sub: 'Office 402, Addis Ababa', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-            ].map(({ icon: Icon, label, value, sub, color, bg }) => (
-              <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800/60">
-                <div className={`p-2 rounded-lg ${bg} ${color} mt-0.5`}>
-                  <Icon className="w-4 h-4" />
+            ].map(({ icon: Icon, label, value, sub, color, bg, href }) => {
+              const content = (
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700/80 transition-colors">
+                  <div className={`p-2 rounded-lg ${bg} ${color} mt-0.5`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
+                    <div className="text-xs font-bold text-white mt-0.5">{value}</div>
+                    <div className="text-xs text-slate-500">{sub}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
-                  <div className="text-xs font-bold text-white mt-0.5">{value}</div>
-                  <div className="text-xs text-slate-500">{sub}</div>
-                </div>
-              </div>
-            ))}
+              );
+
+              return href ? (
+                <a key={label} href={href} className="block transition-transform hover:scale-[1.01]">
+                  {content}
+                </a>
+              ) : (
+                <div key={label}>{content}</div>
+              );
+            })}
           </div>
 
           {/* Quick FAQ Teaser */}

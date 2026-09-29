@@ -391,31 +391,25 @@ export default function ProfileView({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="text-xs font-bold text-slate-400 block mb-2 uppercase tracking-wider">Stream</label>
-                {userProfile?.role === 'admin' ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['Natural Science', 'Social Science'] as const).map(s => (
-                      <button
-                        type="button"
-                        key={s}
-                        onClick={() => setSelectedStream(s)}
-                        className={`p-3 rounded-xl border font-semibold text-xs transition-all cursor-pointer ${
-                          selectedStream === s
-                            ? 'bg-blue-600 text-white border-blue-400 shadow-md'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
-                    <span className="text-blue-400 font-semibold text-sm">{selectedStream}</span>
-                    <span className="text-xs uppercase font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                      Locked
-                    </span>
-                  </div>
-                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {(['Natural Science', 'Social Science'] as const).map(s => (
+                    <button
+                      type="button"
+                      key={s}
+                      onClick={() => {
+                        setSelectedStream(s);
+                        onStreamChange(s);
+                      }}
+                      className={`p-3 rounded-xl border font-semibold text-xs transition-all cursor-pointer ${
+                        selectedStream === s
+                          ? 'bg-blue-600 text-white border-blue-400 shadow-md'
+                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
