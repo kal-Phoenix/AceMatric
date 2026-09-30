@@ -8,18 +8,33 @@ interface VideoPlayerProps {
   onMarkWatched?: () => void;
 }
 
+export function extractYouTubeVideoId(input: string): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  if (trimmed === 'placeholder' || trimmed === 'dQw4w9WgXcQ') return '';
+  // Check standard 11-character video ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  // Match youtube.com/watch?v=..., youtu.be/..., youtube.com/embed/...
+  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  if (match && match[1]) return match[1];
+  return trimmed;
+}
+
 export default function VideoPlayer({ videoId, title, duration, isWatched, onMarkWatched }: VideoPlayerProps) {
-  if (!videoId) return null;
+  const cleanId = extractYouTubeVideoId(videoId);
+  if (!cleanId) return null;
 
   return (
     <div className="bg-[#141920] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
       <div className="relative aspect-video bg-[#0A0E14] overflow-hidden">
         <iframe
-          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+          src={`https://www.youtube-nocookie.com/embed/${cleanId}?rel=0&modestbranding=1&playsinline=1`}
           title={title}
           className="absolute inset-0 w-full h-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
           allowFullScreen
+          loading="lazy"
         />
       </div>
 
@@ -47,7 +62,7 @@ export default function VideoPlayer({ videoId, title, duration, isWatched, onMar
             </button>
           )}
           <a
-            href={`https://www.youtube.com/watch?v=${videoId}`}
+            href={`https://www.youtube.com/watch?v=${cleanId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-3.5 py-1.5 rounded-xl bg-red-600/15 border border-red-500/30 text-red-300 hover:bg-red-600 hover:text-white flex items-center space-x-1.5 transition-all text-xs font-bold"

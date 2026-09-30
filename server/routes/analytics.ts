@@ -1,18 +1,16 @@
 import { Router } from 'express';
 import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
-import { requireAuth } from '../middleware';
+import { requireAuth, rateLimitOpts } from '../middleware';
 import { validateBody, trackEventSchema } from '../validation';
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
-const analyticsLimiter = rateLimit({
+const analyticsLimiter = rateLimit(rateLimitOpts({
   windowMs: 60 * 1000,
   max: 30,
   message: { error: 'Too many analytics requests.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+}));
 
 // POST /api/analytics/track — record a user event
 router.post('/track', requireAuth, analyticsLimiter, validateBody(trackEventSchema), async (req, res) => {

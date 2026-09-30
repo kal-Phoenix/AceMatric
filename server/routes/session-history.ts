@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { supabaseAdmin as supabase, formatSupabaseError, snakeToCamel } from '../db';
 import { requireAuth } from '../middleware';
+import { redis } from '../redis';
 
 const router = Router();
 
@@ -25,7 +26,8 @@ function stripHtml(text: string): string {
   return String(text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// In-memory rate limit store: email -> timestamps of POST requests
+// In-memory rate limit store: email -> timestamps of POST requests.
+// Used as the fallback when Redis is not configured (single-instance only).
 const rateLimitStore = new Map<string, number[]>();
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -43,7 +45,19 @@ setInterval(() => {
   }
 }, RATE_LIMIT_WINDOW_MS);
 
-function isRateLimited(email: string): boolean {
+async function isRateLimited(email: string): Promise<boolean> {
+  // Shared counter across instances — matches every other limiter in the app
+  if (redis) {
+    try {
+      const key = `rl:session-history:${email}`;
+      const count = await redis.incr(key);
+      if (count === 1) await redis.pexpire(key, RATE_LIMIT_WINDOW_MS);
+      return count > RATE_LIMIT_MAX;
+    } catch (err: any) {
+      console.debug('[session-history] Redis rate limit unavailable, using memory:', err?.message);
+    }
+  }
+
   const now = Date.now();
   const timestamps = rateLimitStore.get(email) || [];
   const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
@@ -92,7 +106,7 @@ router.get('/', requireAuth, async (req, res) => {
 // POST /api/session-history
 router.post('/', requireAuth, async (req, res) => {
   try {
-    if (isRateLimited(req.user!.email)) {
+    if (await isRateLimited(req.user!.email)) {
       return res.status(429).json({ error: 'Rate limit exceeded. Max 10 sessions per hour.' });
     }
 

@@ -7,20 +7,13 @@ import { setupWebSocket } from './server/websocket';
 import { seedAllData } from './server/seed';
 import { validateEnv } from './server/env';
 import { startPushScheduler } from './server/push-scheduler';
+import { initSentry, captureExceptionAndFlush } from './server/sentry';
 
 dotenv.config();
 
 validateEnv();
 
-const SENTRY_DSN = process.env.SENTRY_DSN;
-if (SENTRY_DSN && SENTRY_DSN !== 'your-sentry-dsn') {
-  import('@sentry/node').then(Sentry => {
-    Sentry.init({ dsn: SENTRY_DSN, tracesSampleRate: 0.1 });
-    console.log('[sentry] Error tracking initialized');
-  }).catch(() => {
-    console.warn('[sentry] Failed to initialize — errors will only be logged to console');
-  });
-}
+initSentry(process.env.SENTRY_DSN);
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
@@ -79,10 +72,11 @@ async function startServer() {
 
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception:', err);
-  setTimeout(() => process.exit(1), 1000);
+  captureExceptionAndFlush(err).finally(() => setTimeout(() => process.exit(1), 1000));
 });
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason);
+  captureExceptionAndFlush(reason);
   if (process.env.NODE_ENV === 'production') {
     setTimeout(() => process.exit(1), 1000);
   }
@@ -90,5 +84,5 @@ process.on('unhandledRejection', (reason) => {
 
 startServer().catch((err) => {
   console.error('[FATAL] Server failed to start:', err);
-  process.exit(1);
+  captureExceptionAndFlush(err).finally(() => process.exit(1));
 });

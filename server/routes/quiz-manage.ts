@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin, isAdminUser } from '../middleware';
+import { requireAdmin } from '../middleware';
 import { logAudit } from '../audit';
 import { getSupabaseAdmin as getSupabase } from '../db';
 import {
@@ -51,7 +51,9 @@ router.get('/stats', requireAdmin, async (_req, res) => {
 });
 
 // GET /api/quiz-manage/:subject/:grade/:chapter
-router.get('/:subject/:grade/:chapter', requireAuth, async (req, res) => {
+// Admin-only: the payload includes the full answer key + explanations.
+// Students never consume this route (their content comes from other APIs).
+router.get('/:subject/:grade/:chapter', requireAdmin, async (req, res) => {
   try {
     const subject = req.params.subject;
     const grade = parseInt(req.params.grade, 10);
@@ -59,9 +61,7 @@ router.get('/:subject/:grade/:chapter', requireAuth, async (req, res) => {
     if (!subject || Number.isNaN(grade) || Number.isNaN(chapter)) {
       return res.status(400).json({ error: 'subject, grade, and chapter are required' });
     }
-    const isAdmin = await isAdminUser(req.user!.email);
-    const statusFilter = isAdmin ? undefined : 'published';
-    const item = await getQuiz(subject, grade, chapter, statusFilter);
+    const item = await getQuiz(subject, grade, chapter);
     if (!item) return res.status(404).json({ error: 'Quiz not found' });
     res.json(item);
   } catch (err: any) {

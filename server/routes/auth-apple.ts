@@ -13,13 +13,15 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function setRefreshTokenCookie(res: any, token: string): void {
+function setRefreshTokenCookie(res: any, token: string, req?: any): void {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isSecure = isProduction && Boolean(req?.secure || req?.headers?.['x-forwarded-proto'] === 'https');
   res.cookie('acematric_refresh_token', token, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'strict',
+    secure: isSecure,
+    sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: '/api/auth',
+    path: '/',
   });
 }
 
@@ -110,6 +112,7 @@ router.post('/', authLimiter, async (req, res) => {
           email,
           provider: 'apple',
           provider_id: appleId,
+          email_verified: true, // Apple already verified ownership of this address
           created_at: new Date().toISOString(),
         }]);
 
@@ -161,7 +164,7 @@ router.post('/', authLimiter, async (req, res) => {
     if (!stored) {
       return res.status(500).json({ error: 'Failed to create session' });
     }
-    setRefreshTokenCookie(res, refreshToken);
+    setRefreshTokenCookie(res, refreshToken, req);
 
     const profileData = profile ? snakeToCamel(profile) : createDefaultProfile({ email, name: userName, role: userRole });
 

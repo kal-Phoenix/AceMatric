@@ -24,7 +24,7 @@ router.post('/unsubscribe', requireAuth, validateBody(pushUnsubscribeSchema), as
   try {
     const { endpoint } = req.body;
 
-    const success = await removePushSubscription(endpoint);
+    const success = await removePushSubscription(req.user!.email, endpoint);
     if (!success) return res.status(500).json({ error: 'Failed to remove subscription.' });
 
     res.json({ success: true });

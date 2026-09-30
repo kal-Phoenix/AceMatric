@@ -9,6 +9,7 @@ import { Stream, Language, SessionHistoryEntry } from '../../types';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
 import { db } from '../../lib/supabase';
 import { getAccessToken } from '../../lib/authToken';
+import { subscribeToPush, unsubscribeFromPush } from '../../lib/push';
 
 interface ProfileViewProps {
   stream: Stream;
@@ -115,6 +116,18 @@ export default function ProfileView({
   };
 
   const isAvatarUrl = avatar && (avatar.startsWith('http://') || avatar.startsWith('https://'));
+
+  // Keep the Web Push subscription in sync with the preference toggle
+  // (no-ops when the browser doesn't support push or permission is denied)
+  const handleNotificationsToggle = () => {
+    const next = !notifications;
+    setNotifications(next);
+    if (next) {
+      void subscribeToPush();
+    } else {
+      void unsubscribeFromPush();
+    }
+  };
 
   const subjectsList = useMemo(() => {
     return stream === 'Natural Science'
@@ -464,7 +477,7 @@ export default function ProfileView({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setNotifications(!notifications)}
+                onClick={handleNotificationsToggle}
                 className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center justify-between transition-all"
               >
                 <div className="flex items-center gap-3">

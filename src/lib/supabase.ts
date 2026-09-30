@@ -102,6 +102,13 @@ async function api<T = unknown>(path: string, options?: RequestInit, retries = 1
   throw lastError;
 }
 
+export interface PastExamGradeResult {
+  results: { id: string; correct: boolean; answered: boolean; correctOptionId: string | null; explanation: string }[];
+  correct: number;
+  total: number;
+  pct: number;
+}
+
 export const db = {
   async signup(email: string, password: string, name: string, stream?: string): Promise<AuthSignupResponse> {
     return api<AuthSignupResponse>('/api/auth/signup', {
@@ -330,6 +337,14 @@ export const db = {
 
   async getPastExamManage(id: string): Promise<any> {
     return api<any>(`/api/past-exam-manage/${id}`);
+  },
+
+  // Server-side grading: the answer key is never shipped with the exam list.
+  async gradePastExam(id: string, answers: Record<string, string>): Promise<PastExamGradeResult> {
+    return api<PastExamGradeResult>(`/api/past-exam-manage/${id}/grade`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    });
   },
 
   async getPastExamsManageStats(): Promise<{ total: number; published: number; draft: number; subjects: string[] }> {

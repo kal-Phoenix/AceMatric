@@ -1312,9 +1312,10 @@ export default function LearningView({
                 {/* Chapter Video Masterclass & Breakdown */}
                 {(() => {
                   const fallbackVideo = getTopicVideo(selectedSubject, selectedGrade, selectedChapterNum, selectedChapter?.chapterName);
-                  const videoId = studyMaterial.youtubeVideoId || fallbackVideo.videoId;
+                  const validDbVideoId = studyMaterial.youtubeVideoId && studyMaterial.youtubeVideoId !== 'placeholder' && studyMaterial.youtubeVideoId !== 'dQw4w9WgXcQ' ? studyMaterial.youtubeVideoId : null;
+                  const videoId = validDbVideoId || fallbackVideo.videoId;
                   const title = studyMaterial.title || `${selectedSubject} - ${selectedChapter?.chapterName || `Chapter ${selectedChapterNum}`}`;
-                  const duration = studyMaterial.videoDuration || fallbackVideo.duration;
+                  const duration = (validDbVideoId ? studyMaterial.videoDuration : null) || fallbackVideo.duration;
 
                   if (!videoId) return null;
 

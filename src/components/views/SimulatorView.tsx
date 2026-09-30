@@ -61,6 +61,7 @@ export default function SimulatorView({
 
   const pastExamQuestions: PracticeQuestion[] = useMemo(() => {
     if (!pastExamEntry?.questions) return [];
+    // The API withholds the answer key — it arrives after server-side grading
     return pastExamEntry.questions.map((q: any) => ({
       id: q.id,
       subject: pastExamEntry.subject,
@@ -72,8 +73,8 @@ export default function SimulatorView({
         id: ['a','b','c','d'][i] || String(i),
         text,
       })),
-      correctOptionId: ['a','b','c','d'][q.correctIndex] || 'a',
-      explanation: q.explanation || '',
+      correctOptionId: '',
+      explanation: '',
       difficulty: 'Medium',
     }));
   }, [pastExamEntry, stream]);
@@ -109,6 +110,10 @@ export default function SimulatorView({
   const submitExamRef = useRef<() => void>(() => {});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [scorePercent, setScorePercent] = useState(0);
+  const [isGrading, setIsGrading] = useState(false);
+  const [gradeError, setGradeError] = useState<string | null>(null);
+  // Answer key returned by POST /:id/grade, keyed by question id
+  const [gradedQuestions, setGradedQuestions] = useState<Record<string, { correctOptionId: string; explanation: string }> | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [showProctorWarning, setShowProctorWarning] = useState(false);
   // Proctoring: detect tab switches during exam
@@ -145,6 +150,10 @@ export default function SimulatorView({
     setIsSubmitted(false);
     setIsActive(false);
     setFlaggedQuestions({});
+    setGradedQuestions(null);
+    setGradeError(null);
+    setIsGrading(false);
+    setScorePercent(0);
   }, [safeMock.id]);
   // Countdown timer - use ref for submit callback to avoid stale closure
   useEffect(() => {
@@ -166,6 +175,15 @@ export default function SimulatorView({
     mockQuestions = pastExamQuestions;
   } else {
     mockQuestions = allQuestions.filter((q) => safeMock.questionIds.includes(q.id));
+  }
+
+  // Once the server grades a past-paper attempt, fold the answer key into the
+  // rendered questions so the review screens can highlight correct answers.
+  if (gradedQuestions) {
+    mockQuestions = mockQuestions.map((q) => {
+      const graded = gradedQuestions[q.id];
+      return graded ? { ...q, correctOptionId: graded.correctOptionId, explanation: graded.explanation } : q;
+    });
   }
 
   const currentQ = mockQuestions[currentIndex] || mockQuestions[0];
@@ -198,9 +216,43 @@ export default function SimulatorView({
       return next;
     });
   };
-  const submitExam = () => {
-    setIsActive(false);
+  const finishSubmit = (pct: number) => {
+    setScorePercent(pct);
     setIsSubmitted(true);
+    setGradeError(null);
+    onCompleteMock(safeMock.id, pct);
+    if (pct >= 60) {
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+    }
+  };
+
+  const submitExam = async () => {
+    if (isGrading || isSubmitted) return;
+    setIsActive(false); // stop the timer immediately
+    setGradeError(null);
+
+    // Past papers are graded server-side because the API never ships the key.
+    if (simulatorMode === 'past' && pastExamEntry?.id) {
+      setIsGrading(true);
+      try {
+        const outcome = await db.gradePastExam(pastExamEntry.id, userAnswersRef.current);
+        const key: Record<string, { correctOptionId: string; explanation: string }> = {};
+        for (const r of outcome.results) {
+          if (r.correctOptionId) {
+            key[r.id] = { correctOptionId: r.correctOptionId, explanation: r.explanation || '' };
+          }
+        }
+        setGradedQuestions(key);
+        finishSubmit(outcome.pct);
+      } catch (err: any) {
+        setGradeError(err?.message || 'We could not reach the grading service.');
+      } finally {
+        setIsGrading(false);
+      }
+      return;
+    }
+
+    // Grand mocks pull from the question bank, which carries the key locally.
     let correct = 0;
     const answers = userAnswersRef.current;
     mockQuestions.forEach((q) => {
@@ -208,12 +260,7 @@ export default function SimulatorView({
         correct += 1;
       }
     });
-    const pct = Math.round((correct / (mockQuestions.length || 1)) * 100);
-    setScorePercent(pct);
-    onCompleteMock(safeMock.id, pct);
-    if (pct >= 60) {
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-    }
+    finishSubmit(Math.round((correct / (mockQuestions.length || 1)) * 100));
   };
   submitExamRef.current = submitExam;
   const answeredCount = Object.keys(userAnswers).length;
@@ -241,6 +288,44 @@ export default function SimulatorView({
             >
               I Understand
             </button>
+          </div>
+        </div>
+      )}
+      {/* Grading overlay — answer key is fetched from the server at submit time */}
+      {isGrading && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141920] border border-slate-800 rounded-xl p-8 max-w-sm w-full text-center space-y-4">
+            <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-white">Grading your exam…</p>
+            <p className="text-xs text-slate-400">Checking your answers against the official key.</p>
+          </div>
+        </div>
+      )}
+      {/* Grading failure — keep the attempt and let the student retry */}
+      {gradeError && !isGrading && !isSubmitted && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141920] border border-rose-500/30 rounded-xl p-8 max-w-md w-full text-center space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8 text-rose-400" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold text-white">Grading failed</h2>
+              <p className="text-sm text-slate-300">{gradeError} Your answers are still saved — try again.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setGradeError(null); submitExam(); }}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer active:scale-95"
+              >
+                Retry grading
+              </button>
+              <button
+                onClick={() => { setGradeError(null); setIsActive(false); setIsSubmitted(false); }}
+                className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm rounded-xl border border-slate-700 transition-all cursor-pointer active:scale-95"
+              >
+                Abandon attempt
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -691,7 +776,15 @@ export default function SimulatorView({
                         <span>Ask AI</span>
                       </button>
                     </div>
-                    <p className="text-slate-300 text-xs leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQ.explanation) }} />
+                    {currentQ.explanation ? (
+                      <p className="text-slate-300 text-xs leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentQ.explanation) }} />
+                    ) : (
+                      <p className="text-slate-500 text-xs italic leading-relaxed">
+                        {userAnswers[currentQ.id]
+                          ? 'No written explanation for this question.'
+                          : 'You skipped this question — the explanation is shown after you attempt it.'}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

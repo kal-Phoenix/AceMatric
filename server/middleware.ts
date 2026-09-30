@@ -168,7 +168,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 // Rate limiters — use Redis store when available (shared across instances)
-function rateLimitOpts(opts: { windowMs: number; max: number; message: any }) {
+export function rateLimitOpts<T extends { windowMs: number; max: number; message: any }>(opts: T) {
   return {
     ...opts,
     standardHeaders: true,

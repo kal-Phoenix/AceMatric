@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin, isAdminUser } from '../middleware';
+import { requireAuth, requireAdmin } from '../middleware';
 import { logAudit } from '../audit';
 import { getSupabaseAdmin as getSupabase } from '../db';
 import {
@@ -18,7 +18,9 @@ function safeJsonParse<T>(value: any, fallback: T): T {
   try { return JSON.parse(value) as T; } catch { return fallback; }
 }
 
-// GET /api/past-exam-manage/public - student-facing: list published past exams
+// GET /api/past-exam-manage/public - student-facing: list published past exams.
+// The answer key is deliberately NOT included — clients grade through
+// POST /:id/grade after the student submits their attempt.
 router.get('/public', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabase();
@@ -37,8 +39,6 @@ router.get('/public', requireAuth, async (req, res) => {
         id: q.id,
         question: q.question,
         options: q.options,
-        correctIndex: q.correctIndex ?? 0,
-        explanation: q.explanation,
       }));
       return {
         id: row.id,
@@ -55,6 +55,48 @@ router.get('/public', requireAuth, async (req, res) => {
     res.json(entries);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to list past exams' });
+  }
+});
+
+const OPTION_IDS = ['a', 'b', 'c', 'd'];
+
+// POST /api/past-exam-manage/:id/grade — server-side grading.
+// The answer key only ever comes back for questions the student actually
+// attempted, so bulk-grabbing every solution requires submitting a real attempt.
+router.post('/:id/grade', requireAuth, async (req, res) => {
+  try {
+    const answers = req.body?.answers;
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+      return res.status(400).json({ error: 'answers must be an object of questionId → optionId' });
+    }
+
+    const entry = await getPastExam(req.params.id, 'published');
+    if (!entry) return res.status(404).json({ error: 'Past exam not found' });
+
+    let correct = 0;
+    const results = (entry.questions || []).map((q: any) => {
+      const given = typeof answers[q.id] === 'string' && answers[q.id] ? answers[q.id] : null;
+      const correctOptionId = OPTION_IDS[q.correctIndex] || OPTION_IDS[0];
+      const isCorrect = given !== null && given === correctOptionId;
+      if (isCorrect) correct++;
+      return {
+        id: q.id,
+        correct: isCorrect,
+        answered: given !== null,
+        correctOptionId: given !== null ? correctOptionId : null,
+        explanation: given !== null ? (q.explanation || '') : '',
+      };
+    });
+
+    const total = results.length;
+    res.json({
+      results,
+      correct,
+      total,
+      pct: Math.round((correct / (total || 1)) * 100),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to grade past exam' });
   }
 });
 
@@ -98,11 +140,11 @@ router.get('/stats', requireAdmin, async (_req, res) => {
 });
 
 // GET /api/past-exam-manage/:id
-router.get('/:id', requireAuth, async (req, res) => {
+// Admin-only: the payload includes correct answers and explanations, and only
+// the admin console edits a single exam by id.
+router.get('/:id', requireAdmin, async (req, res) => {
   try {
-    const isAdmin = await isAdminUser(req.user!.email);
-    const statusFilter = isAdmin ? undefined : 'published';
-    const item = await getPastExam(req.params.id, statusFilter);
+    const item = await getPastExam(req.params.id);
     if (!item) return res.status(404).json({ error: 'Past exam not found' });
     res.json(item);
   } catch (err: any) {

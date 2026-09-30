@@ -23,6 +23,7 @@ import { sanitizeHtml } from '../../lib/sanitize';
 import RichTextEditor from '../ui/RichTextEditor';
 import { SortableList, SortableItem } from '../ui/SortableList';
 import QuestionBuilder, { type QBQuestion } from '../ui/QuestionBuilder';
+import { extractYouTubeVideoId } from './learning/VideoPlayer';
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', label: 'Pending' },
@@ -1387,9 +1388,15 @@ function ContentEditor({ entry, isCreating, saving, message, onSave, onBack, onC
                 <input type="text" value={entry.videoDuration} onChange={(e) => onChange({ videoDuration: e.target.value })} placeholder="e.g. 12:34" className="w-full bg-[#0B111E] border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-all" />
               </div>
             </div>
-            {entry.youtubeVideoId && (
+            {extractYouTubeVideoId(entry.youtubeVideoId) && (
               <div className="mt-2 rounded-xl overflow-hidden border border-slate-800">
-                <iframe src={`https://www.youtube.com/embed/${entry.youtubeVideoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${extractYouTubeVideoId(entry.youtubeVideoId)}?rel=0&modestbranding=1`}
+                  className="w-full aspect-video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
               </div>
             )}
           </div>
@@ -1479,7 +1486,7 @@ function ContentPreview({ entry }: { entry: ContentEntry }) {
       {entry.corePoints.length > 0 && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Core Points</h3><ol className="space-y-1.5">{entry.corePoints.map((point, i) => <li key={i} className="flex items-start gap-2 text-xs text-slate-300"><span className="text-blue-400 font-semibold shrink-0">{i + 1}.</span>{point}</li>)}</ol></div>}
       {entry.subtopics.length > 0 && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-3">Subtopics</h3><div className="space-y-4">{entry.subtopics.map((sub, i) => { return <div key={i} className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-4 space-y-2 overflow-hidden"><h4 className="text-sm font-semibold text-white">{sub.title || `Subtopic ${i + 1}`}</h4><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none space-y-4">{sub.imageUrl ? <div className="my-2 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/80 flex flex-col items-center p-2"><img src={sub.imageUrl} alt={sub.imageCaption || sub.title} referrerPolicy="no-referrer" className="max-h-48 w-auto object-contain rounded-lg" />{sub.imageCaption && <p className="text-[10px] text-slate-400 mt-1 italic text-center">{sub.imageCaption}</p>}</div> : <div className="my-2 overflow-hidden rounded-xl border border-dashed border-slate-700 bg-slate-800/30 flex items-center justify-center p-4"><p className="text-[10px] text-slate-500 italic">Image placeholder</p></div>}<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(sub.content) }} /></div>{sub.examInsight && <div className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">{sub.examInsight}</div>}</div>; })}</div></div>}
       {entry.examTips && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Exam Tips</h3><div className="text-xs text-slate-300 leading-relaxed prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.examTips) }} /></div>}
-      {entry.youtubeVideoId && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Video</h3><div className="rounded-xl overflow-hidden border border-slate-800"><iframe src={`https://www.youtube.com/embed/${entry.youtubeVideoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></div>}
+      {extractYouTubeVideoId(entry.youtubeVideoId) && <div><h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Video</h3><div className="rounded-xl overflow-hidden border border-slate-800"><iframe src={`https://www.youtube-nocookie.com/embed/${extractYouTubeVideoId(entry.youtubeVideoId)}?rel=0&modestbranding=1`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div></div>}
     </div>
   );
 }

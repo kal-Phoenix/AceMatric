@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { fileTypeFromBuffer } from 'file-type';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { supabaseAdmin, formatSupabaseError, snakeToCamel } from '../db';
-import { requireAuth, requireAdmin } from '../middleware';
+import { requireAuth, requireAdmin, rateLimitOpts } from '../middleware';
 import { imageUpload, MIME_TO_EXT } from '../upload-utils';
 
 const router = Router();
@@ -41,15 +41,13 @@ const ACCOUNT_DETAILS: Record<string, { bank: string; accountName: string; accou
   },
 };
 
-// Rate limiter for payment submissions: 5 per hour per user
-const submitLimiter = rateLimit({
+// Rate limiter for payment submissions: 5 per hour per user (Redis-backed when available)
+const submitLimiter = rateLimit(rateLimitOpts({
   windowMs: 60 * 60 * 1000,
   max: 5,
   message: { error: 'Too many payment submissions. Please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
   keyGenerator: (req: any) => req.user?.email || ipKeyGenerator(req),
-});
+}));
 
 // GET /api/payments/accounts — account details (auth required)
 router.get('/accounts', requireAuth, (_req, res) => {

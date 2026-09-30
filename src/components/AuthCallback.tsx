@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { setAccessToken, restoreTokenFromCookie } from '../lib/authToken';
+import { restoreTokenFromCookie } from '../lib/authToken';
 
 const OAUTH_NEW_USER_KEY = 'acematric_oauth_new_user';
 
@@ -22,6 +22,22 @@ export function consumeOAuthNewUserFlag(): boolean {
   }
 }
 
+function readOAuthUserDataCookie(): { isNewUser?: boolean } | null {
+  try {
+    const raw = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('google_user_data='))
+      ?.split('=')[1];
+    if (!raw) return null;
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    // One-shot flag — remove it so it can't be replayed on a later visit
+    document.cookie = 'google_user_data=; path=/; max-age=0';
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -33,19 +49,13 @@ export default function AuthCallback() {
       return;
     }
 
-    if (searchParams.get('isNewUser') === 'true') {
+    // New-user flag arrives in a cookie — never put tokens or user data in the URL
+    const oauthUserData = readOAuthUserDataCookie();
+    if (oauthUserData?.isNewUser || searchParams.get('isNewUser') === 'true') {
       markOAuthNewUser();
     }
 
-    const token = searchParams.get('token');
-    if (token) {
-      setAccessToken(token);
-      // Dispatch custom event so AuthProvider immediately re-verifies session
-      window.dispatchEvent(new Event('acematric_auth_change'));
-      navigate('/', { replace: true });
-      return;
-    }
-
+    // Exchange the httpOnly refresh cookie for an in-memory access token
     restoreTokenFromCookie().finally(() => {
       window.dispatchEvent(new Event('acematric_auth_change'));
       navigate('/', { replace: true });

@@ -7,8 +7,10 @@ import cookieParser from 'cookie-parser';
 import { globalLimiter } from './middleware';
 import { testSupabaseConnection } from './db';
 import { redis } from './redis';
+import { captureException } from './sentry';
 import authRoutes from './routes/auth';
 import googleAuthRoutes from './routes/auth-google';
+import appleAuthRoutes from './routes/auth-apple';
 import oauthConfigRoutes from './routes/auth-oauth';
 import profileRoutes from './routes/profile';
 import contactRoutes from './routes/contact';
@@ -51,14 +53,15 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "https:"],
       connectSrc: ["'self'", "wss:", "ws:", "https:"],
-      frameSrc: ["'none'"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      childSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
       objectSrc: ["'none'"],
     },
   },
   crossOriginEmbedderPolicy: false,
 }));
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:4000,http://127.0.0.1:3000,http://127.0.0.1:4000,https://acematric.com,https://www.acematric.com,https://acematric.fly.dev')
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:4000,http://127.0.0.1:3000,http://127.0.0.1:4000,https://acematric.com,https://www.acematric.com')
   .split(',')
   .map(o => o.trim())
   .filter(o => isDev || !o.startsWith('http://localhost'));
@@ -69,9 +72,11 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    if (/\.fly\.dev$/.test(origin)) return callback(null, true);
+    if (/\.onrender\.com$/.test(origin)) return callback(null, true);
     if (isDev && /^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'), false);
+    const corsError: any = new Error('Not allowed by CORS');
+    corsError.status = 403;
+    return callback(corsError, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -85,6 +90,7 @@ app.use('/api', globalLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/google', googleAuthRoutes);
+app.use('/api/auth/apple', appleAuthRoutes);
 app.use('/api/auth/oauth', oauthConfigRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/contact', contactRoutes);
@@ -139,6 +145,13 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   } else {
     console.error('[app] Unhandled server error:', err?.message || 'Unknown error');
   }
+  if (err?.status === 403 && err?.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+  if (err?.status && err.status < 500) {
+    return res.status(err.status).json({ error: 'Request could not be processed' });
+  }
+  captureException(err);
   if (!res.headersSent) {
     res.status(err.status || 500).json({ error: 'An unexpected server error occurred' });
   }

@@ -33,27 +33,20 @@ async function ensureRoleColumn() {
       return;
     }
 
-    console.log('[setup] Adding role column to student_profiles...');
-    const { error: rpcError } = await supabase.rpc('sql_exec', {
-      query: `ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'student';`
-    });
-
-    if (rpcError) {
-      console.log('[setup] Auto-add not available. Run migration manually:');
-      console.log('  Paste SQL from server/migrations/004_user_roles.sql into Supabase SQL Editor');
-    } else {
-      console.log('[setup] role column added to student_profiles');
-      const { getAdminEmails } = await import('./middleware');
-      const adminEmails = getAdminEmails();
-      if (adminEmails.length > 0) {
-        for (const email of adminEmails) {
-          await supabase
-            .from('student_profiles')
-            .update({ role: 'admin' })
-            .eq('email', email);
-        }
-        console.log(`[setup] Admin roles set for: ${adminEmails.join(', ')}`);
+    // Never run DDL through a Supabase RPC — a callable `sql_exec` function is
+    // arbitrary SQL execution if it is ever exposed below the service role.
+    console.log('[setup] student_profiles.role column is missing.');
+    console.log('  Run migration server/migrations/004_user_roles.sql in the Supabase SQL Editor.');
+    const { getAdminEmails } = await import('./middleware');
+    const adminEmails = getAdminEmails();
+    if (adminEmails.length > 0) {
+      for (const email of adminEmails) {
+        await supabase
+          .from('student_profiles')
+          .update({ role: 'admin' })
+          .eq('email', email);
       }
+      console.log(`[setup] Admin roles set for: ${adminEmails.join(', ')}`);
     }
   } catch (err) {
     console.warn('[setup] ensureRoleColumn failed (non-critical):', err instanceof Error ? err.message : err);

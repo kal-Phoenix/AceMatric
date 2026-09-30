@@ -136,32 +136,7 @@ router.post('/signup', authLimiter, validateBody(signupSchema), async (req, res)
     if (!refreshToken) return;
 
     // Send verification email
-    let verificationCode: string | null = null;
-    try {
-      const code = generateVerificationCode();
-      const codeHash = await bcrypt.hash(code, 10);
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-      await supabase
-        .from('users_auth')
-        .update({ verification_code: codeHash, verification_expires_at: expiresAt })
-        .eq('email', normalizedEmail);
-
-      const appName = process.env.APP_NAME || 'AceMatric';
-      const emailSent = await sendEmail({
-        to: normalizedEmail,
-        subject: `${appName} — Verify your email`,
-        html: renderVerificationEmail(code, appName),
-      });
-
-      // Only return code in development when email wasn't sent
-      if (!emailSent && process.env.NODE_ENV !== 'production') {
-        verificationCode = code;
-        console.log(`[auth] Dev mode — verification code for ${normalizedEmail}: ${code}`);
-      }
-    } catch (emailErr) {
-      console.error('[auth] Failed to send verification email:', emailErr);
-    }
+    const verificationCode = await issueVerificationCode(normalizedEmail);
 
     // Send welcome email (best effort)
     try {
@@ -175,7 +150,14 @@ router.post('/signup', authLimiter, validateBody(signupSchema), async (req, res)
       console.error('[auth] Failed to send welcome email:', emailErr);
     }
 
-    res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token, emailVerified: false });
+    res.json({
+      success: true,
+      profile: { ...defaultProfile, role: userRole },
+      token,
+      emailVerified: false,
+      // never present in production
+      ...(verificationCode ? { devCode: verificationCode } : {}),
+    });
   } catch (err: any) {
     res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
@@ -194,6 +176,11 @@ router.post('/signin', authLimiter, validateBody(signinSchema), async (req, res)
 
     if (authError) return res.status(500).json({ error: 'Something went wrong on our end. Try again in a bit.' });
     if (!matchedUser) return res.status(401).json({ error: 'Wrong email or password.' });
+
+    // OAuth-only accounts have no password — never let bcrypt see a null hash
+    if (!matchedUser.password) {
+      return res.status(401).json({ error: 'Wrong email or password.' });
+    }
 
     // Check account lockout
     if (matchedUser.locked_until && new Date(matchedUser.locked_until) > new Date()) {
@@ -226,12 +213,11 @@ router.post('/signin', authLimiter, validateBody(signinSchema), async (req, res)
       .update({ failed_attempts: 0, locked_until: null })
       .eq('email', normalizedEmail);
 
-    // Auto-verify existing users who haven't been verified yet
-    if (!matchedUser.email_verified) {
-      await supabase
-        .from('users_auth')
-        .update({ email_verified: true, verification_code: null, verification_expires_at: null })
-        .eq('email', normalizedEmail);
+    const isEmailVerified = matchedUser.email_verified === true;
+    let devCode: string | null = null;
+    if (!isEmailVerified) {
+      // Never auto-verify — issue a fresh code and make the user prove ownership
+      devCode = await issueVerificationCode(normalizedEmail);
     }
 
     const { data: profile, error: profileError } = await supabase
@@ -254,14 +240,14 @@ router.post('/signin', authLimiter, validateBody(signinSchema), async (req, res)
       const token = generateToken({ email: normalizedEmail, name: defaultProfile.name, role: userRole });
       const refreshToken = await issueRefreshToken(res, normalizedEmail);
       if (!refreshToken) return;
-      return res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token, emailVerified: true });
+      return res.json({ success: true, profile: { ...defaultProfile, role: userRole }, token, emailVerified: isEmailVerified, ...(devCode ? { devCode } : {}) });
     }
 
     const userRole = (profile as any).role || 'student';
     const token = generateToken({ email: normalizedEmail, name: profile.name, role: userRole });
     const refreshToken = await issueRefreshToken(res, normalizedEmail);
     if (!refreshToken) return;
-    res.json({ success: true, profile: { ...snakeToCamel(profile), role: userRole }, token, emailVerified: true });
+    res.json({ success: true, profile: { ...snakeToCamel(profile), role: userRole }, token, emailVerified: isEmailVerified, ...(devCode ? { devCode } : {}) });
   } catch (err: any) {
     res.status(500).json({ error: 'An error occurred. Please try again.' });
   }
@@ -389,6 +375,9 @@ router.post('/change-password', requireAuth, validateBody(changePasswordSchema),
 
     if (userError) return res.status(500).json({ error: 'Failed to process request' });
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.password) {
+      return res.status(400).json({ error: 'This account signs in with Google or Apple and has no password. Use password recovery to set one.' });
+    }
 
     const passwordValid = await bcrypt.compare(currentPassword, user.password);
     if (!passwordValid) return res.status(401).json({ error: 'That is not your current password.' });
@@ -492,6 +481,35 @@ function generateVerificationCode(): string {
   return String(crypto.randomInt(100000, 999999));
 }
 
+// Generates, stores and emails a 6-digit verification code.
+// Returns the plaintext code in development (for the dev-code UI), null in production.
+async function issueVerificationCode(email: string): Promise<string | null> {
+  try {
+    const code = generateVerificationCode();
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await supabase
+      .from('users_auth')
+      .update({ verification_code: codeHash, verification_expires_at: expiresAt })
+      .eq('email', email);
+
+    const appName = process.env.APP_NAME || 'AceMatric';
+    await sendEmail({
+      to: email,
+      subject: `${appName} — Verify your email`,
+      html: renderVerificationEmail(code, appName),
+    });
+
+    const devCode = process.env.NODE_ENV !== 'production' ? code : null;
+    if (devCode) console.log(`[auth] Dev mode — verification code for ${email}: ${code}`);
+    return devCode;
+  } catch (err: any) {
+    console.error('[auth] Failed to issue verification code:', err?.message || err);
+    return null;
+  }
+}
+
 function renderVerificationEmail(code: string, appName = 'AceMatric'): string {
   return `
 <!DOCTYPE html>
@@ -526,32 +544,18 @@ router.post('/send-verification', authLimiter, async (req, res) => {
       .maybeSingle();
 
     if (fetchError) return res.status(500).json({ error: 'Something went wrong. Try again.' });
-    if (!user) return res.status(404).json({ error: 'No account found with this email.' });
 
-    const code = generateVerificationCode();
-    const codeHash = await bcrypt.hash(code, 10);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+    // Always the same response whether or not the account exists (no enumeration)
+    let devCode: string | null = null;
+    if (user) {
+      devCode = await issueVerificationCode(normalizedEmail);
+    }
 
-    await supabase
-      .from('users_auth')
-      .update({
-        verification_code: codeHash,
-        verification_expires_at: expiresAt,
-      })
-      .eq('email', normalizedEmail);
-
-    const appName = process.env.APP_NAME || 'AceMatric';
-    await sendEmail({
-      to: normalizedEmail,
-      subject: `${appName} — Verify your email`,
-      html: renderVerificationEmail(code, appName),
+    res.json({
+      success: true,
+      message: 'If an account exists, a verification code has been sent.',
+      ...(devCode ? { devCode } : {}),
     });
-
-    // Only return code in development when email wasn't sent
-    const devCode = process.env.NODE_ENV !== 'production' ? code : null;
-    if (devCode) console.log(`[auth] Dev mode — verification code for ${normalizedEmail}: ${code}`);
-
-    res.json({ success: true, message: 'Verification code sent.', devCode });
   } catch (err: any) {
     console.error('[auth] Send verification error:', err);
     res.status(500).json({ error: 'Failed to send verification code.' });
@@ -563,9 +567,13 @@ router.post('/verify-email', authLimiter, async (req, res) => {
   try {
     const { email, code } = req.body;
     if (!email || !code) return res.status(400).json({ error: 'Email and code are required.' });
-    if (code.length !== 6) return res.status(400).json({ error: 'Code must be 6 digits.' });
+    if (String(code).length !== 6) return res.status(400).json({ error: 'Code must be 6 digits.' });
 
     const normalizedEmail = normalizeEmail(email);
+    // Single failure message for every failure mode so responses can't be used
+    // to discover which emails are registered.
+    const invalidResponse = () =>
+      res.status(400).json({ error: 'Invalid or expired code. Please request a new one.' });
 
     const { data: user, error: fetchError } = await supabase
       .from('users_auth')
@@ -574,19 +582,17 @@ router.post('/verify-email', authLimiter, async (req, res) => {
       .maybeSingle();
 
     if (fetchError) return res.status(500).json({ error: 'Something went wrong. Try again.' });
-    if (!user) return res.status(404).json({ error: 'No account found.' });
-
-    if (!user.verification_code || !user.verification_expires_at) {
-      return res.status(400).json({ error: 'No verification code found. Please request a new one.' });
+    if (!user || !user.verification_code || !user.verification_expires_at) {
+      return invalidResponse();
     }
 
     if (new Date(user.verification_expires_at) < new Date()) {
-      return res.status(400).json({ error: 'Code expired. Please request a new one.' });
+      return invalidResponse();
     }
 
-    const codeValid = await bcrypt.compare(code, user.verification_code);
+    const codeValid = await bcrypt.compare(String(code).trim(), user.verification_code);
     if (!codeValid) {
-      return res.status(400).json({ error: 'Invalid code. Please try again.' });
+      return invalidResponse();
     }
 
     await supabase
