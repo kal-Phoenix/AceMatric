@@ -126,15 +126,6 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
               );
             })}
           </div>
-
-          {/* Quick FAQ Teaser */}
-          <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5 text-center space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto">
-              <HelpCircle className="w-5 h-5 text-blue-400" />
-            </div>
-            <h4 className="font-semibold text-sm text-white">Common Questions</h4>
-            <p className="text-xs text-slate-400">Check the FAQ section below for quick answers about payments, features, and study tools.</p>
-          </div>
         </div>
 
         {/* Right: Contact Form */}
