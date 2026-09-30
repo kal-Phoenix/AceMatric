@@ -82,18 +82,19 @@ async function issueRefreshToken(res: any, userEmail: string): Promise<string> {
 }
 
 async function revokeRefreshToken(tokenHash: string): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from('refresh_tokens')
-    .update({ revoked_at: new Date().toISOString() })
+    .delete()
     .eq('token_hash', tokenHash);
+  if (error) console.error('[auth] Failed to revoke refresh token:', error.message);
 }
 
 async function revokeAllUserRefreshTokens(userEmail: string): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from('refresh_tokens')
-    .update({ revoked_at: new Date().toISOString() })
-    .eq('user_email', userEmail)
-    .is('revoked_at', null);
+    .delete()
+    .eq('user_email', userEmail);
+  if (error) console.error('[auth] Failed to revoke user refresh tokens:', error.message);
 }
 
 router.post('/signup', authLimiter, validateBody(signupSchema), async (req, res) => {
@@ -408,17 +409,16 @@ router.post('/refresh', authLimiter, async (req, res) => {
     // Find the token record
     const { data: tokenRecord, error: lookupError } = await supabase
       .from('refresh_tokens')
-      .select('id, user_email, expires_at, revoked_at')
+      .select('id, user_email, expires_at')
       .eq('token_hash', tokenHash)
-      .single();
+      .maybeSingle();
 
     if (lookupError || !tokenRecord) {
       clearRefreshTokenCookie(res);
       return res.status(401).json({ error: 'Invalid refresh token. Please log in again.', code: 'INVALID_REFRESH_TOKEN' });
     }
 
-    // Check if revoked
-    if (tokenRecord.revoked_at) {
+    if ((tokenRecord as any).revoked_at) {
       clearRefreshTokenCookie(res);
       return res.status(401).json({ error: 'Refresh token revoked. Please log in again.', code: 'REVOKED_REFRESH_TOKEN' });
     }
@@ -428,9 +428,6 @@ router.post('/refresh', authLimiter, async (req, res) => {
       clearRefreshTokenCookie(res);
       return res.status(401).json({ error: 'Refresh token expired. Please log in again.', code: 'EXPIRED_REFRESH_TOKEN' });
     }
-
-    // Revoke old token (rotation)
-    await revokeRefreshToken(tokenHash);
 
     // Look up the user's profile for the access token
     const { data: profile } = await supabase
@@ -449,9 +446,14 @@ router.post('/refresh', authLimiter, async (req, res) => {
       role: userRole,
     });
 
-    // Issue new refresh token (rotation)
+    // Issue new refresh token (rotation) — persist it before revoking the old
+    // one so a storage failure never destroys the current session
     const newRefreshToken = generateRefreshToken();
-    await storeRefreshToken(tokenRecord.user_email, newRefreshToken);
+    const storedNew = await storeRefreshToken(tokenRecord.user_email, newRefreshToken);
+    if (!storedNew) {
+      return res.status(500).json({ error: 'Failed to refresh session' });
+    }
+    await revokeRefreshToken(tokenHash);
     setRefreshTokenCookie(res, newRefreshToken);
 
     res.json({ success: true, token: newAccessToken });
