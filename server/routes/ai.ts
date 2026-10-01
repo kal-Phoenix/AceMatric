@@ -4,8 +4,56 @@ import sanitizeHtml from 'sanitize-html';
 import { supabaseAdmin as supabase, formatSupabaseError } from '../db';
 import { requireAuth, aiLimiter } from '../middleware';
 import { validateBody, conceptExplainerSchema, studyPlanSchema, askTutorSchema } from '../validation';
+import { isPremiumRow, intFromEnv, todayKey, AI_DAILY_LIMIT_FALLBACK } from '../entitlements';
 
 const router = Router();
+
+// Per-user daily AI quota. aiLimiter is per-IP (shared NATs in Ethiopia would
+// cross-trip it), so enforce the real free-tier budget keyed by account.
+// Pro users are unlimited. Fails open: if the quota check itself errors the
+// request still runs — never break AI because of a bookkeeping hiccup.
+async function aiDailyQuota(req: any, res: any, next: any) {
+  try {
+    const email = req.user?.email;
+    if (!email) return next();
+
+    const { data: profile, error } = await supabase
+      .from('student_profiles')
+      .select('is_premium, premium_expires_at, ai_daily_used, ai_daily_date')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[ai] Quota lookup failed, allowing request:', error.message);
+      return next();
+    }
+    if (!profile || isPremiumRow(profile)) return next();
+
+    const limit = intFromEnv('AI_DAILY_LIMIT', AI_DAILY_LIMIT_FALLBACK);
+    const today = todayKey();
+    const used = profile.ai_daily_date === today ? (profile.ai_daily_used || 0) : 0;
+
+    if (used >= limit) {
+      return res.status(429).json({
+        error: `You've reached today's limit of ${limit} AI help requests. Upgrade to Pro for unlimited AI tutoring.`,
+        code: 'AI_DAILY_LIMIT',
+      });
+    }
+
+    // Charge before generation so failed calls can't be farmed.
+    const { error: chargeError } = await supabase
+      .from('student_profiles')
+      .update({ ai_daily_used: used + 1, ai_daily_date: today })
+      .eq('email', email);
+    if (chargeError) {
+      console.warn('[ai] Quota charge failed, allowing request:', chargeError.message);
+    }
+    next();
+  } catch (err) {
+    console.warn('[ai] Quota check error, allowing request:', err);
+    next();
+  }
+}
 
 function getAIClient() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -121,7 +169,7 @@ async function generateCurriculumFallback(subject: string, query: string): Promi
 }
 
 // POST /api/ai/concept-explainer
-router.post('/concept-explainer', requireAuth, aiLimiter, validateBody(conceptExplainerSchema), async (req, res) => {
+router.post('/concept-explainer', requireAuth, aiLimiter, validateBody(conceptExplainerSchema), aiDailyQuota, async (req, res) => {
   try {
     const { prompt, subject, language, history } = req.body;
 
@@ -180,7 +228,7 @@ Use clean HTML tags: <h3>, <h4>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <code>, 
 });
 
 // POST /api/ai/study-plan
-router.post('/study-plan', requireAuth, aiLimiter, validateBody(studyPlanSchema), async (req, res) => {
+router.post('/study-plan', requireAuth, aiLimiter, validateBody(studyPlanSchema), aiDailyQuota, async (req, res) => {
   try {
     const {
       targetScore, currentHours, weakSubjects, stream,
@@ -235,7 +283,7 @@ Create a structured study plan with phases, daily schedules, and mock targets. O
 });
 
 // POST /api/ai/ask-tutor
-router.post('/ask-tutor', requireAuth, aiLimiter, validateBody(askTutorSchema), async (req, res) => {
+router.post('/ask-tutor', requireAuth, aiLimiter, validateBody(askTutorSchema), aiDailyQuota, async (req, res) => {
   try {
     const { question, subject } = req.body;
     const ai = getAIClient();

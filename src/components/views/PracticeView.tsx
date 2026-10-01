@@ -17,7 +17,9 @@ import {
   TrendingUp,
   Flame,
   ChevronRight,
-  Info
+  Info,
+  X,
+  Menu,
 } from 'lucide-react';
 import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
 import { Subject, Stream, Language, PracticeQuestion } from '../../types';
@@ -228,6 +230,7 @@ export default function PracticeView({
 
   // State Machine
   const [sessionState, setSessionState] = useState<SessionState>('config');
+  const [showQuestionMap, setShowQuestionMap] = useState<boolean>(false);
 
   // Practice questions: load from database
   const [allQuestions, setAllQuestions] = useState<PracticeQuestion[]>([]);
@@ -709,45 +712,51 @@ export default function PracticeView({
           <div className="lg:col-span-8 space-y-3 min-h-0 flex flex-col">
 
             {/* Top Bar */}
-            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-3 flex items-center justify-between gap-3">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-2.5 sm:p-3 flex items-center justify-between gap-2 sm:gap-3">
               <button
                 onClick={() => setSessionState('config')}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-600 transition-all cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-white px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-600 transition-all cursor-pointer shrink-0 touch-btn"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Exit
+                <span className="hidden xs:inline">Exit</span>
               </button>
 
-              {/* Progress Bar */}
-              <div className="flex-1 flex items-center gap-3">
+              {/* Progress Bar & Clickable Question Map trigger */}
+              <div className="flex-1 flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="flex-1 bg-slate-800/60 h-2 rounded-full overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-blue-400 to-emerald-400 h-full rounded-full transition-all duration-500"
                     style={{ width: `${((currentIndex + 1) / activeQuestions.length) * 100}%` }}
                   />
                 </div>
-                <span className="text-[11px] font-semibold text-white tabular-nums shrink-0">
-                  {currentIndex + 1}<span className="text-slate-500 font-normal">/{activeQuestions.length}</span>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowQuestionMap(true)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] font-bold shrink-0 touch-btn hover:bg-blue-500/20 cursor-pointer"
+                  title="Open Question Map"
+                >
+                  <span className="tabular-nums">{currentIndex + 1}/{activeQuestions.length}</span>
+                  <ChevronRight className="w-3 h-3 rotate-90" />
+                </button>
               </div>
 
               {/* Timer */}
               {timerMinutes > 0 ? (
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-semibold text-xs shrink-0 border transition-all ${
+                <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-mono font-semibold text-xs shrink-0 border transition-all ${
                   secondsRemaining <= 60
                     ? 'bg-rose-500/15 text-rose-300 border-rose-500/40 animate-pulse'
                     : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
                 }`}>
                   <Clock className="w-3.5 h-3.5" />
-                  {formatTime(secondsRemaining)}
+                  <span>{formatTime(secondsRemaining)}</span>
                 </div>
               ) : (
-                <div className="text-[11px] text-slate-500 font-bold shrink-0 px-2">Untimed</div>
+                <div className="text-[11px] text-slate-500 font-bold shrink-0 px-1.5">Untimed</div>
               )}
             </div>
 
             {/* Question Card */}
-            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5 sm:p-6 space-y-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <div className="bg-[#0F1218] rounded-2xl border border-slate-800/60 p-5 sm:p-6 space-y-5 lg:flex-1 lg:min-h-0 lg:overflow-y-auto no-scrollbar">
 
               {/* Chapter & Difficulty Tags */}
               <div className="flex items-center justify-between">
@@ -807,7 +816,7 @@ export default function PracticeView({
                       key={opt.id}
                       onClick={() => handleSelectOption(currentQ.id, opt.id)}
                       disabled={isAnswered}
-                      className={`p-4 rounded-xl border text-left text-sm font-medium transition-all flex items-start gap-3 cursor-pointer ${style}`}
+                      className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left text-sm font-medium transition-all flex items-start gap-3 cursor-pointer min-h-[52px] touch-btn ${style}`}
                     >
                       <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold uppercase text-xs shrink-0 transition-colors ${
                         isAnswered && isOptCorrect ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
@@ -816,7 +825,7 @@ export default function PracticeView({
                       }`}>
                         {opt.id}
                       </span>
-                      <span className="flex-1 pt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(opt.text) }} />
+                      <span className="flex-1 pt-1 leading-relaxed text-xs sm:text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(opt.text) }} />
                       {isAnswered && isOptCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-1" />}
                       {isAnswered && isSelected && !isOptCorrect && <XCircle className="w-5 h-5 text-rose-400 shrink-0 mt-1" />}
                     </button>
@@ -872,8 +881,8 @@ export default function PracticeView({
                 </div>
               )}
 
-              {/* Navigation */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800/50">
+              {/* Desktop Navigation */}
+              <div className="hidden lg:flex items-center justify-between pt-3 border-t border-slate-800/50">
                 <button
                   onClick={() => { setShowHint(false); setCurrentIndex(prev => Math.max(0, prev - 1)); }}
                   disabled={currentIndex === 0}
@@ -904,10 +913,116 @@ export default function PracticeView({
               </div>
 
             </div>
+
+            {/* STICKY BOTTOM DOCK ON MOBILE FOR FAST SOLVING */}
+            <div className="lg:hidden fixed bottom-[60px] left-0 right-0 z-40 px-3.5 py-2.5 glass-nav border-t border-white/[0.08] shadow-2xl flex items-center justify-between gap-2">
+              <button
+                onClick={() => { setShowHint(false); setCurrentIndex(prev => Math.max(0, prev - 1)); }}
+                disabled={currentIndex === 0}
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all touch-btn ${
+                  currentIndex > 0
+                    ? 'bg-slate-800/90 text-white border border-white/[0.1] cursor-pointer'
+                    : 'opacity-30 cursor-not-allowed text-slate-500 bg-slate-900/50'
+                }`}
+              >
+                ← Prev
+              </button>
+
+              {isAnswered && (
+                <button
+                  onClick={() => onJumpToExplainer(currentQ.questionText, currentQ.subject)}
+                  className="px-3 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-bold flex items-center gap-1.5 touch-btn cursor-pointer shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  <span>AI Tutor</span>
+                </button>
+              )}
+
+              {currentIndex < activeQuestions.length - 1 ? (
+                <button
+                  onClick={() => { setShowHint(false); setCurrentIndex(prev => prev + 1); }}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 touch-btn cursor-pointer"
+                >
+                  <span>Next Question</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setSessionState('summary')}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs shadow-md shadow-emerald-500/25 flex items-center justify-center gap-1.5 touch-btn cursor-pointer"
+                >
+                  <span>Complete</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Question Map Bottom Sheet */}
+            {showQuestionMap && (
+              <div
+                className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-xs flex items-end justify-center sm:items-center p-0 sm:p-4"
+                onClick={() => setShowQuestionMap(false)}
+                role="presentation"
+              >
+                <div
+                  className="w-full max-w-lg glass-sheet border border-white/[0.1] rounded-t-[28px] sm:rounded-2xl p-5 space-y-4 animate-sheet-up max-h-[80vh] flex flex-col"
+                  style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+                  onClick={e => e.stopPropagation()}
+                  role="dialog"
+                >
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Question Navigator</h3>
+                      <p className="text-[11px] text-slate-400">
+                        {Object.keys(userAnswers).length} of {activeQuestions.length} answered • {activeQuestions.filter(q => userAnswers[q.id] === q.correctOptionId).length} correct
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowQuestionMap(false)}
+                      className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2 overflow-y-auto p-1 mobile-scroll max-h-[50vh]">
+                    {activeQuestions.map((q, idx) => {
+                      const isAnsweredQ = !!userAnswers[q.id];
+                      const isCurrent = idx === currentIndex;
+                      const isCorrect = userAnswers[q.id] === q.correctOptionId;
+
+                      let btnClass = 'bg-slate-900 border-white/[0.08] text-slate-400';
+                      if (isAnsweredQ) {
+                        btnClass = isCorrect
+                          ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold'
+                          : 'bg-rose-500/20 border-rose-500/50 text-rose-300 font-bold';
+                      }
+                      if (isCurrent) {
+                        btnClass = 'ring-2 ring-blue-500 bg-blue-600 text-white font-extrabold shadow-md';
+                      }
+
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => {
+                            setShowHint(false);
+                            setCurrentIndex(idx);
+                            setShowQuestionMap(false);
+                          }}
+                          className={`h-11 rounded-xl border flex items-center justify-center text-xs font-bold transition-all touch-btn cursor-pointer ${btnClass}`}
+                        >
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* RIGHT: Monitor Sidebar (4 cols) */}
-          <div className="lg:col-span-4 bg-[#0F1218] border border-slate-800/60 rounded-2xl p-4 space-y-4 shadow-sm">
+          {/* RIGHT: Desktop Monitor Sidebar (hidden on mobile to prevent scrolling clutter) */}
+          <div className="hidden lg:block lg:col-span-4 bg-[#0F1218] border border-slate-800/60 rounded-2xl p-4 space-y-4 shadow-sm">
 
             <div className="flex items-center gap-2 border-b border-slate-800/50 pb-3">
               <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">

@@ -32,6 +32,7 @@ interface DashboardViewProps {
   onStartFocusedStudy?: (subject: Subject) => void;
   user?: any;
   onProfileUpdate?: (updatedUser: any) => void;
+  onConsumeUsage?: (count: number) => void;
   sessionHistory?: SessionHistoryEntry[];
   onClearHistory?: () => void;
 }
@@ -51,6 +52,7 @@ export default function DashboardView({
   onStartFocusedStudy,
   user,
   onProfileUpdate,
+  onConsumeUsage,
   sessionHistory = [],
   onClearHistory,
 }: DashboardViewProps) {
@@ -276,10 +278,11 @@ export default function DashboardView({
       if (user && onProfileUpdate) {
         onProfileUpdate({
           ...user,
-          streakDays: streakDays + 1,
-          dailyQuestionsUsed: (user.dailyQuestionsUsed || 0) + 5
+          streakDays: streakDays + 1
         });
       }
+      // Daily challenge = 5 questions against the server-verified daily cap
+      onConsumeUsage?.(5);
     }
   };
 
@@ -401,7 +404,7 @@ export default function DashboardView({
     <div className="max-w-6xl mx-auto space-y-6 text-slate-100 pb-10 select-none">
       
       {/* 1. Dashboard banner */}
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between p-6 sm:p-8 bg-[#0C1018] border border-white/[0.08] rounded-2xl gap-6 overflow-hidden shadow-2xl brand-border-hover transition-all min-h-[160px]">
+      <div className="relative flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-6 md:p-8 bg-[#0C1018] border border-white/[0.08] rounded-2xl gap-4 sm:gap-6 overflow-hidden shadow-2xl brand-border-hover transition-all min-h-[140px] sm:min-h-[160px]">
         {/* Background ambient glow */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-600/[0.08] rounded-full blur-[90px] pointer-events-none" />
         <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-sky-500/[0.05] rounded-full blur-[80px] pointer-events-none" />
@@ -448,9 +451,9 @@ export default function DashboardView({
       </div>
 
       {/* Diagnostic metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Metric 1: Diagnostic Exam Readiness */}
-        <div className="bg-[#0D1017] border border-white/[0.08] p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group card-lift hover:border-blue-500/30">
+        <div className="bg-[#0D1017] border border-white/[0.08] p-4 sm:p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group card-lift hover:border-blue-500/30">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
           <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
             <Award className="w-6 h-6" />
@@ -467,7 +470,7 @@ export default function DashboardView({
         </div>
 
         {/* Metric 2: Quick Actions */}
-        <div className="bg-[#0D1017] border border-white/[0.08] p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden group card-lift hover:border-blue-500/30">
+        <div className="bg-[#0D1017] border border-white/[0.08] p-4 sm:p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden group card-lift hover:border-blue-500/30">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 border border-blue-500/20 text-blue-400">
@@ -495,7 +498,7 @@ export default function DashboardView({
       <div className="bg-[#0D1017] border border-white/[0.08] hover:border-amber-500/20 transition-all rounded-2xl overflow-hidden shadow-md card-lift">
         <div className="flex flex-col sm:flex-row items-stretch">
           {/* Left: info panel */}
-          <div className="flex-1 p-6 flex flex-col gap-4">
+          <div className="flex-1 p-4 sm:p-6 flex flex-col gap-3 sm:gap-4">
             <div className="flex items-start gap-4">
               <div className="relative shrink-0">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400">
@@ -538,7 +541,7 @@ export default function DashboardView({
             </div>
           </div>
           {/* Right: action */}
-          <div className="px-6 py-5 sm:py-0 sm:flex sm:items-center sm:justify-center border-t sm:border-t-0 sm:border-l border-white/[0.06] shrink-0">
+          <div className="px-4 py-3.5 sm:px-6 sm:py-0 sm:flex sm:items-center sm:justify-center border-t sm:border-t-0 sm:border-l border-white/[0.06] shrink-0">
             <button
               onClick={() => setShowChallengeModal(true)}
               className={`w-full sm:w-auto py-3 px-7 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] ${
@@ -568,11 +571,15 @@ export default function DashboardView({
 
       {/* Daily challenge modal */}
       {showChallengeModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#141920] border border-slate-800 rounded-xl overflow-hidden shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-[#141920] border border-slate-800 rounded-t-3xl sm:rounded-xl overflow-hidden shadow-2xl max-w-2xl w-full max-h-[92svh] flex flex-col">
+            {/* Grab handle — mobile only */}
+            <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1.5 rounded-full bg-slate-700/70" />
+            </div>
             
             {/* Header bar */}
-            <div className="px-6 pt-5 pb-4 bg-slate-900/45 border-b border-slate-800 shrink-0">
+            <div className="px-5 sm:px-6 pt-4 sm:pt-5 pb-4 bg-slate-900/45 border-b border-slate-800 shrink-0">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
@@ -608,7 +615,7 @@ export default function DashboardView({
             </div>
 
             {/* Scrollable content container */}
-            <div className="px-6 py-6 overflow-y-auto flex-1">
+            <div className="px-4 sm:px-6 py-5 sm:py-6 overflow-y-auto flex-1 pb-[max(20px,env(safe-area-inset-bottom))]">
               {dailyQuestions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 min-h-[300px] text-center">
                   <div className="w-16 h-16 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center text-blue-400 animate-pulse">
@@ -843,7 +850,7 @@ export default function DashboardView({
             return (
               <div 
                 key={subj}
-                className="p-5 bg-[#141920] border border-slate-800 hover:border-slate-700/80 rounded-xl flex flex-col justify-between transition-all duration-200 group hover:shadow-lg hover:shadow-slate-950/20"
+                className="p-4 sm:p-5 bg-[#141920] border border-slate-800 hover:border-slate-700/80 rounded-2xl flex flex-col justify-between transition-all duration-200 group hover:shadow-lg hover:shadow-slate-950/20"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
@@ -909,7 +916,7 @@ export default function DashboardView({
       </div>
 
       {/* 4.5. ACADEMIC SESSION HISTORY TRACKER */}
-      <div id="session-history-tracker" className="bg-[#0F1218] border border-slate-800 rounded-xl p-6 shadow-2xl space-y-5">
+      <div id="session-history-tracker" className="bg-[#0F1218] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
           <div className="space-y-1">
             <span className="text-xs uppercase font-semibold tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-1 border border-blue-500/20 rounded-full">
@@ -924,7 +931,7 @@ export default function DashboardView({
           </div>
           
           {/* History filter buttons */}
-          <div className="flex items-center gap-1.5 self-start sm:self-center bg-slate-900/60 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-1.5 self-start sm:self-center bg-slate-900/60 p-1 rounded-xl border border-slate-800 overflow-x-auto max-w-full no-scrollbar">
             {['all', 'study', 'practice', 'simulation'].map((type) => {
               const isActive = activeHistoryFilter === type;
               const labels: Record<string, string> = {
@@ -1041,7 +1048,7 @@ export default function DashboardView({
       </div>
 
       {/* 5. YOUR PERSONALIZED STUDY PLAN */}
-      <div className="bg-[#141920] border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
+      <div className="bg-[#141920] border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
           <div className="flex items-center space-x-3">
             <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">

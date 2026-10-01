@@ -32,7 +32,36 @@ export default function Footer({ language, onLanguageChange, onNavigate }: Foote
             © {new Date().getFullYear()} AceMatric EdTech · High School Matriculation Prep
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3">
+            <div
+              className="flex items-center rounded-lg border border-slate-700/60 bg-slate-900/40 p-0.5"
+              role="group"
+              aria-label="Interface language"
+            >
+              <button
+                type="button"
+                onClick={() => onLanguageChange('en')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                  language === 'en'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => onLanguageChange('am')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer font-[family-name:var(--font-ethiopic)] ${
+                  language === 'am'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                አማርኛ
+              </button>
+            </div>
+            <span className="hidden sm:inline text-slate-600">•</span>
             <span>Natural & Social Science</span>
             <span>•</span>
             <span className="text-slate-400">Addis Ababa, Ethiopia</span>

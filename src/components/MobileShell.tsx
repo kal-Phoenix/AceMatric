@@ -1,24 +1,28 @@
-﻿import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import {
-  BarChart3,
-  GraduationCap,
-  Target,
-  Clock,
-  Trophy,
-  Users,
-  Zap,
-  MessageSquare,
   Bell,
-  User,
   LogOut,
   Sun,
   Moon,
   X,
   ChevronRight,
-  Award,
+  Zap,
+  Search,
+  BookOpen,
+  Target,
+  Clock,
+  LayoutDashboard,
+  Trophy,
+  Users,
+  Grid,
+  Bot,
+  User,
+  Sparkles,
+  Flame,
 } from 'lucide-react';
 import { Stream } from '../types';
 import FloatingTimer from './FloatingTimer';
+import GlobalSearch from './GlobalSearch';
 import BrandLogo from './ui/BrandLogo';
 
 export interface MobileNavItem {
@@ -59,14 +63,15 @@ interface MobileShellProps {
   onToggleTheme?: () => void;
 }
 
-// Primary 5 bottom-tab items (icons only + short label)
-const PRIMARY_TAB_IDS = ['dashboard', 'study', 'practice', 'simulator', 'leaderboard'];
+// 4 primary core tabs + 1 More menu = 5 items (perfect for mobile ergonomics)
+const PRIMARY_TAB_IDS = ['dashboard', 'study', 'practice', 'simulator'];
 
 export default function MobileShell({
   children,
   navItems,
   activeTab,
   onTabChange,
+  stream,
   isPremium,
   user,
   onLogout,
@@ -82,475 +87,528 @@ export default function MobileShell({
   onToggleTheme,
 }: MobileShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const primaryTabs = navItems.filter(n => PRIMARY_TAB_IDS.includes(n.id));
-  const moreTabs = navItems.filter(n => !PRIMARY_TAB_IDS.includes(n.id));
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
-  const activeIsPrimary = PRIMARY_TAB_IDS.includes(activeTab);
+  // Lock background scroll when drawer is open
+  useEffect(() => {
+    if (isDrawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDrawerOpen]);
 
   const handleTabSelect = (id: string) => {
     onTabChange(id);
     setIsDrawerOpen(false);
   };
 
+  const activeIsPrimary = PRIMARY_TAB_IDS.includes(activeTab);
+
+  // Quick helper to get custom labels/icons for bottom bar
+  const getBottomTabMeta = (id: string) => {
+    switch (id) {
+      case 'dashboard':
+        return { label: 'Home', icon: <LayoutDashboard className="w-[20px] h-[20px]" /> };
+      case 'study':
+        return { label: 'Study', icon: <BookOpen className="w-[20px] h-[20px]" /> };
+      case 'practice':
+        return { label: 'Practice', icon: <Target className="w-[20px] h-[20px]" /> };
+      case 'simulator':
+        return { label: 'Mocks', icon: <Clock className="w-[20px] h-[20px]" /> };
+      default:
+        return null;
+    }
+  };
+
+  // Group items for the native "More" sheet
+  const academicTabs = navItems.filter(n => ['study', 'practice', 'simulator', 'matrix', 'explainer'].includes(n.id));
+  const communityTabs = navItems.filter(n => ['leaderboard', 'collaboration'].includes(n.id));
+  const extraTabs = navItems.filter(n => !['dashboard', 'study', 'practice', 'simulator', 'matrix', 'explainer', 'leaderboard', 'collaboration'].includes(n.id));
+
   return (
-    <div
-      className="flex flex-col w-full min-h-screen overflow-x-hidden"
-      style={{ background: '#0A0E14', color: '#f1f5f9', fontFamily: 'Inter, system-ui, sans-serif' }}
-    >
-      {/* ── TOP HEADER ─────────────────────────────────────────── */}
+    <div className="flex flex-col w-full min-h-screen overflow-x-hidden bg-[#0A0E14] text-slate-100 font-sans select-none">
+      {/* ── 1. NATIVE-FEEL TOP APP BAR ────────────────────────────────────── */}
       <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          height: 52,
-          background: 'rgba(10,14,20,0.97)',
-          borderBottom: '1px solid rgba(51,65,85,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 14px',
-          backdropFilter: 'blur(12px)',
-        }}
+        className="sticky top-0 z-40 flex items-center justify-between px-3.5 py-2 glass-header border-b border-white/[0.07] transition-all"
+        style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}
       >
-        {/* Left: Logo */}
-        <div onClick={() => handleTabSelect('dashboard')} style={{ cursor: 'pointer' }}>
-          <BrandLogo size="xs" showText={true} />
+        {/* Brand & Stream Pill */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleTabSelect('dashboard')}
+            className="cursor-pointer touch-btn active:scale-95 flex items-center"
+            aria-label="Go to Dashboard"
+          >
+            <BrandLogo size="xs" showText={true} glow={true} />
+          </button>
+
+          <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 border border-blue-500/25 text-blue-400">
+            {stream === 'Natural Science' ? 'Natural' : 'Social'}
+          </span>
         </div>
 
-        {/* Right: action icons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Right Header Controls */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          {/* Search Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsSearchOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer"
+            aria-label="Search questions and topics"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          {/* Theme Toggle */}
           {onToggleTheme && (
             <button
+              type="button"
               onClick={onToggleTheme}
-              style={iconBtnStyle}
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer"
               aria-label="Toggle theme"
             >
-              {theme === 'light'
-                ? <Moon style={{ width: 16, height: 16, color: '#64748b' }} />
-                : <Sun style={{ width: 16, height: 16, color: '#fbbf24' }} />
-              }
+              {theme === 'light' ? (
+                <Moon className="w-4 h-4 text-slate-700" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-400" />
+              )}
             </button>
           )}
 
+          {/* Pro Pill (if free user) */}
           {!isPremium && (
             <button
+              type="button"
               onClick={onOpenUpgrade}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                padding: '4px 10px', borderRadius: 8,
-                background: 'rgba(59,130,246,0.15)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                color: '#60a5fa', fontSize: 11, fontWeight: 700,
-                cursor: 'pointer',
-              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-sm shadow-blue-500/20 touch-btn cursor-pointer"
             >
-              <Zap style={{ width: 12, height: 12 }} />
-              Pro
+              <Zap className="w-3 h-3 fill-current" />
+              <span>Pro</span>
             </button>
           )}
 
+          {/* Notifications */}
           {user && (
-            <div style={{ position: 'relative' }}>
+            <div className="relative">
               <button
+                type="button"
                 onClick={onNotificationToggle}
-                style={{ ...iconBtnStyle, position: 'relative' }}
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer relative"
                 aria-label="Notifications"
               >
-                <Bell style={{ width: 17, height: 17, color: '#94a3b8' }} />
+                <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -2, right: -2,
-                    width: 16, height: 16, borderRadius: '50%',
-                    background: '#ef4444', color: '#fff',
-                    fontSize: 9, fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow-md animate-pulse">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </button>
 
+              {/* Notification Popover */}
               {isNotificationOpen && (
-                <div style={{
-                  position: 'absolute', right: 0, top: 40,
-                  width: 'min(320px, calc(100vw - 28px))',
-                  background: '#0F1218',
-                  border: '1px solid #1e293b',
-                  borderRadius: 14,
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-                  zIndex: 100,
-                  overflow: 'hidden',
-                  display: 'flex', flexDirection: 'column',
-                  maxHeight: 340,
-                }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 14px', borderBottom: '1px solid #1e293b', flexShrink: 0,
-                  }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>Notifications</span>
-                    {unreadCount > 0 && (
-                      <button onClick={onMarkAllNotificationsRead} style={{ fontSize: 11, color: '#94a3b8', cursor: 'pointer', background: 'none', border: 'none' }}>
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ overflowY: 'auto', flex: 1 }}>
-                    {notifications.length === 0
-                      ? <div style={{ padding: '24px 14px', textAlign: 'center', color: '#475569', fontSize: 12 }}>Nothing here yet.</div>
-                      : notifications.map(n => (
-                          <div
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+                    onClick={onNotificationToggle}
+                  />
+                  <div className="absolute right-0 top-11 w-[min(340px,calc(100vw-24px))] rounded-2xl bg-[#0F141F] border border-white/[0.1] shadow-2xl z-50 overflow-hidden flex flex-col max-h-[380px] animate-sheet-up">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-slate-900/50">
+                      <span className="text-xs font-bold text-white tracking-wide">Notifications</span>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={onMarkAllNotificationsRead}
+                          className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+                    <div className="overflow-y-auto flex-1 divide-y divide-white/[0.05]">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 px-4 text-center text-slate-400 text-xs">
+                          No notifications yet. You're all caught up!
+                        </div>
+                      ) : (
+                        notifications.map(n => (
+                          <button
+                            type="button"
                             key={n.id}
-                            onClick={() => { onMarkNotificationRead(n.id); if (n.actionUrl) onNotificationAction(n.actionUrl); onNotificationToggle(); }}
-                            style={{
-                              padding: '10px 14px',
-                              borderBottom: '1px solid rgba(30,41,59,0.6)',
-                              cursor: 'pointer',
-                              background: !n.isRead ? 'rgba(30,41,59,0.5)' : 'transparent',
+                            onClick={() => {
+                              onMarkNotificationRead(n.id);
+                              if (n.actionUrl) onNotificationAction(n.actionUrl);
+                              onNotificationToggle();
                             }}
+                            className={`w-full text-left px-4 py-3 cursor-pointer hover:bg-slate-800/40 transition-colors ${
+                              !n.isRead ? 'bg-blue-500/10' : ''
+                            }`}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{n.title}</span>
-                              {!n.isRead && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', flexShrink: 0, marginTop: 4 }} />}
+                            <div className="flex justify-between items-start gap-2">
+                              <span className="text-xs font-bold text-white">{n.title}</span>
+                              {!n.isRead && (
+                                <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0 mt-1" />
+                              )}
                             </div>
-                            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>{n.message}</p>
-                          </div>
+                            <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">{n.message}</p>
+                          </button>
                         ))
-                    }
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
 
-          {/* Avatar / login */}
+          {/* Profile Avatar / Login */}
           {user ? (
-            <div onClick={() => handleTabSelect('profile')} style={{ cursor: 'pointer' }}>
+            <button
+              type="button"
+              onClick={() => handleTabSelect('profile')}
+              className="cursor-pointer touch-btn shrink-0"
+              aria-label="Open profile"
+            >
               {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                <img src={user.avatar} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover', border: '2px solid #1e293b' }} />
+                <img
+                  src={user.avatar}
+                  alt=""
+                  className="w-9 h-9 rounded-xl object-cover border border-white/[0.15] ring-2 ring-blue-500/20"
+                />
               ) : (
-                <div style={{
-                  width: 30, height: 30, borderRadius: 8,
-                  background: '#1e293b',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 700, color: '#e2e8f0',
-                  border: '2px solid #334155',
-                }}>
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-xs font-bold text-white border border-white/[0.15] shadow-inner">
                   {user.name?.[0] || 'S'}
                 </div>
               )}
-            </div>
+            </button>
           ) : (
             <button
+              type="button"
               onClick={() => handleTabSelect('auth')}
-              style={{
-                padding: '4px 10px', borderRadius: 8,
-                background: '#1e293b', border: '1px solid #334155',
-                color: '#e2e8f0', fontSize: 11, fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold touch-btn cursor-pointer shadow-sm"
             >
-              Login
+              Sign In
             </button>
           )}
         </div>
       </header>
 
-      {/* ── PAGE CONTENT ───────────────────────────────────────── */}
-      <main style={{
-        flex: 1,
-        overflowX: 'hidden',
-        paddingBottom: 72, // space for bottom nav
-        minHeight: 0,
-      }}>
-        <div style={{ padding: '12px 12px 0' }}>
-          {children}
-        </div>
+      {/* ── 2. SCROLLABLE MAIN CONTENT CANVAS ─────────────────────────────── */}
+      <main className="flex-1 overflow-x-hidden pb-[calc(7.5rem+env(safe-area-inset-bottom))] min-h-0">
+        <div className="px-3.5 sm:px-5 py-4 sm:py-5 max-w-7xl mx-auto w-full">{children}</div>
       </main>
 
-      {/* ── BOTTOM TAB BAR ─────────────────────────────────────── */}
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        height: 60,
-        background: 'rgba(10,14,20,0.97)',
-        borderTop: '1px solid rgba(51,65,85,0.5)',
-        backdropFilter: 'blur(14px)',
-        display: 'flex',
-        alignItems: 'stretch',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}>
-        {primaryTabs.map(item => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleTabSelect(item.id)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 2,
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '6px 2px 4px',
-                position: 'relative',
-                color: isActive ? '#60a5fa' : '#475569',
-                transition: 'color 0.15s',
-              }}
-            >
-              {isActive && (
-                <span style={{
-                  position: 'absolute',
-                  top: 0, left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 28, height: 2,
-                  borderRadius: 2,
-                  background: '#3b82f6',
-                }} />
-              )}
-              <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {item.icon}
-              </span>
-              <span style={{ fontSize: 9.5, fontWeight: isActive ? 700 : 500, lineHeight: 1, letterSpacing: 0.2 }}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+      {/* ── 3. NATIVE-FEEL FROSTED BOTTOM NAVIGATION BAR ─────────────────── */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 glass-nav border-t border-white/[0.08] shadow-[0_-8px_32px_rgba(0,0,0,0.6)]"
+        style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
+        aria-label="Primary bottom navigation"
+      >
+        <div className="flex items-center justify-around h-[58px] px-1 max-w-lg mx-auto">
+          {PRIMARY_TAB_IDS.map(tabId => {
+            const isActive = activeTab === tabId;
+            const meta = getBottomTabMeta(tabId);
+            if (!meta) return null;
 
-        {/* "More" button */}
-        <button
-          onClick={() => setIsDrawerOpen(true)}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '6px 2px 4px',
-            color: !activeIsPrimary ? '#60a5fa' : '#475569',
-            position: 'relative',
-          }}
-        >
-          {!activeIsPrimary && (
-            <span style={{
-              position: 'absolute',
-              top: 0, left: '50%',
-              transform: 'translateX(-50%)',
-              width: 28, height: 2,
-              borderRadius: 2,
-              background: '#3b82f6',
-            }} />
-          )}
-          {/* 3-dot icon */}
-          <span style={{ display: 'flex', gap: 2.5, alignItems: 'center' }}>
-            {[0,1,2].map(i => (
-              <span key={i} style={{
-                width: 3.5, height: 3.5,
-                borderRadius: '50%',
-                background: !activeIsPrimary ? '#60a5fa' : '#475569',
-              }} />
-            ))}
-          </span>
-          <span style={{ fontSize: 9.5, fontWeight: 500, lineHeight: 1, letterSpacing: 0.2, marginTop: 2 }}>
-            More
-          </span>
-        </button>
+            return (
+              <button
+                key={tabId}
+                type="button"
+                onClick={() => handleTabSelect(tabId)}
+                className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 min-h-[48px] touch-btn cursor-pointer transition-all ${
+                  isActive ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {/* Active Glowing Pill Capsule */}
+                {isActive && (
+                  <span className="absolute -top-[1px] w-9 h-[3px] rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
+                )}
+
+                <span className={`transition-transform duration-200 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`}>
+                  {meta.icon}
+                </span>
+
+                <span className={`text-[10px] tracking-tight leading-none ${isActive ? 'font-bold text-white' : 'font-medium'}`}>
+                  {meta.label}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* More Sheet Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 min-h-[48px] touch-btn cursor-pointer transition-all ${
+              !activeIsPrimary ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+            aria-label="Open more menu"
+          >
+            {!activeIsPrimary && (
+              <span className="absolute -top-[1px] w-9 h-[3px] rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
+            )}
+
+            <span className={`flex items-center justify-center h-[20px] transition-transform duration-200 ${!activeIsPrimary ? 'scale-110' : ''}`}>
+              <Grid className="w-[19px] h-[19px]" />
+            </span>
+
+            <span className={`text-[10px] tracking-tight leading-none ${!activeIsPrimary ? 'font-bold text-white' : 'font-medium'}`}>
+              More
+            </span>
+          </button>
+        </div>
       </nav>
 
-      {/* ── MORE DRAWER ────────────────────────────────────────── */}
+      {/* ── 4. MODERN NATIVE BOTTOM SHEET (MORE MENU) ────────────────────── */}
       {isDrawerOpen && (
         <div
+          className="fixed inset-0 z-[60] bg-black/65 backdrop-blur-xs flex items-end justify-center"
           onClick={() => setIsDrawerOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 60,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex', alignItems: 'flex-end',
-          }}
+          role="presentation"
         >
           <div
+            className="w-full max-w-lg glass-sheet border-t border-white/[0.1] rounded-t-[28px] max-h-[85vh] flex flex-col animate-sheet-up overflow-hidden shadow-2xl"
+            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
             onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%',
-              background: '#0F1218',
-              borderTop: '1px solid #1e293b',
-              borderRadius: '20px 20px 0 0',
-              paddingBottom: 'env(safe-area-inset-bottom)',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
+            role="dialog"
+            aria-label="More navigation sheet"
           >
-            {/* Drag handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#334155' }} />
+            {/* Grab Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-12 h-1.5 rounded-full bg-slate-600/70" />
             </div>
 
-            {/* Header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 16px 10px',
-              borderBottom: '1px solid rgba(51,65,85,0.5)',
-            }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>More</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {onToggleTheme && (
-                  <button
-                    onClick={onToggleTheme}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '5px 10px', borderRadius: 8,
-                      background: '#1e293b', border: '1px solid #334155',
-                      color: '#94a3b8', fontSize: 11, fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {theme === 'light' ? <Moon style={{ width: 13, height: 13 }} /> : <Sun style={{ width: 13, height: 13, color: '#fbbf24' }} />}
-                    {theme === 'light' ? 'Dark' : 'Light'}
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  style={{ ...iconBtnStyle }}
-                  aria-label="Close"
-                >
-                  <X style={{ width: 16, height: 16, color: '#64748b' }} />
-                </button>
+            {/* Sheet Header */}
+            <div className="flex items-center justify-between px-5 py-2.5 border-b border-white/[0.08]">
+              <div>
+                <h3 className="text-base font-bold text-white">AceMatric Hub</h3>
+                <p className="text-[11px] text-slate-400">Everything you need to conquer your Matric</p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:text-white touch-btn cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Nav items */}
-            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 12px' }}>
-              {moreTabs.map(item => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabSelect(item.id)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '12px 14px',
-                      borderRadius: 12,
-                      marginBottom: 4,
-                      background: isActive ? 'rgba(59,130,246,0.08)' : 'transparent',
-                      border: isActive ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ color: isActive ? '#60a5fa' : '#64748b', flexShrink: 0, display: 'flex' }}>
-                      {item.icon}
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: isActive ? '#fff' : '#cbd5e1', flex: 1 }}>
-                      {item.fullLabel || item.label}
-                    </span>
-                    {isActive && (
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
-                    )}
-                    {!isActive && <ChevronRight style={{ width: 15, height: 15, color: '#334155', flexShrink: 0 }} />}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* User section */}
-            {user && (
-              <div style={{ padding: '10px 12px 14px', borderTop: '1px solid rgba(51,65,85,0.5)' }}>
-                <div
-                  onClick={() => handleTabSelect('profile')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    background: '#141920',
-                    border: '1px solid #1e293b',
-                    cursor: 'pointer',
-                    marginBottom: 8,
-                  }}
-                >
-                  {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                    <img src={user.avatar} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-                  ) : (
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                      background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, fontWeight: 700, color: '#e2e8f0',
-                    }}>
-                      {user.name?.[0] || 'S'}
-                    </div>
-                  )}
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
-                  </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); onLogout(); setIsDrawerOpen(false); }}
-                    style={{ ...iconBtnStyle, flexShrink: 0 }}
-                    aria-label="Log out"
-                    title="Log out"
-                  >
-                    <LogOut style={{ width: 16, height: 16, color: '#64748b' }} />
-                  </button>
+            {/* Sheet Body with Organized Categories */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-4 mobile-scroll">
+              {/* Category 1: Academics & Practice */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block">
+                  Study & Exam Tools
+                </span>
+                <div className="bg-[#141924] border border-white/[0.06] rounded-2xl p-1.5 space-y-1">
+                  {academicTabs.map(item => {
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleTabSelect(item.id)}
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl touch-btn cursor-pointer text-left transition-colors ${
+                          isActive
+                            ? 'bg-blue-600/20 border border-blue-500/30 text-white'
+                            : 'hover:bg-slate-800/50 text-slate-300'
+                        }`}
+                      >
+                        <span className={`shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400'}`}>
+                          {item.icon}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-slate-200'}`}>
+                            {item.fullLabel || item.label}
+                          </div>
+                        </div>
+                        {isActive ? (
+                          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {!isPremium && (
+              {/* Category 2: Community & Competitions */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block">
+                  Community & Ranks
+                </span>
+                <div className="bg-[#141924] border border-white/[0.06] rounded-2xl p-1.5 space-y-1">
+                  {communityTabs.map(item => {
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleTabSelect(item.id)}
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl touch-btn cursor-pointer text-left transition-colors ${
+                          isActive
+                            ? 'bg-blue-600/20 border border-blue-500/30 text-white'
+                            : 'hover:bg-slate-800/50 text-slate-300'
+                        }`}
+                      >
+                        <span className={`shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400'}`}>
+                          {item.icon}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-slate-200'}`}>
+                            {item.fullLabel || item.label}
+                          </div>
+                        </div>
+                        {isActive ? (
+                          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Extra Tabs (if any) */}
+              {extraTabs.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block">
+                    Other Resources
+                  </span>
+                  <div className="bg-[#141924] border border-white/[0.06] rounded-2xl p-1.5 space-y-1">
+                    {extraTabs.map(item => {
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleTabSelect(item.id)}
+                          className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl touch-btn cursor-pointer text-left transition-colors ${
+                            isActive
+                              ? 'bg-blue-600/20 border border-blue-500/30 text-white'
+                              : 'hover:bg-slate-800/50 text-slate-300'
+                          }`}
+                        >
+                          <span className={`shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400'}`}>
+                            {item.icon}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-xs font-bold truncate ${isActive ? 'text-white' : 'text-slate-200'}`}>
+                              {item.fullLabel || item.label}
+                            </div>
+                          </div>
+                          {isActive ? (
+                            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Pro Upgrade Banner (inside drawer) */}
+              {!isPremium && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onOpenUpgrade();
+                  }}
+                  className="w-full p-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-left touch-btn cursor-pointer relative overflow-hidden shadow-lg shadow-blue-500/20"
+                >
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-blue-200 mb-1">
+                        <Sparkles className="w-4 h-4" />
+                        Upgrade to AceMatric Pro
+                      </div>
+                      <p className="text-xs text-blue-100 font-medium leading-snug">
+                        Unlimited practice questions, AI explanations, and national past exam papers.
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-white/80 shrink-0 ml-2" />
+                  </div>
+                </button>
+              )}
+            </div>
+
+            {/* Sheet Footer: User Profile & Actions */}
+            {user && (
+              <div className="p-4 pt-2 border-t border-white/[0.08] bg-[#0C1018]">
+                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-900/60 border border-white/[0.06]">
                   <button
-                    onClick={() => { setIsDrawerOpen(false); onOpenUpgrade(); }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: 12,
-                      background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                      border: 'none',
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                    }}
+                    type="button"
+                    onClick={() => handleTabSelect('profile')}
+                    className="flex items-center gap-3 min-w-0 flex-1 touch-btn cursor-pointer text-left"
                   >
-                    <Zap style={{ width: 14, height: 14 }} />
-                    Upgrade to Pro
+                    {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                      <img
+                        src={user.avatar}
+                        alt=""
+                        className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/[0.1]"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                        {user.name?.[0] || 'S'}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-white truncate">{user.name}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{user.email}</div>
+                    </div>
                   </button>
-                )}
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLogout();
+                        setIsDrawerOpen(false);
+                      }}
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 touch-btn cursor-pointer transition-colors"
+                      aria-label="Log out"
+                      title="Log out"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
 
+      {/* Floating Timer & Global Search */}
       <FloatingTimer />
+
+      <GlobalSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onNavigate={onTabChange}
+      />
     </div>
   );
 }
-
-const iconBtnStyle: React.CSSProperties = {
-  width: 32,
-  height: 32,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'transparent',
-  border: 'none',
-  borderRadius: 8,
-  cursor: 'pointer',
-  padding: 0,
-};

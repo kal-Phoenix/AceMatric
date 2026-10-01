@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent, useMemo, useRef } from 'react';
 import {
   User, Award, Target, Clock, BookOpen, Sparkles, Check,
-  Sliders, Moon, Sun, Bell, BellOff, RefreshCw, Flame, BarChart2,
+  Sliders, Moon, Sun, Bell, BellOff, RefreshCw, Flame, BarChart2, Languages,
   Activity, Camera, Share2, Copy, Gift,
   Star, Zap, Crown, Rocket, Lightbulb, Upload, X
 } from 'lucide-react';
@@ -508,6 +508,42 @@ export default function ProfileView({
                   {theme}
                 </span>
               </button>
+
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 sm:col-span-2">
+                <div className="flex items-center gap-3 mb-3">
+                  <Languages className="w-4 h-4 text-blue-400" />
+                  <div>
+                    <div className="font-semibold text-xs text-white">Language</div>
+                    <div className="text-xs text-slate-400">
+                      UI labels where available; questions can include Amharic text
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onLanguageChange('en')}
+                    className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                      language === 'en'
+                        ? 'bg-blue-600 text-white border-blue-400'
+                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800'
+                    }`}
+                  >
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLanguageChange('am')}
+                    className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                      language === 'am'
+                        ? 'bg-blue-600 text-white border-blue-400'
+                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800'
+                    }`}
+                  >
+                    አማርኛ
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

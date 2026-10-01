@@ -100,9 +100,12 @@ export function useLiveNotifications(
       }
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname || '127.0.0.1';
-      const wsPort = window.location.port === '5173' ? '3000' : (window.location.port || '3000');
-      const socketUrl = `${protocol}//${host}:${wsPort}`;
+      // Same-origin in production (no port → default 443/80). Standalone Vite
+      // on 5173 must reach the API server on 3000 directly.
+      const wsHost = window.location.port === '5173'
+        ? `${window.location.hostname}:3000`
+        : window.location.host;
+      const socketUrl = `${protocol}//${wsHost}`;
 
       try {
         socket = new WebSocket(socketUrl);

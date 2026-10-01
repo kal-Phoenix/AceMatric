@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Clock, CheckCircle2, XCircle, AlertCircle, Award, RotateCcw, ArrowRight, Lock, Sparkles, BookOpen, Check, Play, FileText, ChevronRight, Flag } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, AlertCircle, Award, RotateCcw, ArrowRight, Lock, Sparkles, BookOpen, Check, Play, FileText, ChevronRight, Flag, X } from 'lucide-react';
 import { Stream, Language, MockExam, Subject, PracticeQuestion } from '../../types';
 import { db } from '../../lib/supabase';
 import confetti from 'canvas-confetti';
@@ -40,6 +39,7 @@ export default function SimulatorView({
   const [selectedYear, setSelectedYear] = useState<number>(2016);
   const [simulatorMode, setSimulatorMode] = useState<'grand' | 'past'>('past');
   const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, boolean>>({});
+  const [showMobileMap, setShowMobileMap] = useState<boolean>(false);
 
   const availableYears = useMemo(() => {
     const filtered = pastExams.filter(pe => pe.subject === selectedSubject);
@@ -371,25 +371,25 @@ export default function SimulatorView({
         </div>
         {/* Live Timer Gauge */}
         {(isActive || isSubmitted) && (
-          <div className="flex items-center gap-3 bg-slate-900/80 px-5 py-3 rounded-2xl border border-slate-700/80 shadow-inner">
-            <div className="text-right min-w-[80px]">
-              <p className="text-xs uppercase text-slate-400 font-bold tracking-wider">
-                {isSubmitted ? 'Final Score' : 'Time Remaining'}
+          <div className="flex items-center gap-3 bg-slate-900/80 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-700/80 shadow-inner">
+            <div className="text-right min-w-[72px] sm:min-w-[80px]">
+              <p className="text-[10px] sm:text-xs uppercase text-slate-400 font-bold tracking-wider">
+                {isSubmitted ? 'Final Score' : 'Time Left'}
               </p>
-              <p className={`text-xl font-mono font-semibold ${isSubmitted ? 'text-blue-400' : timeLeftSeconds < 300 ? 'text-rose-400' : 'text-white'}`}>
+              <p className={`text-lg sm:text-xl font-mono font-semibold ${isSubmitted ? 'text-blue-400' : timeLeftSeconds < 300 ? 'text-rose-400' : 'text-white'}`}>
                 {isSubmitted ? `${scorePercent}%` : formatTime(timeLeftSeconds)}
               </p>
             </div>
             {!isSubmitted && (
               <button
                 onClick={submitExam}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 Submit Now
               </button>
             )}
             {isSubmitted && (
-              <div className={`px-4 py-2 rounded-xl font-semibold text-sm ${
+              <div className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-semibold text-sm ${
                 scorePercent >= 70 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
                 scorePercent >= 50 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
                 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
@@ -403,7 +403,7 @@ export default function SimulatorView({
       {/* Main Exam Arena Layout */}
       {!isActive && !isSubmitted ? (
         /* Welcome Splash & Selection Sidebar - ONE PAGE FIT */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch max-h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
           {/* LEFT: Rules, instructions and context */}
           <div className="lg:col-span-7 bg-[#141920] border border-slate-800 rounded-xl p-6 sm:p-8 relative overflow-hidden flex flex-col">
             <div className="absolute top-0 right-0 w-56 h-56 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -620,23 +620,32 @@ export default function SimulatorView({
         </div>
       ) : (
         /* Active Simulation Screen - DUAL PANEL FOR PC */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start flex-1 min-h-0 max-h-[calc(100vh-140px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start flex-1 min-h-0">
           {/* LEFT PANEL (8 cols): Question Viewport */}
-          <div className="lg:col-span-8 space-y-3 min-h-0 overflow-hidden flex flex-col">
+          <div className="lg:col-span-8 space-y-3 min-h-0 flex flex-col">
             {/* Question Card Box */}
             {currentQ && (
-              <div className="bg-[#141920] border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 relative flex-1 min-h-0 overflow-y-auto no-scrollbar">
+              <div className="bg-[#141920] border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 relative lg:flex-1 lg:min-h-0 lg:overflow-y-auto no-scrollbar">
                 {/* Header within card */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-1 bg-blue-500/10 rounded-lg text-blue-400 text-xs font-bold border border-blue-500/20">
                       {currentQ.subject} • {currentQ.yearEC}
                     </span>
                     {currentQ.chapter && (
-                       <span className="text-xs text-slate-500 font-medium">{currentQ.chapter}</span>
+                       <span className="text-xs text-slate-500 font-medium hidden sm:inline">{currentQ.chapter}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Mobile Question Map Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => setShowMobileMap(true)}
+                      className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs font-bold touch-btn cursor-pointer"
+                    >
+                      <span>Q {currentIndex + 1}/{mockQuestions.length}</span>
+                      <ChevronRight className="w-3.5 h-3.5 rotate-90" />
+                    </button>
                     {!isSubmitted && (
                       <button
                         onClick={() => toggleFlag(currentQ.id)}
@@ -673,7 +682,7 @@ export default function SimulatorView({
                   />
                 </div>
                 {/* Options list */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                   {currentQ.options.map((opt) => {
                     const answered = userAnswers[currentQ.id];
                     const isSelected = answered === opt.id;
@@ -762,7 +771,7 @@ export default function SimulatorView({
                 </div>
                 {/* Post-Submission Explanation Review */}
                 {isSubmitted && (
-                  <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 space-y-2.5 text-xs leading-snug max-h-[160px] overflow-y-auto no-scrollbar">
+                  <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 space-y-2.5 text-xs leading-snug">
                     <div className="flex items-center justify-between">
                        <span className="font-semibold text-blue-400 flex items-center gap-1.5 uppercase tracking-wider text-xs">
                         <BookOpen className="w-3.5 h-3.5" />
@@ -789,9 +798,126 @@ export default function SimulatorView({
                 )}
               </div>
             )}
+
+            {/* MOBILE STICKY EXAM ACTION DOCK */}
+            <div className="lg:hidden fixed bottom-[60px] left-0 right-0 z-40 px-3.5 py-2.5 glass-nav border-t border-white/[0.08] shadow-2xl flex items-center justify-between gap-2">
+              <button
+                onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                disabled={currentIndex === 0}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 disabled:opacity-40 transition-all cursor-pointer bg-slate-800/90 border border-white/[0.1] touch-btn disabled:cursor-not-allowed"
+              >
+                ← Prev
+              </button>
+
+              {!isSubmitted && (
+                <button
+                  onClick={() => toggleFlag(currentQ.id)}
+                  className={`px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold touch-btn ${
+                    flaggedQuestions[currentQ.id]
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/60'
+                      : 'bg-slate-800 text-slate-400 border border-white/[0.1]'
+                  }`}
+                >
+                  <Flag className="w-3.5 h-3.5" fill={flaggedQuestions[currentQ.id] ? 'currentColor' : 'none'} />
+                  <span className="hidden xs:inline">{flaggedQuestions[currentQ.id] ? 'Flagged' : 'Flag'}</span>
+                </button>
+              )}
+
+              {currentIndex < mockQuestions.length - 1 ? (
+                <button
+                  onClick={() => setCurrentIndex(currentIndex + 1)}
+                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 touch-btn cursor-pointer"
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              ) : !isSubmitted ? (
+                <button
+                  onClick={submitExam}
+                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/25 flex items-center justify-center gap-1.5 touch-btn cursor-pointer"
+                >
+                  <span>Submit & Grade</span>
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsActive(false)}
+                  className="flex-1 py-2.5 px-4 bg-slate-800 text-white font-bold text-xs rounded-xl border border-white/[0.1] flex items-center justify-center gap-1.5 touch-btn cursor-pointer"
+                >
+                  <span>Back to Mocks</span>
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Question Map Bottom Sheet */}
+            {showMobileMap && (
+              <div
+                className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-xs flex items-end justify-center sm:items-center p-0 sm:p-4"
+                onClick={() => setShowMobileMap(false)}
+                role="presentation"
+              >
+                <div
+                  className="w-full max-w-lg glass-sheet border border-white/[0.1] rounded-t-[28px] sm:rounded-2xl p-5 space-y-4 animate-sheet-up max-h-[85vh] flex flex-col"
+                  style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+                  onClick={e => e.stopPropagation()}
+                  role="dialog"
+                >
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Exam Question Map</h3>
+                      <p className="text-[11px] text-slate-400">
+                        {answeredCount} Answered • {unansweredCount} Left • {Object.values(flaggedQuestions).filter(Boolean).length} Flagged
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowMobileMap(false)}
+                      className="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2 overflow-y-auto p-1 mobile-scroll max-h-[55vh]">
+                    {mockQuestions.map((q, idx) => {
+                      const isThisAnswered = !!userAnswers[q.id];
+                      const isThisCurrent = idx === currentIndex;
+                      const isThisFlagged = flaggedQuestions[q.id];
+                      let btnStyle = 'bg-slate-900 text-slate-400 border-white/[0.08]';
+                      if (isSubmitted) {
+                        const correct = userAnswers[q.id] === q.correctOptionId;
+                        btnStyle = correct
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                          : 'bg-rose-500/20 text-rose-300 border-rose-500/50';
+                      } else if (isThisCurrent) {
+                        btnStyle = 'bg-blue-600 text-white border-blue-400 scale-105 shadow-md font-extrabold';
+                      } else if (isThisFlagged) {
+                        btnStyle = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+                      } else if (isThisAnswered) {
+                        btnStyle = 'bg-slate-800 text-slate-200 border-white/[0.1]';
+                      }
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => {
+                            setCurrentIndex(idx);
+                            setShowMobileMap(false);
+                          }}
+                          className={`h-11 rounded-xl border text-xs shrink-0 flex items-center justify-center transition-all cursor-pointer relative font-bold touch-btn ${btnStyle}`}
+                        >
+                          {idx + 1}
+                          {isThisFlagged && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          {/* RIGHT PANEL (4 cols): Exam Controller / Status Console */}
-          <div className="lg:col-span-4 bg-[#141920] border border-slate-800 rounded-2xl p-3 space-y-2 flex flex-col min-h-0 max-h-[calc(100vh-140px)] overflow-hidden">
+          {/* RIGHT PANEL (4 cols): Exam Controller / Status Console (Desktop only) */}
+          <div className="hidden lg:flex lg:col-span-4 bg-[#141920] border border-slate-800 rounded-2xl p-3 space-y-2 flex-col min-h-0 max-h-[calc(100vh-140px)] overflow-hidden">
             <div className="space-y-2 overflow-y-auto no-scrollbar min-h-0 flex-1">
               {/* Status Header */}
               <div className="border-b border-slate-800/80 pb-2">

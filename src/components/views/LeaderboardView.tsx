@@ -116,67 +116,75 @@ export default function LeaderboardView({
         <>
           {/* Top 3 Podium */}
           {top3.length >= 3 && (
-            <div className="grid grid-cols-3 gap-3 items-end max-w-lg mx-auto">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 items-end max-w-lg mx-auto">
               {/* #2 */}
-              <div className="bg-[#141920] border border-slate-700/50 rounded-2xl p-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-2 border-2 border-slate-400">
-                  <Medal className="w-6 h-6 text-slate-300" />
+              <div className="bg-[#141920] border border-slate-700/50 rounded-2xl p-2.5 sm:p-4 text-center">
+                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-1.5 sm:mb-2 border-2 border-slate-400">
+                  <Medal className="w-4 h-4 sm:w-6 sm:h-6 text-slate-300" />
                 </div>
-                <div className="text-xs font-semibold text-white truncate">{top3[1].name}</div>
-                <div className="text-xs text-slate-500 truncate">{top3[1].school}</div>
-                <div className="mt-2 text-sm font-semibold text-blue-400">{getScore(top3[1])}</div>
-                <div className="text-xs text-slate-500">pts</div>
+                <div className="text-[11px] sm:text-xs font-semibold text-white truncate">{top3[1].name}</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 truncate">{top3[1].school}</div>
+                <div className="mt-1 sm:mt-2 text-xs sm:text-sm font-semibold text-blue-400">{getScore(top3[1])} <span className="text-[10px] text-slate-500 font-normal">pts</span></div>
               </div>
               {/* #1 */}
-              <div className="bg-[#141920] border border-yellow-500/40 rounded-2xl p-4 text-center ring-2 ring-yellow-500/20">
-                <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-2 border-2 border-yellow-400">
-                  <Trophy className="w-8 h-8 text-yellow-400" />
+              <div className="bg-[#141920] border border-yellow-500/40 rounded-2xl p-3 sm:p-4 text-center ring-2 ring-yellow-500/20 shadow-lg shadow-yellow-500/10">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-1.5 sm:mb-2 border-2 border-yellow-400">
+                  <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400" />
                 </div>
-                <div className="text-sm font-semibold text-white truncate">{top3[0].name}</div>
-                <div className="text-xs text-slate-500 truncate">{top3[0].school}</div>
-                <div className="mt-2 text-base font-semibold text-yellow-400">{getScore(top3[0])}</div>
-                <div className="text-xs text-slate-500">pts</div>
+                <div className="text-xs sm:text-sm font-bold text-white truncate">{top3[0].name}</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 truncate">{top3[0].school}</div>
+                <div className="mt-1 sm:mt-2 text-sm sm:text-base font-extrabold text-yellow-400">{getScore(top3[0])} <span className="text-[10px] text-slate-500 font-normal">pts</span></div>
               </div>
               {/* #3 */}
-              <div className="bg-[#141920] border border-amber-700/40 rounded-2xl p-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-amber-900/30 flex items-center justify-center mx-auto mb-2 border-2 border-amber-600">
-                  <Award className="w-6 h-6 text-amber-500" />
+              <div className="bg-[#141920] border border-amber-700/40 rounded-2xl p-2.5 sm:p-4 text-center">
+                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-amber-900/30 flex items-center justify-center mx-auto mb-1.5 sm:mb-2 border-2 border-amber-600">
+                  <Award className="w-4 h-4 sm:w-6 sm:h-6 text-amber-500" />
                 </div>
-                <div className="text-xs font-semibold text-white truncate">{top3[2].name}</div>
-                <div className="text-xs text-slate-500 truncate">{top3[2].school}</div>
-                <div className="mt-2 text-sm font-semibold text-amber-500">{getScore(top3[2])}</div>
-                <div className="text-xs text-slate-500">pts</div>
+                <div className="text-[11px] sm:text-xs font-semibold text-white truncate">{top3[2].name}</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 truncate">{top3[2].school}</div>
+                <div className="mt-1 sm:mt-2 text-xs sm:text-sm font-semibold text-amber-500">{getScore(top3[2])} <span className="text-[10px] text-slate-500 font-normal">pts</span></div>
               </div>
             </div>
           )}
 
           {/* Rest of leaderboard */}
           <div className="bg-[#141920] border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="grid grid-cols-[40px_1fr_80px_80px_60px] gap-2 px-4 py-2.5 border-b border-slate-800 text-xs font-semibold uppercase text-slate-500 tracking-wider">
+            {/* Desktop header */}
+            <div className="hidden sm:grid sm:grid-cols-[48px_1fr_90px_80px_70px] gap-2 px-4 py-2.5 border-b border-slate-800 text-xs font-semibold uppercase text-slate-500 tracking-wider">
               <span>Rank</span>
               <span>Student</span>
               <span>XP</span>
               <span>Streak</span>
               <span>Score</span>
             </div>
+
             {rest.map((entry) => (
               <div
                 key={entry.rank}
-                className={`grid grid-cols-[40px_1fr_80px_80px_60px] gap-2 px-4 py-3 border-b border-slate-800/50 items-center ${
-                  entry.isCurrentUser ? 'bg-blue-500/5' : 'hover:bg-slate-800/30'
+                className={`p-3 sm:px-4 sm:py-3 border-b border-slate-800/50 flex sm:grid sm:grid-cols-[48px_1fr_90px_80px_70px] items-center justify-between gap-2.5 transition-colors ${
+                  entry.isCurrentUser ? 'bg-blue-500/10' : 'hover:bg-slate-800/30'
                 }`}
               >
-                <span className="text-xs font-bold text-slate-400">#{entry.rank}</span>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">{entry.name}</div>
-                  <div className="text-xs text-slate-500 truncate">{entry.school}</div>
+                {/* Left: Rank & Student details */}
+                <div className="flex items-center gap-2.5 min-w-0 sm:contents">
+                  <span className="text-xs font-bold text-slate-400 w-7 text-center shrink-0">#{entry.rank}</span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate">{entry.name}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{entry.school}</div>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-blue-400">{entry.xp}</span>
-                <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                  <Flame className="w-3 h-3" />
-                  {entry.streak}d
-                </span>
-                <span className="text-xs font-semibold text-white">{getScore(entry)}</span>
+
+                {/* Right: Scores / Badges */}
+                <div className="flex sm:contents items-center gap-2 shrink-0">
+                  <span className="text-xs font-bold text-blue-400 hidden sm:block">{entry.xp} XP</span>
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 sm:bg-transparent sm:p-0 sm:border-0">
+                    <Flame className="w-3 h-3 fill-current" />
+                    {entry.streak}d
+                  </span>
+                  <span className="text-xs font-extrabold text-white bg-slate-900 px-2.5 py-1 rounded-xl border border-white/[0.08] sm:bg-transparent sm:p-0 sm:border-0">
+                    {getScore(entry)} <span className="text-[10px] text-slate-500 font-normal sm:hidden">pts</span>
+                  </span>
+                </div>
               </div>
             ))}
           </div>

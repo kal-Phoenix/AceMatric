@@ -14,17 +14,85 @@ const XP_PER_MILESTONE = 50;
 const MAX_MILESTONES = Math.floor(MAX_MILESTONE_XP / XP_PER_MILESTONE); // 40
 
 // Fields the client is allowed to write via POST /api/profile.
-// Server-managed fields (xp, streakDays, examReadinessScore, subjectsPerformance,
-// completedMilestones) are excluded — use dedicated endpoints instead.
-// NOTE: dailyProgressDate, studiedChapters, proStudyAudit, activeGrade require
-// migration 012 to be run in Supabase SQL Editor first.
+// Server-managed fields are excluded — use dedicated endpoints instead:
+// - isPremium / premiumExpiresAt: payments routes
+// - xp / completedMilestones: /api/profile/gamification
+// - dailyQuestionsUsed / dailyProgressDate: /api/usage/questions (server-verified,
+//   must not be client-resettable or the daily cap is bypassable)
 const ALLOWED_PROFILE_FIELDS = new Set([
   'email', 'name', 'stream', 'language', 'isDarkMode', 'isOfflineMode',
   'savedQuestionIds', 'completedMockIds', 'telegramConnected', 'studyStyle',
   'dailyHours', 'avatar', 'bio', 'school', 'region', 'customRoadmap',
   'weakSubjects', 'targetScore', 'videoWatchHistory',
   'dailyGoalHours', 'notifications', 'activeGrade', 'proStudyAudit', 'studiedChapters',
+  // Gamification stats the client maintains; bounded below to reject garbage.
+  'streakDays', 'examReadinessScore', 'subjectsPerformance',
 ]);
+
+function boundedInt(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const n = Math.floor(value);
+  return n >= min && n <= max ? n : null;
+}
+
+// Keep only well-formed numeric subject scores: { subject: 0..100 }
+function boundedSubjectPerformance(value: unknown): Record<string, number> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const out: Record<string, number> = {};
+  let count = 0;
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (++count > 100 || key.length > 64) return null;
+    const score = boundedInt(raw, 0, 100);
+    if (score === null) continue;
+    out[key] = score;
+  }
+  return out;
+}
+
+// Validate the bounded fields added to the allowlist; drop invalid values
+// instead of failing the whole save (never break the profile flow).
+function sanitizeProfileFields(profile: Record<string, any>): void {
+  const streak = boundedInt(profile.streakDays, 0, 36500);
+  if (streak === null) delete profile.streakDays;
+  else profile.streakDays = streak;
+
+  const readiness = boundedInt(profile.examReadinessScore, 0, 100);
+  if (readiness === null) delete profile.examReadinessScore;
+  else profile.examReadinessScore = readiness;
+
+  if ('subjectsPerformance' in profile) {
+    const perf = boundedSubjectPerformance(profile.subjectsPerformance);
+    if (perf === null) delete profile.subjectsPerformance;
+    else profile.subjectsPerformance = perf;
+  }
+}
+
+// If a column referenced by an older/newer client build is missing in the
+// database (migration not yet applied), PostgREST fails the whole upsert.
+// Strip the offending field and retry so a single stale column can never
+// block profile saves.
+const MISSING_COLUMN_REGEX = /Could not find the '([a-z0-9_]+)' column/i;
+const MAX_COLUMN_RETRIES = 5;
+
+async function upsertWithColumnFallback(payload: Record<string, any>) {
+  let current = payload;
+  for (let attempt = 0; attempt <= MAX_COLUMN_RETRIES; attempt++) {
+    const { error } = await supabase.from('student_profiles').upsert([camelToSnake(current)]);
+    if (!error) return { error: null };
+
+    const missing = error.code === 'PGRST204' ? error.message.match(MISSING_COLUMN_REGEX) : null;
+    if (!missing) return { error };
+
+    // snakeToCamel operates on objects, so convert the column name directly.
+    const camelKey = missing[1].replace(/_([a-z])/g, (_: string, c: string) => c.toUpperCase());
+    if (!(camelKey in current)) return { error };
+    console.warn(`[profile] Dropping '${camelKey}' — column missing in database. Run migration 020.`);
+    const { [camelKey]: _removed, ...rest } = current;
+    current = rest;
+    if (Object.keys(current).length === 0) return { error };
+  }
+  return { error: { message: 'Profile contains only unknown columns' } };
+}
 
 router.post('/', requireAuth, async (req, res) => {
   try {
@@ -43,10 +111,9 @@ router.post('/', requireAuth, async (req, res) => {
       }
     }
     filteredProfile.email = email.toLowerCase();
+    sanitizeProfileFields(filteredProfile);
 
-    const { error } = await supabase
-      .from('student_profiles')
-      .upsert([camelToSnake(filteredProfile)]);
+    const { error } = await upsertWithColumnFallback(filteredProfile);
 
     if (error) {
       console.error('[profile] Upsert error:', error);

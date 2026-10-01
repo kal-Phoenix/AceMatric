@@ -26,7 +26,14 @@ function resetMocks() {
   for (const key of Object.keys(mockSupabaseData)) {
     mockSupabaseData[key] = [];
   }
+  mockSupabaseFailures.upsertError = null;
 }
+
+// One-shot error injection for upsert (simulates PostgREST schema errors
+// such as a column missing from the database).
+export const mockSupabaseFailures: { upsertError: { message: string; code: string } | null } = {
+  upsertError: null,
+};
 
 afterEach(() => {
   resetMocks();
@@ -141,6 +148,11 @@ function createMockQuery(table: string) {
   };
 
   chainable.upsert = async (rows: any[], upsertOpts?: any) => {
+    if (mockSupabaseFailures.upsertError) {
+      const error = mockSupabaseFailures.upsertError;
+      mockSupabaseFailures.upsertError = null;
+      return { data: null, error };
+    }
     for (const row of rows) {
       const existingIdx = mockSupabaseData[table].findIndex((r: any) => {
         if (upsertOpts?.onConflict) {
@@ -190,6 +202,10 @@ const mockSupabase = {
     from: () => ({
       upload: async () => ({ data: { path: 'test/file.jpg' }, error: null }),
       getPublicUrl: () => ({ data: { publicUrl: 'https://example.com/test.jpg' } }),
+      createSignedUrl: async (path: string) => ({
+        data: { signedUrl: `https://example.com/signed/${path}` },
+        error: null,
+      }),
       remove: async () => ({ data: null, error: null }),
     }),
   },

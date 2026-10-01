@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../server/app';
-import { mockSupabaseData } from './setup';
+import { mockSupabaseData, mockSupabaseFailures } from './setup';
 
 async function getAuthToken(email = 'profile@test.com') {
   const res = await request(app)
@@ -67,6 +67,94 @@ describe('Profile Routes', () => {
           bio: 'New bio',
         });
       expect(res.status).toBe(200);
+    });
+
+    it('should persist gamification stats that were previously dropped', async () => {
+      const token = await getAuthToken('stats@test.com');
+      const res = await request(app)
+        .post('/api/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          email: 'stats@test.com',
+          streakDays: 7,
+          examReadinessScore: 82,
+          subjectsPerformance: { Mathematics: 90, Physics: 75 },
+        });
+      expect(res.status).toBe(200);
+
+      const stored = mockSupabaseData.student_profiles.find(
+        (p: any) => p.email === 'stats@test.com'
+      );
+      expect(stored.streak_days).toBe(7);
+      expect(stored.exam_readiness_score).toBe(82);
+      expect(stored.subjects_performance).toEqual({ Mathematics: 90, Physics: 75 });
+    });
+
+    it('should reject out-of-bounds gamification stats without failing the save', async () => {
+      const token = await getAuthToken('badstats@test.com');
+      const res = await request(app)
+        .post('/api/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          email: 'badstats@test.com',
+          name: 'Still Saved',
+          streakDays: -5,
+          examReadinessScore: 9999,
+        });
+      expect(res.status).toBe(200);
+
+      const stored = mockSupabaseData.student_profiles.find(
+        (p: any) => p.email === 'badstats@test.com'
+      );
+      expect(stored.name).toBe('Still Saved');
+      // Out-of-bounds values are dropped, leaving signup defaults intact
+      expect(stored.streak_days).toBe(0);
+      expect(stored.exam_readiness_score).toBe(0);
+    });
+
+    it('should keep daily question usage server-managed (not client-writable)', async () => {
+      const token = await getAuthToken('usagefield@test.com');
+      const res = await request(app)
+        .post('/api/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          email: 'usagefield@test.com',
+          dailyQuestionsUsed: 9999,
+          dailyProgressDate: 'HACKED',
+        });
+      expect(res.status).toBe(200);
+
+      const stored = mockSupabaseData.student_profiles.find(
+        (p: any) => p.email === 'usagefield@test.com'
+      );
+      // Must not be writable through the profile endpoint or the free cap
+      // is bypassed with a single POST.
+      expect(stored.daily_questions_used).toBe(0);
+      expect(stored.daily_progress_date).toBe('');
+    });
+
+    it('should drop only the unknown column when the database is missing one', async () => {
+      const token = await getAuthToken('fallback@test.com');
+      mockSupabaseFailures.upsertError = {
+        code: 'PGRST204',
+        message: "Could not find the 'daily_goal_hours' column of 'student_profiles' in the schema cache",
+      };
+
+      const res = await request(app)
+        .post('/api/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          email: 'fallback@test.com',
+          name: 'Fallback Saved',
+          dailyGoalHours: 6,
+        });
+      expect(res.status).toBe(200);
+
+      const stored = mockSupabaseData.student_profiles.find(
+        (p: any) => p.email === 'fallback@test.com'
+      );
+      expect(stored.name).toBe('Fallback Saved');
+      expect(stored.daily_goal_hours).toBeUndefined();
     });
   });
 

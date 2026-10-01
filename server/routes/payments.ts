@@ -49,6 +49,26 @@ const submitLimiter = rateLimit(rateLimitOpts({
   keyGenerator: (req: any) => req.user?.email || ipKeyGenerator(req),
 }));
 
+// Signed URLs stored at upload time expire (7 days), so older payment proofs
+// would 404 during admin review. Regenerate from the stored path on every read.
+const SCREENSHOT_URL_TTL_SECONDS = 604800;
+
+async function withFreshScreenshotUrl(row: any): Promise<any> {
+  if (!row?.screenshot_path) return row;
+  try {
+    const { getSupabase } = await import('../db');
+    const { data, error } = await getSupabase().storage
+      .from('payment-screenshots')
+      .createSignedUrl(row.screenshot_path, SCREENSHOT_URL_TTL_SECONDS);
+    if (!error && data?.signedUrl) {
+      return { ...row, screenshot_url: data.signedUrl };
+    }
+  } catch (err) {
+    console.warn('[payments] Failed to refresh screenshot URL:', err);
+  }
+  return row;
+}
+
 // GET /api/payments/accounts — account details (auth required)
 router.get('/accounts', requireAuth, (_req, res) => {
   res.json(ACCOUNT_DETAILS);
@@ -67,7 +87,8 @@ router.get('/my', requireAuth, async (req, res) => {
       console.error('[payments] Fetch error:', error);
       return res.status(500).json({ error: 'An error occurred. Please try again.' });
     }
-    res.json((data || []).map(snakeToCamel));
+    const rows = await Promise.all((data || []).map(withFreshScreenshotUrl));
+    res.json(rows.map(snakeToCamel));
   } catch (err: any) {
     console.error('[payments] Error fetching payments:', err);
     res.status(500).json({ error: 'An error occurred. Please try again.' });
@@ -207,7 +228,8 @@ router.get('/', requireAdmin, async (req, res) => {
       console.error('[payments] Admin list error:', error);
       return res.status(500).json({ error: 'An error occurred. Please try again.' });
     }
-    res.json((data || []).map(snakeToCamel));
+    const rows = await Promise.all((data || []).map(withFreshScreenshotUrl));
+    res.json(rows.map(snakeToCamel));
   } catch (err: any) {
     console.error('[payments] Error listing payments:', err);
     res.status(500).json({ error: 'An error occurred. Please try again.' });

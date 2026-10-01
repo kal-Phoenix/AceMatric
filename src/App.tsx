@@ -69,7 +69,27 @@ function MainApp() {
   const nav = useNavigationState(initialTab);
 
   const [stream, setStream] = useState<Stream>('Natural Science');
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      const stored = localStorage.getItem('acematric-language');
+      if (stored === 'en' || stored === 'am') return stored;
+    } catch {}
+    return 'en';
+  });
+
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+    try {
+      localStorage.setItem('acematric-language', lang);
+    } catch {}
+    document.documentElement.lang = lang === 'am' ? 'am' : 'en';
+    document.documentElement.classList.toggle('lang-am', lang === 'am');
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'am' ? 'am' : 'en';
+    document.documentElement.classList.toggle('lang-am', language === 'am');
+  }, [language]);
 
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryEntry[]>([]);
   const [usedQuestionsCount, setUsedQuestionsCount] = useState<number>(() => {
@@ -180,13 +200,14 @@ function MainApp() {
       const next = usedQuestionsCount + 1;
       setUsedQuestionsCount(next);
       if (user?.email) {
-        const today = new Date().toDateString();
-        db.saveStudentProfile({
-          ...user,
-          dailyQuestionsUsed: next,
-          dailyProgressDate: today,
+        db.consumeDailyQuestions(1).then((result) => {
+          if (!result) return;
+          setUsedQuestionsCount(result.used);
+          if (!result.allowed) {
+            handleTabChange('upgrade');
+          }
         }).catch((err) => {
-          logger.error('Failed to save daily usage', err, { email: user.email });
+          logger.error('Failed to record question usage', err, { email: user.email });
         });
       }
       return true;
@@ -194,6 +215,20 @@ function MainApp() {
     handleTabChange('upgrade');
     return false;
   }, [isPremium, usedQuestionsCount, user?.email, handleTabChange]);
+
+  // Bulk usage (e.g. daily challenge completion counts several questions).
+  const handleConsumeUsage = useCallback((count: number) => {
+    if (!user?.email) return;
+    db.consumeDailyQuestions(count).then((result) => {
+      if (!result) return;
+      setUsedQuestionsCount(result.used);
+      if (!result.allowed) {
+        handleTabChange('upgrade');
+      }
+    }).catch((err) => {
+      logger.error('Failed to record question usage', err, { email: user.email });
+    });
+  }, [user?.email, handleTabChange]);
 
   const handleStartMockFromDashboard = useCallback((mockId: string) => {
     nav.startMock(mockId);
@@ -392,6 +427,7 @@ function MainApp() {
                 onStartFocusedStudy={(subj) => nav.startPractice(subj, true)}
                 user={user}
                 onProfileUpdate={handleUpdateUserProfile}
+                onConsumeUsage={handleConsumeUsage}
                 sessionHistory={sessionHistory}
                 onClearHistory={handleClearHistory}
               />

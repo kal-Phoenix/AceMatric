@@ -127,10 +127,13 @@ export default function ExplainerView({
       });
 
       const data = await res.json();
+      const failureText = data.error
+        ? `<p><strong>Notice:</strong> ${String(data.error).replace(/[<>]/g, '')}</p>`
+        : '<p>Sorry, could not generate an explanation at this moment. Please try asking with more details.</p>';
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: data.explanation || '<p>Sorry, could not generate an explanation at this moment. Please try asking with more details.</p>',
+        text: !res.ok ? failureText : (data.explanation || failureText),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, aiMsg]);
@@ -237,7 +240,7 @@ export default function ExplainerView({
         </div>
 
         {/* Message Thread */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#090D15]/80">
+        <div className="flex-1 p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-4 bg-[#090D15]/80 mobile-scroll">
           {messages.map((msg) => (
             <div
               key={msg.id}

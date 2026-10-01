@@ -34,6 +34,7 @@ import contentManageRoutes from './routes/content-manage';
 import pastExamManageRoutes from './routes/past-exam-manage';
 import quizManageRoutes from './routes/quiz-manage';
 import contentGenerateRoutes from './routes/content-generate';
+import usageRoutes from './routes/usage';
 
 const app = express();
 
@@ -114,6 +115,7 @@ app.use('/api/content-manage', contentManageRoutes);
 app.use('/api/past-exam-manage', pastExamManageRoutes);
 app.use('/api/quiz-manage', quizManageRoutes);
 app.use('/api/content-generate', contentGenerateRoutes);
+app.use('/api/usage', usageRoutes);
 
 app.get('/api/health', async (_req, res) => {
   const dbOk = await testSupabaseConnection().then(() => true).catch(() => false);

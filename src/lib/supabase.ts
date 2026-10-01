@@ -162,6 +162,20 @@ export const db = {
     return api<{ success: true }>('/api/profile', { method: 'POST', body: JSON.stringify(profile) });
   },
 
+  // Server-authoritative daily question cap. The counter lives in the DB and
+  // can only be incremented here — never reset from the client.
+  async consumeDailyQuestions(count = 1): Promise<{ allowed: boolean; used: number; cap: number } | null> {
+    try {
+      return await api<{ allowed: boolean; used: number; cap: number }>('/api/usage/questions', {
+        method: 'POST',
+        body: JSON.stringify({ count }),
+      });
+    } catch (err) {
+      logger.error('Failed to record question usage', err);
+      return null;
+    }
+  },
+
   async getStudentProfile(email: string): Promise<UserProfile | null> {
     try {
       return await api<UserProfile>(`/api/profile/${encodeURIComponent(email)}`);
