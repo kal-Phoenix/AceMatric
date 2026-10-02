@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "tsc --noEmit",
+    "revise": "tsx server/revise-content.ts",
+    "import-revised": "tsx server/import-revised.ts",
+    "fix-answers": "tsx server/fix-past-exam-answers.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
