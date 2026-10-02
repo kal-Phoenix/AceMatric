@@ -567,14 +567,10 @@ export default function ProfileView({
                 )}
                 <div>
                   <div className="font-semibold text-xs text-white">
-                    {userProfile?.isPremium ? 'Pro Member' : 'Free Plan'}
+                    AceMatric
                   </div>
                   <div className="text-xs text-slate-400">
-                    {userProfile?.isPremium && userProfile?.premiumExpiresAt
-                      ? `Expires: ${new Date(userProfile.premiumExpiresAt).toLocaleDateString()}`
-                      : userProfile?.isPremium
-                        ? 'Lifetime access'
-                        : '10 questions/day limit'}
+                    All features unlocked — free for everyone
                   </div>
                 </div>
               </div>

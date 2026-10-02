@@ -218,40 +218,6 @@ export default function AppShell({
               isSidebarCollapsed ? 'p-2' : 'p-3'
             }`}
           >
-            {!isPremium ? (
-              isSidebarCollapsed ? (
-                <button
-                  onClick={onOpenUpgrade}
-                  className="w-full p-2.5 rounded-lg bg-slate-800/50 text-slate-300 hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center"
-                  title="Upgrade"
-                >
-                  <Zap className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-800/60 space-y-2">
-                  <div className="text-xs font-medium text-slate-300">
-                    Get Pro
-                  </div>
-                  <button
-                    onClick={onOpenUpgrade}
-                    className="w-full py-2 bg-slate-800/60 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer"
-                  >
-                    Upgrade
-                  </button>
-                </div>
-              )
-            ) : (
-              isSidebarCollapsed ? (
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center" title="Pro member">
-                  <UserCheck className="w-4 h-4 text-emerald-400" />
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center justify-center gap-2">
-                  <UserCheck className="w-4 h-4" />
-                  <span>Pro member</span>
-                </div>
-              )
-            )}
 
             {user ? (
               isSidebarCollapsed ? (
@@ -370,19 +336,6 @@ export default function AppShell({
             </button>
           )}
 
-
-          {isPremium ? (
-            <span className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hidden sm:flex items-center gap-1">
-              Pro
-            </span>
-          ) : (
-            <button
-              onClick={onOpenUpgrade}
-              className="px-3 py-1.5 bg-slate-800/60 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-all cursor-pointer hidden sm:block"
-            >
-              Upgrade
-            </button>
-          )}
 
           {user && (
             <div className="relative">

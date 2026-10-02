@@ -669,7 +669,7 @@ export default function PracticeView({
                   />
                 </div>
                 <p className="text-xs text-slate-500">
-                  {isPremium ? 'PRO — Unlimited passes' : `${dailyCap - dailyUsed} passes left today`}
+                  Unlimited passes
                 </p>
               </div>
 
