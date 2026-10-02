@@ -89,7 +89,8 @@ function sanitizeAIOutput(text: string): string {
 }
 
 async function safeGenerateContent(ai: any, params: any, maxRetries = 2) {
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // gemini-2.5/2.0/1.5-flash were retired (404) — cascade across live models
+  const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
   let lastError: any = null;
 
   for (const modelName of models) {

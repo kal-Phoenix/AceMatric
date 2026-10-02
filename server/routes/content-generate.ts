@@ -76,27 +76,35 @@ function getAIClient() {
 }
 
 async function safeGenerateContent(ai: any, params: any, maxRetries = 3) {
-  let attempt = 0;
-  let delay = 1000;
-  while (true) {
-    try {
-      return await ai.models.generateContent(params);
-    } catch (error: any) {
-      attempt++;
-      const errorMsg = error.message || '';
-      const status = error.status || (error.error && error.error.code) || 500;
-      const isTransient = status === 503 || status === 429 ||
-        errorMsg.includes('503') || errorMsg.includes('429') ||
-        errorMsg.includes('UNAVAILABLE') || errorMsg.includes('high demand') ||
-        errorMsg.includes('fetch failed');
-      if (isTransient && attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
-      } else {
-        throw error;
+  // gemini-2.5-flash was retired (404) — cascade across live models
+  const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+  let lastError: any = null;
+
+  for (const modelName of models) {
+    let attempt = 0;
+    let delay = 1000;
+    while (true) {
+      try {
+        return await ai.models.generateContent({ ...params, model: modelName });
+      } catch (error: any) {
+        lastError = error;
+        attempt++;
+        const errorMsg = error.message || '';
+        const status = error.status || (error.error && error.error.code) || 500;
+        const isTransient = status === 503 || status === 429 ||
+          errorMsg.includes('503') || errorMsg.includes('429') ||
+          errorMsg.includes('UNAVAILABLE') || errorMsg.includes('high demand') ||
+          errorMsg.includes('fetch failed');
+        if (isTransient && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+        } else {
+          break; // try next model
+        }
       }
     }
   }
+  throw lastError;
 }
 
 function buildSystemPrompt(subject: string): string {
