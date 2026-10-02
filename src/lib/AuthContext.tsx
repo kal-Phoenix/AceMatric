@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             streakDays: 0,
             dailyQuestionsUsed: 0,
             dailyQuestionsCap: 10,
-            isPremium: false,
+            isPremium: true, // PAYMENTS DISABLED — everything is free
             examReadinessScore: 0,
             subjectsPerformance: {},
             savedQuestionIds: [],
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     user,
     appStage,
-    isPremium: user?.isPremium || false,
+    isPremium: true, // PAYMENTS DISABLED — everyone has Pro for now
     streakDays: user?.streakDays || 0,
     updateUserProfile,
     logout,

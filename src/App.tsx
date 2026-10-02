@@ -7,7 +7,6 @@ import {
   MessageSquare,
   BarChart3,
   Award,
-  Zap,
   GraduationCap,
   Trophy,
   Users,
@@ -44,7 +43,6 @@ const AboutView = lazy(() => import('./components/views/AboutView'));
 const FAQView = lazy(() => import('./components/views/FAQView'));
 const NotFoundView = lazy(() => import('./components/views/NotFoundView'));
 const LandingView = lazy(() => import('./components/views/LandingView'));
-const ProUpgradeView = lazy(() => import('./components/views/ProUpgradeView'));
 const AdminConsoleView = lazy(() => import('./components/views/AdminConsoleView'));
 
 function ViewLoader() {
@@ -65,7 +63,7 @@ function MainApp() {
   const location = useLocation();
   const isMobile = useIsMobile();
 
-  const initialTab = (Object.keys(TAB_ROUTES).find(k => TAB_ROUTES[k] === location.pathname) || 'dashboard') as TabId;
+  const initialTab = (Object.keys(TAB_ROUTES).find(k => k !== 'upgrade' && TAB_ROUTES[k] === location.pathname) || 'dashboard') as TabId;
   const nav = useNavigationState(initialTab);
 
   const [stream, setStream] = useState<Stream>('Natural Science');
@@ -152,7 +150,7 @@ function MainApp() {
   // Sync active tab from URL
   useEffect(() => {
     const path = location.pathname;
-    const matched = Object.keys(TAB_ROUTES).find(k => TAB_ROUTES[k] === path);
+    const matched = Object.keys(TAB_ROUTES).find(k => k !== 'upgrade' && TAB_ROUTES[k] === path);
     if (matched && matched !== nav.state.activeTab) {
       nav.setTab(matched as TabId);
     } else if (!matched && path !== '/' && appStage === 'main') {
@@ -161,6 +159,8 @@ function MainApp() {
   }, [location.pathname]);
 
   const handleTabChange = useCallback((tab: string) => {
+    // PAYMENTS DISABLED — the upgrade page no longer exists; fall back to dashboard.
+    if (tab === 'upgrade') tab = 'dashboard';
     nav.setTab(tab as TabId);
     const route = TAB_ROUTES[tab] || '/';
     if (location.pathname !== route) {
@@ -276,7 +276,6 @@ function MainApp() {
     { id: 'simulator', label: 'Past Exams', fullLabel: 'Past Exam Papers', icon: <Clock className="w-4 h-4" /> },
     { id: 'leaderboard', label: 'Ranks', fullLabel: 'National Matric Leaderboard', icon: <Trophy className="w-4 h-4 text-amber-400" /> },
     { id: 'collaboration', label: 'Study Rooms', fullLabel: 'Real-time Collaborative Rooms', icon: <Users className="w-4 h-4 text-indigo-400" /> },
-    { id: 'upgrade', label: 'Pro Upgrade', fullLabel: 'CBE / Telebirr Pro Upgrade', icon: <Zap className="w-4 h-4 text-emerald-400 animate-pulse" /> },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', fullLabel: 'Admin Console', icon: <Award className="w-4 h-4 text-blue-400 font-bold" /> }] : []),
     { id: 'contact', label: 'Help', fullLabel: 'Help & Support', icon: <MessageSquare className="w-4 h-4 text-cyan-400" /> },
   ], [isAdmin]);
@@ -480,7 +479,6 @@ function MainApp() {
               />
             )}
 
-            {nav.state.activeTab === 'upgrade' && <ProUpgradeView isPremium={isPremium} />}
             {nav.state.activeTab === 'admin' && <AdminConsoleView currentAdminEmail={user?.email} />}
             {nav.state.activeTab === 'contact' && <ContactUsView userName={user?.name} userEmail={user?.email} />}
             {nav.state.activeTab === 'privacy' && <PrivacyPolicyView onBack={() => handleTabChange('dashboard')} />}

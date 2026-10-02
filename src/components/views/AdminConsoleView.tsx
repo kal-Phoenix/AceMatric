@@ -81,7 +81,6 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
     { id: 'dashboard' as const, label: 'Overview',  icon: TrendingUp,  accent: 'teal'   },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3,   accent: 'indigo' },
     { id: 'users'     as const, label: 'Users',     icon: Users,       accent: 'blue'   },
-    { id: 'payments'  as const, label: 'Payments',  icon: CreditCard,  accent: 'amber'  },
     { id: 'content'   as const, label: 'Content',   icon: BookOpen,    accent: 'violet' },
   ];
 
@@ -122,7 +121,7 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
           {/* Title */}
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-semibold text-white tracking-tight">Admin Console</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Full platform control · Content, Users, Payments & Analytics</p>
+            <p className="text-xs text-slate-400 mt-0.5">Full platform control · Content, Users &amp; Analytics</p>
           </div>
 
           {/* Live badge */}
@@ -161,7 +160,6 @@ export default function AdminConsoleView({ onBack, currentAdminEmail }: { onBack
       {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'users' && <UsersTab currentAdminEmail={currentAdminEmail} />}
-      {activeTab === 'payments' && <PaymentsTab />}
       {activeTab === 'content' && <ContentManageTab />}
     </div>
   );
@@ -284,9 +282,6 @@ function DashboardTab({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }) 
     { label: 'Total Users',       value: stats.totalUsers,       icon: Users,        color: 'text-blue-400',    bg: 'from-blue-500/15 to-blue-500/5',       border: 'border-blue-500/25',    bar: 'bg-blue-400'    },
     { label: 'Premium Users',     value: stats.premiumUsers,     icon: Crown,        color: 'text-amber-400',   bg: 'from-amber-500/15 to-amber-500/5',     border: 'border-amber-500/25',   bar: 'bg-amber-400'   },
     { label: 'Free Users',        value: stats.freeUsers,        icon: Star,         color: 'text-slate-300',   bg: 'from-slate-600/15 to-slate-700/5',     border: 'border-slate-600/30',   bar: 'bg-slate-400'   },
-    { label: 'Pending Payments',  value: stats.pendingPayments,  icon: Clock,        color: 'text-amber-400',   bg: 'from-amber-500/15 to-amber-500/5',     border: 'border-amber-500/25',   bar: 'bg-amber-400'   },
-    { label: 'Approved Payments', value: stats.approvedPayments, icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-white/5', border: 'border-emerald-500/25', bar: 'bg-emerald-400' },
-    { label: 'Rejected Payments', value: stats.rejectedPayments, icon: XCircle,      color: 'text-rose-400',    bg: 'from-rose-500/15 to-rose-500/5',       border: 'border-rose-500/25',    bar: 'bg-rose-400'    },
   ];
 
   const maxVal = Math.max(...statCards.map(c => c.value), 1);
@@ -319,10 +314,9 @@ function DashboardTab({ onNavigate }: { onNavigate?: (tab: AdminTab) => void }) 
       </div>
 
       {/* Quick actions strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {[
           { tab: 'content'   as const, label: 'Content Library', icon: BookOpen,   color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20 hover:border-violet-500/40' },
-          { tab: 'payments'  as const, label: 'Review Payments', icon: CreditCard, color: 'text-amber-400',  bg: 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40'   },
           { tab: 'analytics' as const, label: 'Analytics',       icon: BarChart3,  color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20 hover:border-indigo-500/40' },
           { tab: 'users'     as const, label: 'User Directory',  icon: Users,      color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/40'     },
         ].map(({ tab, label, icon: Icon, color, bg }) => (

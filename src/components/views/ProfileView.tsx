@@ -781,7 +781,7 @@ export default function ProfileView({
         <button
           onClick={async () => {
             if (!confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) return;
-            if (!confirm('This will delete ALL your data including progress, session history, and payments. Continue?')) return;
+            if (!confirm('This will delete ALL your data including progress and session history. Continue?')) return;
             try {
               const token = getAccessToken();
               const res = await fetch('/api/profile', {

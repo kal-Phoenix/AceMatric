@@ -11,12 +11,8 @@ interface ContactUsViewProps {
 
 const FAQS = [
   {
-    q: 'How do I upgrade to AceMatric Pro?',
-    a: 'Go to the Pro Upgrade page, select a plan, copy the account number, transfer the exact amount (299 ETB/month or 999 ETB/year), and upload your payment screenshot with transaction reference. Admin approves within 15 minutes.',
-  },
-  {
-    q: 'What payment methods are accepted?',
-    a: 'We accept CBE Birr, Telebirr, and Bank of Abyssinia transfers. After transferring, upload a screenshot and enter your transaction reference number for verification.',
+    q: 'Is AceMatric really free?',
+    a: 'Yes. Payments are currently disabled — every feature, including unlimited AI tutoring, practice questions, and full past-exam simulations, is free for all students.',
   },
   {
     q: 'How does the AI Tutor work?',
@@ -78,7 +74,7 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
               <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Support</span>
             </div>
             <h1 className="text-xl font-semibold text-white">Contact AceMatric</h1>
-            <p className="text-xs text-slate-400">Questions about payments, features, or your account? We are here to help.</p>
+            <p className="text-xs text-slate-400">Questions about features or your account? We are here to help.</p>
           </div>
           <a
             href="https://t.me/ad_min_support1"
@@ -184,7 +180,7 @@ export default function ContactUsView({ userName = '', userEmail = '' }: Contact
                     required
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    placeholder="Payment issue / Bug report / Feature request"
+                    placeholder="Bug report / Feature request / Question"
                     className="w-full bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-400 transition-colors"
                   />
                 </div>

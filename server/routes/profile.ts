@@ -146,18 +146,8 @@ router.get('/:email', requireAuth, async (req, res) => {
     }
     if (!data) return res.status(404).json({ error: 'Profile not found' });
 
-    // Check subscription expiry and auto-downgrade
-    if (data.is_premium && data.premium_expires_at) {
-      const expiresAt = new Date(data.premium_expires_at);
-      if (expiresAt < new Date()) {
-        // Subscription expired — auto-downgrade
-        await supabase
-          .from('student_profiles')
-          .update({ is_premium: false })
-          .eq('email', emailKey);
-        data.is_premium = false;
-      }
-    }
+    // PAYMENTS DISABLED — everyone is Pro for now; skip expiry downgrades.
+    data.is_premium = true;
 
     res.json(snakeToCamel(data));
   } catch (err: any) {

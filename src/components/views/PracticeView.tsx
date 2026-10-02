@@ -1190,15 +1190,8 @@ export default function PracticeView({
                   onClick={() => { setSessionState('config'); onNavigate?.('dashboard'); }}
                   className="w-full py-3 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-white font-semibold text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+                  <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
                   Back to Dashboard
-                </button>
-                <button
-                  onClick={onOpenUpgrade}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 text-white font-semibold text-xs transition-all cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Get Pro Unlimited
                 </button>
               </div>
               <p className="text-xs text-slate-500 text-center">Evaluated on {new Date().toLocaleDateString()}</p>

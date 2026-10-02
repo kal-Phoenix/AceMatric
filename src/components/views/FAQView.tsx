@@ -13,7 +13,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is AceMatric free to use?',
-    a: 'AceMatric offers a generous free tier with 10 practice questions per day, access to curriculum content, and basic study tools. Premium features like unlimited AI tutoring and full mock exams are available through our Pro Upgrade.',
+    a: 'Yes — AceMatric is completely free right now. Every feature, including unlimited AI tutoring, unlimited practice questions, full past-exam simulations, and collaborative study rooms, is available to every student at no cost.',
   },
   {
     q: 'Which subjects are supported?',
@@ -40,8 +40,8 @@ const FAQ_ITEMS = [
     a: 'Study rooms let you create or join real-time sessions with peers. Features include a shared whiteboard, collaborative notes, group chat, synchronized study timers, and quiz challenges.',
   },
   {
-    q: 'How do I upgrade to Pro?',
-    a: 'Click the "Upgrade" button in the navigation. Pro can be purchased via CBE mobile banking or Telebirr. Pro gives you unlimited AI tutoring, unlimited mock exams, and priority access to new features.',
+    q: 'Do I need to pay for anything?',
+    a: 'No. Payments are currently disabled and all Pro features are unlocked for every account — there is nothing to upgrade or purchase.',
   },
   {
     q: 'How do I delete my account?',

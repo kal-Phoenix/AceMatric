@@ -39,7 +39,7 @@ describe('Usage Routes', () => {
       expect(profile.daily_progress_date).toBe(new Date().toDateString());
     });
 
-    it('should deny beyond the free-tier cap without incrementing', async () => {
+    it('should not cap usage — payments disabled, everything free', async () => {
       const token = await getAuthToken('capped@test.com');
       const profile = getProfile('capped@test.com');
       profile.daily_questions_used = 9;
@@ -51,9 +51,10 @@ describe('Usage Routes', () => {
         .send({ count: 5 });
 
       expect(res.status).toBe(200);
-      expect(res.body.allowed).toBe(false);
-      expect(res.body.used).toBe(9);
-      expect(profile.daily_questions_used).toBe(9);
+      expect(res.body.allowed).toBe(true);
+      expect(res.body.used).toBe(14);
+      expect(res.body.isPremium).toBe(true);
+      expect(profile.daily_questions_used).toBe(14);
     });
 
     it('should allow premium users past the cap', async () => {
@@ -89,8 +90,9 @@ describe('Usage Routes', () => {
         .send({ count: 5 });
 
       expect(res.status).toBe(200);
-      expect(res.body.allowed).toBe(false);
-      expect(res.body.isPremium).toBe(false);
+      // Payments disabled — expiry is ignored, everyone stays unlimited
+      expect(res.body.allowed).toBe(true);
+      expect(res.body.isPremium).toBe(true);
     });
 
     it('should reset the counter on a new day', async () => {

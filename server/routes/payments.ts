@@ -95,8 +95,12 @@ router.get('/my', requireAuth, async (req, res) => {
   }
 });
 
+// PAYMENTS DISABLED — everything is free for now. Reject before multer runs.
+const paymentsDisabled = (_req: any, res: any) =>
+  res.status(503).json({ error: 'Payments are disabled — AceMatric is currently free for everyone.' });
+
 // POST /api/payments/submit — submit a payment request with screenshot
-router.post('/submit', requireAuth, submitLimiter, imageUpload.single('screenshot'), async (req, res) => {
+router.post('/submit', requireAuth, submitLimiter, paymentsDisabled, imageUpload.single('screenshot'), async (req, res) => {
   try {
     const { paymentMethod, transactionRef } = req.body;
 

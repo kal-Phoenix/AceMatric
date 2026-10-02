@@ -50,8 +50,8 @@ export default function TermsOfServiceView({ onBack }: LegalPageProps) {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-white">6. Premium Services</h2>
-          <p>AceMatric offers premium features through paid subscriptions. Premium features are subject to additional terms presented at the time of purchase. Refund requests are handled on a case-by-case basis.</p>
+          <h2 className="text-lg font-semibold text-white">6. Free Services</h2>
+          <p>AceMatric is currently free to use. All features — including AI tutoring, practice questions, and past-exam simulations — are available to every account at no cost. There are no paid subscriptions, purchases, or refunds at this time.</p>
         </section>
 
         <section className="space-y-3">

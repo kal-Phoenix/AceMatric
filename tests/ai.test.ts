@@ -44,23 +44,23 @@ describe('AI daily quota', () => {
     expect(res.status).toBe(401);
   });
 
-  it('should allow free users up to the limit, then return 429', async () => {
+  it('should never hit the daily limit — payments disabled, everything free', async () => {
     const email = 'freelimit@test.com';
     const token = await getAuthToken(email);
 
     expect((await ask(token)).status).toBe(200);
     expect((await ask(token)).status).toBe(200);
 
-    const blocked = await ask(token);
-    expect(blocked.status).toBe(429);
-    expect(blocked.body.code).toBe('AI_DAILY_LIMIT');
+    const stillOk = await ask(token);
+    expect(stillOk.status).toBe(200);
+    expect(stillOk.body.code).not.toBe('AI_DAILY_LIMIT');
 
     const profile = getProfile(email);
-    expect(profile.ai_daily_used).toBe(2);
-    expect(profile.ai_daily_date).toBe(new Date().toDateString());
+    // Everyone has Pro entitlements, so no quota charge is made
+    expect(profile.ai_daily_used || 0).toBe(0);
   });
 
-  it('should reset the counter on a new day', async () => {
+  it('should not charge the daily counter anymore', async () => {
     const email = 'aiday@test.com';
     const token = await getAuthToken(email);
     const profile = getProfile(email);
@@ -68,7 +68,7 @@ describe('AI daily quota', () => {
     profile.ai_daily_date = 'Jan 01 2000';
 
     expect((await ask(token)).status).toBe(200);
-    expect(profile.ai_daily_used).toBe(1);
+    expect(profile.ai_daily_used).toBe(2);
   });
 
   it('should let premium users bypass the quota', async () => {

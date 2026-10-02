@@ -6,13 +6,17 @@ export interface PremiumRow {
   premium_expires_at?: string | null;
 }
 
-export function isPremiumRow(row: PremiumRow | null | undefined): boolean {
-  if (!row?.is_premium) return false;
-  if (row.premium_expires_at) {
-    const expires = new Date(row.premium_expires_at);
-    if (Number.isNaN(expires.getTime()) || expires < new Date()) return false;
-  }
+export function isPremiumRow(_row: PremiumRow | null | undefined): boolean {
+  // PAYMENTS DISABLED — everything is free for now.
+  // Every user has full Pro entitlements: no daily caps, no AI quota.
+  // To re-enable payments, restore the original expiry logic below.
   return true;
+  // if (!_row?.is_premium) return false;
+  // if (_row.premium_expires_at) {
+  //   const expires = new Date(_row.premium_expires_at);
+  //   if (Number.isNaN(expires.getTime()) || expires < new Date()) return false;
+  // }
+  // return true;
 }
 
 /** Free-tier daily caps; override with env for tuning without a deploy. */

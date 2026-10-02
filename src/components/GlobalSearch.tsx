@@ -25,7 +25,6 @@ const NAV_ITEMS = [
   { id: 'simulator', label: 'Past Exams' },
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'collaboration', label: 'Study Rooms' },
-  { id: 'upgrade', label: 'Pro Upgrade' },
   { id: 'profile', label: 'Profile' },
   { id: 'contact', label: 'Contact Us' },
   { id: 'faq', label: 'FAQ' },
