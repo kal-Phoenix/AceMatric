@@ -10,6 +10,7 @@ import { ETHIOPIAN_CURRICULUM } from '../../data/curriculum';
 import { db } from '../../lib/supabase';
 import { getAccessToken } from '../../lib/authToken';
 import { subscribeToPush, unsubscribeFromPush } from '../../lib/push';
+import { AVATAR_ICONS } from '../ui/UserAvatar';
 
 interface ProfileViewProps {
   stream: Stream;
@@ -42,7 +43,6 @@ interface ProfileViewProps {
   sessionHistory?: SessionHistoryEntry[];
 }
 
-const AVATAR_ICONS = [User, Target, Flame, Award, BookOpen, Star, Zap, Crown, Rocket, Lightbulb] as const;
 const REGIONS = ['Addis Ababa', 'Oromia', 'Amhara', 'Tigray', 'Sidama', 'South Ethiopia', 'Central Ethiopia', 'Dire Dawa', 'Harari'];
 
 export default function ProfileView({

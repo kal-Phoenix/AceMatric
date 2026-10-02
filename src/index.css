@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ── Breakpoints ──────────────────────────────────────────────────────── */
+@theme {
+  /* xs was used in markup but never defined — enables hidden xs:inline* classes */
+  --breakpoint-xs: 26.25rem; /* 420px */
+}
+
+/* ── iOS input zoom fix ───────────────────────────────────────────────── */
+/* iOS Safari auto-zooms into focused fields smaller than 16px, breaking the
+   viewport. Force 16px on text-entry fields for mobile widths. Unlayered
+   intentionally so it wins over Tailwind's layered text-xs/text-sm utilities. */
+@media (max-width: 1023px) {
+  input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* ── Base Typography ──────────────────────────────────────────────────── */
 html {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;

@@ -60,6 +60,7 @@ export default function FloatingTimer() {
   const dragOffset = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
+  const sizeRef = useRef({ w: 0, h: 0 });
 
   const current = MODES[mode];
   const progress = 1 - timeLeft / current.duration;
@@ -142,6 +143,8 @@ export default function FloatingTimer() {
     didDrag.current = false;
     startPos.current = { x: e.clientX, y: e.clientY };
     dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    sizeRef.current = { w: rect.width, h: rect.height };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [pos]);
 
@@ -150,7 +153,21 @@ export default function FloatingTimer() {
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) didDrag.current = true;
-    setPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+
+    let nx = e.clientX - dragOffset.current.x;
+    let ny = e.clientY - dragOffset.current.y;
+
+    // Clamp inside the viewport and above the fixed bottom nav (~64px + margin)
+    const { w, h } = sizeRef.current;
+    const left = window.innerWidth - 16 - w + nx;
+    const top = window.innerHeight - 80 - h + ny;
+    const BOTTOM_LIMIT = 72; // never sit over the bottom navigation bar
+    if (top + h > window.innerHeight - BOTTOM_LIMIT) ny -= top + h - (window.innerHeight - BOTTOM_LIMIT);
+    if (top < 8) ny += 8 - top;
+    if (left < 8) nx += 8 - left;
+    if (left + w > window.innerWidth - 8) nx -= left + w - (window.innerWidth - 8);
+
+    setPos({ x: nx, y: ny });
   }, []);
 
   const onPointerUp = useCallback(() => {

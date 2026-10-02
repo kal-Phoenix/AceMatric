@@ -23,6 +23,7 @@ import { Stream } from '../types';
 import FloatingTimer from './FloatingTimer';
 import GlobalSearch from './GlobalSearch';
 import BrandLogo from './ui/BrandLogo';
+import UserAvatar from './ui/UserAvatar';
 
 export interface NavItem {
   id: string;
@@ -227,13 +228,7 @@ export default function AppShell({
                     className="w-full p-2.5 rounded-lg bg-slate-800/60 flex items-center justify-center cursor-pointer hover:bg-slate-800 transition-all"
                     title={`${user?.name} — Profile`}
                   >
-                    {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                      <img src={user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center font-medium text-slate-300">
-                        {user?.name?.[0] || 'S'}
-                      </div>
-                    )}
+                    <UserAvatar avatar={user?.avatar} name={user?.name} className="w-8 h-8 rounded-lg" />
                   </div>
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-xl">
                     <div>{user?.name}</div>
@@ -246,13 +241,7 @@ export default function AppShell({
                     onClick={() => onTabChange('profile')}
                     className="flex items-center space-x-2 min-w-0 cursor-pointer hover:bg-slate-800/60 p-1.5 rounded-lg transition-all"
                   >
-                    {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                      <img src={user.avatar} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center font-medium text-slate-300 shrink-0">
-                        {user?.name?.[0] || 'S'}
-                      </div>
-                    )}
+                    <UserAvatar avatar={user?.avatar} name={user?.name} className="w-8 h-8 rounded-lg" />
                     <div className="min-w-0">
                       <div className="text-xs font-medium text-white truncate">{user?.name}</div>
                       <div className="text-xs text-slate-500 truncate">{user?.email}</div>
@@ -423,6 +412,7 @@ export default function AppShell({
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex flex-col items-center justify-center py-2.5 px-1 min-w-0 flex-1 transition-all relative ${
                 isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
               }`}
@@ -501,13 +491,7 @@ export default function AppShell({
                   className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 cursor-pointer hover:bg-slate-800 transition-all"
                 >
                   <div className="flex items-center space-x-3 min-w-0">
-                    {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                      <img src={user.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-lg bg-slate-700 flex items-center justify-center font-semibold text-slate-200 shrink-0 text-sm">
-                        {user?.name?.[0] || 'S'}
-                      </div>
-                    )}
+                    <UserAvatar avatar={user?.avatar} name={user?.name} className="w-9 h-9 rounded-lg font-semibold text-slate-200 text-sm" />
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-white truncate">{user?.name}</div>
                       <div className="text-xs text-slate-500 truncate">{user?.email}</div>

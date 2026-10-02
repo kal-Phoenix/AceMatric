@@ -24,6 +24,7 @@ import { Stream } from '../types';
 import FloatingTimer from './FloatingTimer';
 import GlobalSearch from './GlobalSearch';
 import BrandLogo from './ui/BrandLogo';
+import UserAvatar from './ui/UserAvatar';
 
 export interface MobileNavItem {
   id: string;
@@ -64,7 +65,7 @@ interface MobileShellProps {
 }
 
 // 4 primary core tabs + 1 More menu = 5 items (perfect for mobile ergonomics)
-const PRIMARY_TAB_IDS = ['dashboard', 'study', 'practice', 'simulator'];
+const PRIMARY_TAB_IDS = ['dashboard', 'study', 'practice', 'simulator', 'leaderboard'];
 
 export default function MobileShell({
   children,
@@ -130,6 +131,8 @@ export default function MobileShell({
         return { label: 'Practice', icon: <Target className="w-[20px] h-[20px]" /> };
       case 'simulator':
         return { label: 'Mocks', icon: <Clock className="w-[20px] h-[20px]" /> };
+      case 'leaderboard':
+        return { label: 'Ranks', icon: <Trophy className="w-[20px] h-[20px]" /> };
       default:
         return null;
     }
@@ -137,14 +140,14 @@ export default function MobileShell({
 
   // Group items for the native "More" sheet
   const academicTabs = navItems.filter(n => ['study', 'practice', 'simulator', 'matrix', 'explainer'].includes(n.id));
-  const communityTabs = navItems.filter(n => ['leaderboard', 'collaboration'].includes(n.id));
+  const communityTabs = navItems.filter(n => n.id === 'collaboration');
   const extraTabs = navItems.filter(n => !['dashboard', 'study', 'practice', 'simulator', 'matrix', 'explainer', 'leaderboard', 'collaboration'].includes(n.id));
 
   return (
-    <div className="flex flex-col w-full min-h-screen overflow-x-hidden bg-[#0A0E14] text-slate-100 font-sans select-none">
+    <div className="flex flex-col w-full min-h-screen overflow-x-hidden bg-[#0A0E14] text-slate-100 font-sans">
       {/* ── 1. NATIVE-FEEL TOP APP BAR ────────────────────────────────────── */}
       <header
-        className="sticky top-0 z-40 flex items-center justify-between px-3.5 py-2 glass-header border-b border-white/[0.07] transition-all"
+        className="sticky top-0 z-40 flex items-center justify-between px-3.5 py-2 glass-header border-b border-white/[0.07] transition-all select-none"
         style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}
       >
         {/* Brand & Stream Pill */}
@@ -169,7 +172,7 @@ export default function MobileShell({
           <button
             type="button"
             onClick={() => setIsSearchOpen(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer"
+            className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer"
             aria-label="Search questions and topics"
           >
             <Search className="w-4 h-4" />
@@ -180,7 +183,7 @@ export default function MobileShell({
             <button
               type="button"
               onClick={onToggleTheme}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer"
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
@@ -209,7 +212,7 @@ export default function MobileShell({
               <button
                 type="button"
                 onClick={onNotificationToggle}
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer relative"
+                className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-400 hover:text-white touch-btn cursor-pointer relative"
                 aria-label="Notifications"
               >
                 <Bell className="w-4 h-4" />
@@ -227,7 +230,7 @@ export default function MobileShell({
                     className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
                     onClick={onNotificationToggle}
                   />
-                  <div className="absolute right-0 top-11 w-[min(340px,calc(100vw-24px))] rounded-2xl bg-[#0F141F] border border-white/[0.1] shadow-2xl z-50 overflow-hidden flex flex-col max-h-[380px] animate-sheet-up">
+                  <div className="absolute right-0 top-11 w-[min(340px,calc(100vw-24px))] rounded-2xl bg-[#0F141F] border border-white/[0.1] shadow-2xl z-50 overflow-hidden flex flex-col max-h-[min(380px,calc(100dvh-72px))] animate-sheet-up select-none">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-slate-900/50">
                       <span className="text-xs font-bold text-white tracking-wide">Notifications</span>
                       {unreadCount > 0 && (
@@ -281,20 +284,14 @@ export default function MobileShell({
             <button
               type="button"
               onClick={() => handleTabSelect('profile')}
-              className="cursor-pointer touch-btn shrink-0"
+              className="cursor-pointer touch-btn shrink-0 p-1 -m-1"
               aria-label="Open profile"
             >
-              {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className="w-9 h-9 rounded-xl object-cover border border-white/[0.15] ring-2 ring-blue-500/20"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-xs font-bold text-white border border-white/[0.15] shadow-inner">
-                  {user.name?.[0] || 'S'}
-                </div>
-              )}
+              <UserAvatar
+                avatar={user.avatar}
+                name={user.name}
+                className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 border border-white/[0.15] text-xs font-bold text-white shadow-inner ring-2 ring-blue-500/20"
+              />
             </button>
           ) : (
             <button
@@ -309,13 +306,13 @@ export default function MobileShell({
       </header>
 
       {/* ── 2. SCROLLABLE MAIN CONTENT CANVAS ─────────────────────────────── */}
-      <main className="flex-1 overflow-x-hidden pb-[calc(7.5rem+env(safe-area-inset-bottom))] min-h-0">
+      <main className="flex-1 overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] min-h-0">
         <div className="px-3.5 sm:px-5 py-4 sm:py-5 max-w-7xl mx-auto w-full">{children}</div>
       </main>
 
       {/* ── 3. NATIVE-FEEL FROSTED BOTTOM NAVIGATION BAR ─────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 glass-nav border-t border-white/[0.08] shadow-[0_-8px_32px_rgba(0,0,0,0.6)]"
+        className="fixed bottom-0 left-0 right-0 z-50 glass-nav border-t border-white/[0.08] shadow-[0_-8px_32px_rgba(0,0,0,0.6)] select-none"
         style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
         aria-label="Primary bottom navigation"
       >
@@ -330,6 +327,7 @@ export default function MobileShell({
                 key={tabId}
                 type="button"
                 onClick={() => handleTabSelect(tabId)}
+                aria-current={isActive ? 'page' : undefined}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 min-h-[48px] touch-btn cursor-pointer transition-all ${
                   isActive ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
                 }`}
@@ -354,6 +352,7 @@ export default function MobileShell({
           <button
             type="button"
             onClick={() => setIsDrawerOpen(true)}
+            aria-current={!activeIsPrimary ? 'page' : undefined}
             className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 min-h-[48px] touch-btn cursor-pointer transition-all ${
               !activeIsPrimary ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
             }`}
@@ -563,17 +562,11 @@ export default function MobileShell({
                     onClick={() => handleTabSelect('profile')}
                     className="flex items-center gap-3 min-w-0 flex-1 touch-btn cursor-pointer text-left"
                   >
-                    {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                      <img
-                        src={user.avatar}
-                        alt=""
-                        className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/[0.1]"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                        {user.name?.[0] || 'S'}
-                      </div>
-                    )}
+                    <UserAvatar
+                      avatar={user.avatar}
+                      name={user.name}
+                      className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 border border-white/[0.1] text-sm font-bold text-white"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-white truncate">{user.name}</div>
                       <div className="text-[10px] text-slate-400 truncate">{user.email}</div>
